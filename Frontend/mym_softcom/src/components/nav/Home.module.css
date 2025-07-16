@@ -1,0 +1,190 @@
+/* Variables Globales */
+.root {
+    --color-amarillo: #efb810;
+    --bg-color-blanco: #ffffff;
+    --bg-color-negro: #000000;
+    --bg-color-nav: #ffffff68;
+    --font-family: 'Roboto', sans-serif;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.5rem;
+    --font-size-xxl: 2.25rem;
+    --border-radius: 8px;
+    --shadow-light: 0 4px 10px rgba(0, 0, 0, 0.1);
+    --shadow-dark: 0 10px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo Global */
+
+
+body {
+    font-family: var(--font-family);
+    line-height: 1.6;
+    background-color: var(--bg-color-blanco);
+    color: #333;
+}
+
+/* Contenedor Principal */
+.main {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Encabezado */
+.header {
+    background-color: var(--bg-color-primary);
+    color: var(--bg-color-blanco);
+    padding: 5rem 2rem;
+    text-align: center;
+    border-bottom: 2px solid #eee;
+}
+
+.header h1 {
+    font-size: var(--font-size-xxl);
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.header p {
+    font-size: var(--font-size-lg);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Sección de Bienvenida */
+.welcome-section {
+    padding: 4rem 2rem;
+    background-color: var(--bg-color-blanco);
+}
+
+.welcome-section h2 {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.welcome-section p {
+    font-size: var(--font-size-lg);
+    color: #666;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.welcome-img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+}
+
+/* Sección de Misión y Visión */
+.mission-vision-section {
+    background-color: #f8f8f8;
+    padding: 4rem 2rem;
+}
+
+.mission-vision-section h2 {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.mission-vision-section h3 {
+    font-size: var(--font-size-lg);
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.mission-vision-section p {
+    font-size: var(--font-size-base);
+    color: #555;
+    line-height: 1.8;
+}
+
+/* Sección de Características Destacadas */
+.features-section {
+    padding: 4rem 2rem;
+    background-color: var(--bg-color-blanco);
+}
+
+.features-section h2 {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.feature-card {
+    background-color: var(--bg-color-blanco);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+    text-align: center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+}
+
+.feature-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+    font-size: var(--font-size-lg);
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    font-size: var(--font-size-base);
+    color: #666;
+}
+
+/* Galería */
+.gallery-section {
+    padding: 4rem 2rem;
+    background-color: #f8f8f8;
+}
+
+.gallery-section h2 {
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.gallery-section .container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.gallery-section img {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+}
+
+/* Footer */
+.footer {
+    background-color: var(--bg-color-negro);
+    color: var(--bg-color-blanco);
+    padding: 2rem;
+    text-align: center;
+}
+
+.footer p {
+    font-size: var(--font-size-base);
+    color: rgba(255, 255, 255, 0.7);
+}

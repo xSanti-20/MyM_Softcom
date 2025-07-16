@@ -1,0 +1,126 @@
+:root {
+    --bg-color-blanco: #ffffff;
+    --bg-color-negro: #000000;
+    --bg-color-nav: #ffffff68;
+    --text-color-dorado: #947c4c;
+}
+
+/* Contenedor principal */
+.wrapper {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 87vh;
+    background-color: var(--bg-color-blanco);
+}
+
+/* Caja del formulario */
+.form_box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 85vh;
+}
+
+/* Estilo principal del formulario */
+.form_box > form {
+    background: var(--bg-color-negro); /* Fondo del formulario negro */
+    width: 400px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    border-radius: 10px;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 0.3);
+    color: var(--text-color-dorado); /* Color dorado para texto */
+}
+
+/* Título del formulario */
+.title {
+    font-size: 38px;
+    text-align: center;
+    color: var(--text-color-dorado);
+    margin-bottom: 5px;
+}
+
+/* Caja de inputs */
+.input_box {
+    position: relative;
+    width: 100%;
+    height: 45px;
+    margin: 15px 0;
+}
+
+/* Inputs */
+.input_box input {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: 1px solid var(--text-color-dorado);
+    border-radius: 40px;
+    color: var(--text-color-dorado);
+    padding: 10px 45px 10px 20px;
+    outline: none;
+}
+
+/* Placeholder */
+.input_box input::placeholder {
+    color: var(--text-color-dorado);
+}
+
+/* Iconos en los inputs */
+.input_box .icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--text-color-dorado);
+}
+
+/* Botón de envío */
+.form_box button {
+    width: 100%;
+    height: 45px;
+    background: var(--text-color-dorado);
+    color: var(--bg-color-negro);
+    border: none;
+    border-radius: 40px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, .1);
+    padding: 10px 40px;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+/* Enlaces */
+.remember_forgot,
+.register_link {
+    text-align: center;
+}
+
+.remember_forgot a,
+.register_link p a {
+    color: var(--text-color-dorado);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.remember_forgot a:hover,
+.register_link p a:hover {
+    text-decoration: underline;
+}
+
+/* Imagen */
+.form_box img {
+    width: 60px;
+    height: 60px;
+}

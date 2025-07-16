@@ -1,0 +1,130 @@
+/* Contenedor principal */
+.stage-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+/* Caja del formulario */
+.stage-form-container {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 90vh;
+}
+
+/* Título */
+.stage-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #333;
+}
+
+/* Grupo de entrada */
+.input-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 16px 12px 16px;
+  padding-right: 40px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: #666;
+}
+
+/* Recuadro de ayuda */
+.recommendation-box {
+  background-color: #e6f0ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  color: #1e40af;
+}
+
+.recommendation-box h4 {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.recommendation-box ul {
+  padding-left: 20px;
+  list-style: disc;
+}
+
+/* Botones */
+.form-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.submit-btn {
+  background-color: #007bff;
+  border: none;
+  color: white;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submit-btn:hover {
+  background-color: #0056b3;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .stage-form-container {
+    padding: 16px;
+  }
+
+  .stage-title {
+    font-size: 20px;
+  }
+
+  .input-group input {
+    font-size: 15px;
+  }
+
+  .recommendation-box {
+    font-size: 13px;
+  }
+
+  .submit-btn {
+    font-size: 15px;
+    padding: 10px;
+  }
+}

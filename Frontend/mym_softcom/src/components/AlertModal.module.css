@@ -1,0 +1,83 @@
+/* AlertModal.module.css */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999999;      /* Muy alto para estar encima de todo */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto; /* 🔥 Asegura que el overlay reciba clics */
+}
+
+.modal {
+  position: relative;   /* 🔥 Nuevo: para crear un stacking context propio */
+  z-index: 1000000;     /* 🔥 Nuevo: aún más alto que el overlay y que tu formulario */
+  background: white;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalContent {
+  padding: 25px;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.success {
+  border-top: 5px solid #4caf50;
+}
+
+.error {
+  border-top: 5px solid #f44336;
+}
+
+.modalContent h2 {
+  margin-top: 0;
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.modalContent p {
+  margin-bottom: 25px;
+  color: #555;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.acceptButton {
+  background-color: var(--bg-color-primary, #1b8fb0);
+  color: white;
+  border: none;
+  border-radius: 40px;
+  padding: 12px 30px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-weight: bold;
+  width: 100%;
+  max-width: 200px;
+}
+
+.acceptButton:hover {
+  background-color: rgba(27, 143, 176, 0.8);
+}

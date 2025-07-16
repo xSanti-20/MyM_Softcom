@@ -1,0 +1,115 @@
+/* Contenedor principal */
+.register-container {
+  margin-top: 40px;
+  padding: 1rem;
+}
+
+/* Contenedor centrado */
+.register-form-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Formulario */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  color: #000000;
+}
+
+/* Título */
+.register-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #000000;
+}
+
+/* Caja de input con ícono */
+.register-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.register-input-box input {
+  flex: 1;
+  width: 100%;
+  background: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 12px;
+  padding: 12px 40px 12px 16px;
+  font-size: 16px;
+  outline: none;
+  transition: border 0.3s ease-in-out;
+}
+
+.register-input-box input:focus {
+  border: 2px solid #1B8FB0;
+}
+
+/* Icono */
+.register-input-box .register-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #000000;
+  font-size: 20px;
+}
+
+/* Botón */
+.register-button {
+  width: 100%;
+  padding: 12px 20px;
+  background: #1B8FB0;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.register-button:hover {
+  background: #000000;
+}
+
+/* Responsivo móvil */
+@media (max-width: 480px) {
+  .register-form {
+    padding: 24px 16px;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .register-title {
+    font-size: 20px;
+  }
+
+  .register-input-box input {
+    font-size: 14px;
+    padding: 10px 36px 10px 12px;
+  }
+
+  .register-icon {
+    font-size: 18px;
+    right: 10px;
+  }
+
+  .register-button {
+    font-size: 15px;
+    padding: 10px;
+  }
+}

@@ -1,0 +1,109 @@
+
+/* Contenedor principal */
+.wrapper {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 87vh;
+    background-color: var(--bg-color-blanco); /* Fondo negro */
+}
+
+/* Formulario */
+.form_box > form {
+    background: var(--bg-color-negro); /* Fondo negro */
+    width: 420px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    border-radius: 10px;
+    color: var(--text-color-dorado); /* Color de texto dorado */
+    margin-top: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Título */
+.title {
+    font-size: 30px;
+    text-align: center;
+    font-weight: bold;
+    color: var(--text-color-dorado); /* Color dorado */
+}
+
+/* Caja de inputs */
+.input_box {
+    position: relative;
+    width: 100%;
+    height: 50px;
+    margin: 9px 0;
+}
+
+/* Inputs */
+.input_box input {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    border: 1px solid var(--text-color-dorado);
+    border-radius: 40px;
+    font-size: 16px;
+    color: var(--text-color-dorado); /* Texto dorado */
+    padding-left: 20px;
+}
+
+/* Placeholder */
+.input_box input::placeholder {
+    color: var(--text-color-dorado);
+}
+
+/* Íconos */
+.input_box .icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--text-color-dorado);
+}
+
+/* Botón de envío */
+.form_box button {
+    width: 100%;
+    height: 50px;
+    background-color: var(--text-color-dorado);
+    border: none;
+    border-radius: 40px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding-left: 20px;
+    cursor: pointer;
+    color: var(--bg-color-blanco);
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 11px;
+}
+
+/* Enlaces de registro y login */
+.form .register_link,
+.login_link {
+    font-size: 14.5px;
+    text-align: center;
+    margin: 12px;
+    font-weight: bold;
+}
+
+.register_link p a,
+.login_link p a {
+    color: var(--text-color-dorado);
+    text-decoration: none;
+}
+
+.login_link p a:hover,
+.register_link p a:hover {
+    text-decoration: underline;
+}

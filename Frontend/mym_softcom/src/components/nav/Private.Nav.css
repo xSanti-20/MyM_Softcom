@@ -1,0 +1,53 @@
+:root {
+  --bg-color-primary: #1B8FB0;
+  --bg-color-rosado: #E57B76;
+  --bg-color-blanco: #ffffff;
+  --bg-color-negro: #000000; 
+  --bg-color-nav: #ffffff68;
+}
+
+.bg-nav-public {
+  background: linear-gradient(to right, var(--bg-color-primary), var(--bg-color-rosado));
+  height: 80px;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.navList a {
+  text-decoration: none;
+  color: var(--bg-color-blanco);
+  padding: 8px 15px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  position: relative;
+  font-family: Arial, sans-serif;
+  transition: color 0.3s ease;
+}
+
+@media (min-width: 991px) {
+  .navList a::before {
+      content: "";
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0%;
+      height: 2px;
+      background-color: var(--bg-color-blanco);
+      visibility: hidden;
+      transition: width 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  }
+
+  .navList a:hover::before, 
+  .navList a.active::before {
+      visibility: visible;
+      width: 100%;
+  }
+}
+
+/* Estilos para el título */
+h1 {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}

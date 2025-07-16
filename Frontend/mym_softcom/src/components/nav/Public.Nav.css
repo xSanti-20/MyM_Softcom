@@ -1,0 +1,77 @@
+:root {
+    --color-amarillo: #947c4c;
+    --bg-color-blanco: #ffffff;
+    --bg-color-negro: #000000; 
+    --bg-color-nav: #ffffff68;
+  }
+  
+  .bg-nav-public {
+    background: linear-gradient(to right, var(--bg-color-primary), var(--bg-color-rosado));
+    background-color: var(--bg-color-primary);
+    height: 80px; /* Ajustar la altura de la barra */
+    padding: 4px 0; /* Reducir padding para menos espacio vertical */
+    display: flex;
+    align-items: center; /* Centrar contenido verticalmente */
+  }
+  
+  .btn {
+    background-color: var(--bg-color-blanco); /* Fondo blanco para el botón */
+    color: var(--bg-color-negro); /* Texto en negro */
+    border: none; /* Sin borde */
+    padding: 8px 15px; /* Espaciado interno */
+    border-radius: 20px; /* Bordes redondeados */
+    cursor: pointer; /* Cambia el cursor al pasar el ratón */
+    font-weight: bold; /* Texto en negrita */
+    font-size: 16px;
+    margin-right: 100px;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  
+  .btn:hover {
+    background-color: var(--bg-color-nav); /* Efecto hover suave */
+  }
+  
+  .navList a {
+    text-decoration: none;
+    color: var(--bg-color-blanco);
+    padding: 8px 15px;
+    font-size: 16px;
+    font-weight: bold; /* Texto en negrita */
+    cursor: pointer; /* Cambia el cursor al pasar el ratón */
+    position: relative; /* Habilitar el posicionamiento relativo para el pseudo-elemento */
+    font-family: Arial, sans-serif; 
+    margin-left: 70px;
+  }
+  
+  @media (min-width: 991px) {
+    .navList a::before {
+      content: "";
+      position: absolute;
+      bottom: -5px; /* Ajusta la posición vertical del indicador */
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0%; /* Inicialmente, el ancho es cero */
+      height: 2px; /* Altura de la barra */
+      background-color: var(--bg-color-blanco);
+      visibility: hidden; /* Ocultar inicialmente */
+      transition: width 0.3s ease-in-out, visibility 0.3s ease-in-out; /* Transición suave */
+    }
+  
+    .navList a:hover::before, .navList a.active::before {
+      visibility: visible; /* Hacer visible cuando se pasa el mouse o está activo */
+      width: 100%; /* Cambiar el ancho a completo en hover o activo */
+    }
+  }
+  .navbar-right {
+    display: flex;
+    align-items: center;
+  }
+  
+  .btn {
+    margin-left: 10px; /* Espacio entre el botón del menú y el botón de Logout */
+  }
+  .navbrand{
+    margin-left: 90px;
+  }
+  
+  
