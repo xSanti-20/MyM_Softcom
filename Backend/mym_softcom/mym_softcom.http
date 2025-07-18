@@ -1,0 +1,6 @@
+@mym_softcom_HostAddress = http://localhost:5216
+
+GET {{mym_softcom_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

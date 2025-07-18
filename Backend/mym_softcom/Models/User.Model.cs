@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace API_PESO_PIG.Models
+namespace mym_softcom.Models
 {
     public class LoginUser
     {

@@ -1,10 +1,10 @@
-﻿using API_PESO_PIG.Models;
+﻿using mym_softcom.Models;
 using System.Net;
 using System.Net.Http;
 using System.Net.Mail;
 using System.Text;
 
-namespace API_PESO_PIG.Functions
+namespace mym_softcom.Functions
 {
     public class UserFunction
     {
@@ -35,7 +35,7 @@ namespace API_PESO_PIG.Functions
                     EnableSsl = true
                 })
                 {
-                    MailAddress remitente = new MailAddress(ConfigServer.Email, "SOFTWARE PESO PIG", Encoding.UTF8);
+                    MailAddress remitente = new MailAddress(ConfigServer.Email, "M & M SOFTCOM", Encoding.UTF8);
                     MailAddress destinatario = new MailAddress(EmailDestinatation);
 
                     using (MailMessage message = new MailMessage(remitente, destinatario)
@@ -169,7 +169,7 @@ public void Addlog(string newlog)
                     EnableSsl = true
                 })
                 {
-                    MailAddress remitente = new MailAddress(ConfigServer.Email, "SOFTWARE PESO PIG", Encoding.UTF8);
+                    MailAddress remitente = new MailAddress(ConfigServer.Email, "M & M SOFTCOM", Encoding.UTF8);
 
                     foreach (var email in adminEmails)
                     {

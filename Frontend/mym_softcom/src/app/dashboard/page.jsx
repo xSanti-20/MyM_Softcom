@@ -4,17 +4,19 @@ import { useEffect, useState } from "react"
 import NavPrivada from "@/components/nav/PrivateNav"
 import {
   Loader2,
-  PiggyBankIcon as Pig,
-  Users,
+  CreditCard,
   AlertCircle,
-  Home,
+  DollarSign,
   RefreshCw,
   Calendar,
   Activity,
   Info,
   ChevronDown,
   ChevronUp,
-  BarChart3,
+  UserCheck,
+  UserX,
+  XCircle,
+  Building2,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -247,47 +249,22 @@ const ActivityItem = ({ action, details, time, icon: Icon = Activity, color = "b
   )
 }
 
-// Componente de panel de información
-const InfoPanel = ({ title, value, description, icon: Icon, color = "blue" }) => {
-  const colorSchemes = {
-    blue: "text-blue-600",
-    green: "text-green-600",
-    red: "text-red-600",
-    amber: "text-amber-600",
-    purple: "text-purple-600",
-  }
-
-  return (
-    <div className="flex items-center gap-3 p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-      {Icon && (
-        <div className={`${colorSchemes[color]}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      )}
-      <div>
-        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</div>
-        <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{value}</div>
-        {description && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</div>}
-      </div>
-    </div>
-  )
-}
-
 export default function Dashboard() {
-  // TODOS LOS HOOKS DEBEN ESTAR AL INICIO DEL COMPONENTE
-  // Estados para almacenar datos
-  const [piglets, setPiglets] = useState([])
-  const [races, setRaces] = useState([])
-  const [stages, setStages] = useState([])
-  const [corrals, setCorrals] = useState([])
+  // Estados para almacenar datos de pagos
+  const [payments, setPayments] = useState([])
+  const [clients, setClients] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [stats, setStats] = useState({
-    totalPiglets: 0,
-    totalRaces: 0,
-    totalStages: 0,
-    totalCorrals: 0,
-    pigletsPerStage: {},
-    pigletsPerCorral: {},
+    activeClients: 0,
+    overdueClients: 0,
+    totalOwed: 0,
+    cancellations: 0,
+    totalSales: 0,
+    monthlyRevenue: 0,
+    // Nuevos campos para proyectos
+    luxuryMonthly: 0,
+    reservasMonthly: 0,
+    malibuMonthly: 0,
   })
 
   // Estados para controlar la carga y errores
@@ -300,6 +277,15 @@ export default function Dashboard() {
 
   // Hook del router
   const router = useRouter()
+
+  // Función para formatear moneda
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+    }).format(amount || 0)
+  }
 
   // Función para formatear fecha
   const formatDate = (dateString) => {
@@ -315,20 +301,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error formatting date:", error)
       return "Fecha desconocida"
-    }
-  }
-
-  // Función para formatear fecha corta
-  const formatShortDate = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      return new Intl.DateTimeFormat("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-      }).format(date)
-    } catch (error) {
-      return "N/A"
     }
   }
 
@@ -354,67 +326,84 @@ export default function Dashboard() {
     }
   }
 
-  // Función para cargar todos los datos
+  // Función para cargar todos los datos de pagos
   const loadAllData = async () => {
     setDataLoading(true)
     const newErrors = {}
 
     try {
-      // Cargar datos de lechones
+      // Cargar datos de pagos
       try {
-        const response = await axiosInstance.get("/api/Piglet/ConsultAllPiglets")
-        console.log("Piglet data:", response.data)
+        const response = await axiosInstance.get("/api/payments/all")
+        console.log("Payment data:", response.data)
 
-        // Transformar los datos como lo haces en tu página de lechones
-        const formattedPiglets = response.data.map((piglet) => ({
-          id: piglet.id_Piglet,
-          nombre: piglet.name_Piglet,
-          pesoAcumulado: piglet.acum_Weight ?? "Sin dato",
-          nacimiento: piglet.fec_Birth ? new Date(piglet.fec_Birth).toLocaleDateString() : "Sin fecha",
-          pesoInicial: piglet.weight_Initial ?? "Sin dato",
-          sexo: piglet.sex_Piglet ?? "Sin dato",
-          corral: piglet.des_Corral || "Sin corral",
-          raza: piglet.nam_Race || "Sin raza",
-          etapa: piglet.name_Stage || "Sin etapa",
-          placasena: piglet.placa_Sena ?? "Sin dato",
-          // Guardamos los datos originales
-          original: piglet,
+        const formattedPayments = response.data.map((payment) => ({
+          id: payment.id_Payment,
+          cliente: payment.client_Name || "Cliente desconocido",
+          monto: payment.amount || 0,
+          fecha: payment.payment_Date ? new Date(payment.payment_Date).toLocaleDateString() : "Sin fecha",
+          estado: payment.status || "Pendiente",
+          metodo: payment.payment_Method || "No especificado",
+          vencimiento: payment.due_Date ? new Date(payment.due_Date).toLocaleDateString() : "Sin vencimiento",
+          original: payment,
         }))
 
-        setPiglets(formattedPiglets)
+        setPayments(formattedPayments)
       } catch (error) {
-        console.error("Error fetching piglets:", error)
-        newErrors.piglets = `Error al cargar lechones: ${error.message || "Error desconocido"}`
+        console.error("Error fetching payments:", error)
+        newErrors.payments = `Error al cargar pagos: ${error.message || "Error desconocido"}`
+        // Datos de ejemplo para desarrollo
+        setPayments([
+          {
+            id: 1,
+            cliente: "Empresa ABC",
+            monto: 1500000,
+            fecha: "15/01/2024",
+            estado: "Pagado",
+            metodo: "Transferencia",
+            vencimiento: "15/01/2024",
+            proyecto: "Luxury",
+            original: { payment_Date: new Date(), status: "Pagado", amount: 1500000, project: "Luxury" },
+          },
+          {
+            id: 2,
+            cliente: "Corporación XYZ",
+            monto: 2300000,
+            fecha: "10/01/2024",
+            estado: "Vencido",
+            metodo: "Cheque",
+            vencimiento: "10/01/2024",
+            proyecto: "Reservas",
+            original: { payment_Date: new Date(), status: "Vencido", amount: 2300000, project: "Reservas" },
+          },
+          {
+            id: 3,
+            cliente: "Servicios DEF",
+            monto: 850000,
+            fecha: "20/01/2024",
+            estado: "Pendiente",
+            metodo: "Efectivo",
+            vencimiento: "25/01/2024",
+            proyecto: "Malibu",
+            original: { payment_Date: new Date(), status: "Pendiente", amount: 850000, project: "Malibu" },
+          },
+        ])
       }
 
-      // Cargar datos de razas
+      // Cargar datos de clientes
       try {
-        const response = await axiosInstance.get("/api/Race/ConsultAllRaces")
-        console.log("Race data:", response.data)
-        setRaces(response.data || [])
+        const response = await axiosInstance.get("/api/clients/all")
+        console.log("Client data:", response.data)
+        setClients(response.data || [])
       } catch (error) {
-        console.error("Error fetching races:", error)
-        newErrors.races = `Error al cargar razas: ${error.message || "Error desconocido"}`
-      }
-
-      // Cargar datos de etapas
-      try {
-        const response = await axiosInstance.get("/api/Stage/ConsultAllStages")
-        console.log("Stage data:", response.data)
-        setStages(response.data || [])
-      } catch (error) {
-        console.error("Error fetching stages:", error)
-        newErrors.stages = `Error al cargar etapas: ${error.message || "Error desconocido"}`
-      }
-
-      // Cargar datos de corrales
-      try {
-        const response = await axiosInstance.get("/api/Corral/ConsultAllCorrals")
-        console.log("Corral data:", response.data)
-        setCorrals(response.data || [])
-      } catch (error) {
-        console.error("Error fetching corrals:", error)
-        newErrors.corrals = `Error al cargar corrales: ${error.message || "Error desconocido"}`
+        console.error("Error fetching clients:", error)
+        newErrors.clients = `Error al cargar clientes: ${error.message || "Error desconocido"}`
+        // Datos de ejemplo para desarrollo
+        setClients([
+          { id: 1, name: "Empresa ABC", status: "Activo" },
+          { id: 2, name: "Corporación XYZ", status: "Moroso" },
+          { id: 3, name: "Servicios DEF", status: "Activo" },
+        ])
       }
 
       setErrors(newErrors)
@@ -432,15 +421,35 @@ export default function Dashboard() {
     try {
       const allActivities = []
 
-      // Añadir actividades recientes de lechones (los últimos 5 registrados)
-      piglets.slice(0, 5).forEach((piglet) => {
+      // Añadir actividades recientes de pagos (los últimos 5 registrados)
+      payments.slice(0, 5).forEach((payment) => {
+        let activityColor = "blue"
+        let activityIcon = CreditCard
+        let activityAction = "Pago registrado"
+
+        if (payment.estado === "Pagado") {
+          activityColor = "green"
+          activityIcon = CreditCard
+          activityAction = "Pago completado"
+        } else if (payment.estado === "Vencido") {
+          activityColor = "red"
+          activityIcon = AlertCircle
+          activityAction = "Pago vencido"
+        } else if (payment.estado === "Cancelado") {
+          activityColor = "amber"
+          activityIcon = XCircle
+          activityAction = "Pago cancelado"
+        }
+
         allActivities.push({
-          action: "Lechón registrado",
-          details: `${piglet.nombre || "Sin nombre"} - Raza: ${piglet.raza || "No especificada"}`,
-          time: piglet.original?.fec_Birth ? formatRelativeTime(piglet.original.fec_Birth) : "Fecha desconocida",
-          date: new Date(piglet.original?.fec_Birth || Date.now()),
-          icon: Pig,
-          color: "blue",
+          action: activityAction,
+          details: `${payment.cliente} - ${formatCurrency(payment.monto)}`,
+          time: payment.original?.payment_Date
+            ? formatRelativeTime(payment.original.payment_Date)
+            : "Fecha desconocida",
+          date: new Date(payment.original?.payment_Date || Date.now()),
+          icon: activityIcon,
+          color: activityColor,
         })
       })
 
@@ -452,42 +461,89 @@ export default function Dashboard() {
     }
   }
 
-  // Calcular estadísticas
+  // Calcular estadísticas de pagos
   const calculateStats = () => {
     try {
-      // Total de lechones
-      const totalPiglets = piglets.length
+      // Clientes activos (que no están en mora)
+      const activeClients = clients.filter((client) => client.status !== "Moroso").length
 
-      // Total de razas
-      const totalRaces = races.length
+      // Clientes en mora
+      const overdueClients = clients.filter((client) => client.status === "Moroso").length
 
-      // Total de etapas
-      const totalStages = stages.length
+      // Total adeudado por clientes en mora
+      const totalOwed = payments
+        .filter((payment) => payment.estado === "Vencido")
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
 
-      // Total de corrales
-      const totalCorrals = corrals.length
+      // Pagos cancelados
+      const cancellations = payments.filter((payment) => payment.estado === "Cancelado").length
 
-      // Calcular lechones por etapa
-      const pigletsPerStage = {}
-      stages.forEach((stage) => {
-        const count = piglets.filter((piglet) => piglet.original?.id_Stage === stage.id_Stage).length
-        pigletsPerStage[stage.name_Stage || "Sin etapa"] = count
-      })
+      // Ventas totales (pagos completados)
+      const totalSales = payments
+        .filter((payment) => payment.estado === "Pagado")
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
 
-      // Calcular lechones por corral
-      const pigletsPerCorral = {}
-      corrals.forEach((corral) => {
-        const count = piglets.filter((piglet) => piglet.original?.id_Corral === corral.id_Corral).length
-        pigletsPerCorral[corral.des_Corral || "Sin corral"] = count
-      })
+      // Dinero recaudado en el mes actual
+      const currentMonth = new Date().getMonth()
+      const currentYear = new Date().getFullYear()
+      const monthlyRevenue = payments
+        .filter((payment) => {
+          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
+            const paymentDate = new Date(payment.original.payment_Date)
+            return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+          }
+          return false
+        })
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
+
+      // Recaudos mensuales por proyecto
+      const luxuryMonthly = payments
+        .filter((payment) => {
+          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
+            const paymentDate = new Date(payment.original.payment_Date)
+            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+            // Asumiendo que el proyecto viene en payment.original.project o payment.proyecto
+            const project = payment.original?.project || payment.proyecto || ""
+            return isCurrentMonth && project.toLowerCase().includes("luxury")
+          }
+          return false
+        })
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
+
+      const reservasMonthly = payments
+        .filter((payment) => {
+          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
+            const paymentDate = new Date(payment.original.payment_Date)
+            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+            const project = payment.original?.project || payment.proyecto || ""
+            return isCurrentMonth && project.toLowerCase().includes("reservas")
+          }
+          return false
+        })
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
+
+      const malibuMonthly = payments
+        .filter((payment) => {
+          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
+            const paymentDate = new Date(payment.original.payment_Date)
+            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+            const project = payment.original?.project || payment.proyecto || ""
+            return isCurrentMonth && project.toLowerCase().includes("malibu")
+          }
+          return false
+        })
+        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
 
       setStats({
-        totalPiglets,
-        totalRaces,
-        totalStages,
-        totalCorrals,
-        pigletsPerStage,
-        pigletsPerCorral,
+        activeClients,
+        overdueClients,
+        totalOwed,
+        cancellations,
+        totalSales,
+        monthlyRevenue,
+        luxuryMonthly,
+        reservasMonthly,
+        malibuMonthly,
       })
     } catch (err) {
       console.error("Error calculating stats:", err)
@@ -511,7 +567,7 @@ export default function Dashboard() {
   useEffect(() => {
     prepareRecentActivity()
     calculateStats()
-  }, [piglets, races, stages, corrals])
+  }, [payments, clients])
 
   // Efecto para obtener el rol del usuario
   useEffect(() => {
@@ -534,7 +590,7 @@ export default function Dashboard() {
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-white to-gray-100">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-          <p className="text-gray-600 animate-pulse">Cargando PESOPIG...</p>
+          <p className="text-gray-600 animate-pulse">Cargando MySoftCom...</p>
         </div>
       </div>
     )
@@ -542,15 +598,22 @@ export default function Dashboard() {
 
   const hasErrors = Object.keys(errors).length > 0
 
-  // Columnas para tablas de datos
-  const pigletColumns = [
+  // Columnas para tabla de pagos
+  const paymentColumns = [
     { header: "ID", accessor: "id" },
-    { header: "NOMBRE", accessor: "nombre" },
-    { header: "SEXO", accessor: "sexo" },
-    { header: "PESO", cell: (row) => `${row.pesoInicial || "N/A"} kg` },
-    { header: "RAZA", accessor: "raza" },
-    { header: "ETAPA", accessor: "etapa" },
-    { header: "CORRAL", accessor: "corral" },
+    { header: "CLIENTE", accessor: "cliente" },
+    { header: "PROYECTO", accessor: "proyecto" }, // Nueva columna
+    { header: "MONTO", cell: (row) => formatCurrency(row.monto) },
+    { header: "FECHA", accessor: "fecha" },
+    {
+      header: "ESTADO",
+      cell: (row) => (
+        <Badge variant={row.estado === "Pagado" ? "default" : row.estado === "Vencido" ? "destructive" : "secondary"}>
+          {row.estado}
+        </Badge>
+      ),
+    },
+    { header: "MÉTODO", accessor: "metodo" },
   ]
 
   return (
@@ -563,20 +626,20 @@ export default function Dashboard() {
               <div className="mb-8">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Inicio</h1>
-                    {role === "Administrador" && (
-                      <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido Administrador</h1>
-                    )}
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">Resumen de la actividad de Porcinos</p>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido a M&M SoftCom</h1>
+
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">Resumen y control de la Actividad financiera</p>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div
-                      className={`${hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                        } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
+                      className={`${
+                        hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                      } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
                     >
                       <span
-                        className={`w-2 h-2 ${hasErrors ? "bg-amber-500" : "bg-blue-500"
-                          } rounded-full mr-1.5 animate-pulse`}
+                        className={`w-2 h-2 ${
+                          hasErrors ? "bg-amber-500" : "bg-blue-500"
+                        } rounded-full mr-1.5 animate-pulse`}
                       ></span>
                       {hasErrors ? "Datos parciales" : "Datos en tiempo real"}
                     </div>
@@ -587,7 +650,7 @@ export default function Dashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs gap-1.5"
+                            className="text-xs gap-1.5 bg-transparent"
                             onClick={loadAllData}
                             disabled={dataLoading}
                           >
@@ -648,63 +711,99 @@ export default function Dashboard() {
               <Tabs defaultValue="overview" className="mb-6" onValueChange={setActiveTab}>
                 <TabsList className="mb-6">
                   <TabsTrigger value="overview" className="text-sm">
-                    Resumen
+                    Resumen de Pagos
                   </TabsTrigger>
                 </TabsList>
 
                 {/* Contenido de la pestaña Resumen */}
                 <TabsContent value="overview" className="space-y-6">
-                  {/* Tarjetas de estadísticas */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {/* Tarjetas de estadísticas de pagos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <StatCard
-                      icon={Pig}
-                      title="Lechones"
-                      value={stats.totalPiglets.toString()}
-                      description="Total de lechones registrados"
-                      color="blue"
-                    />
-                    <StatCard
-                      icon={Users}
-                      title="Razas"
-                      value={stats.totalRaces.toString()}
-                      description="Total de razas registradas"
+                      icon={UserCheck}
+                      title="Clientes Activos"
+                      value={stats.activeClients.toString()}
+                      description="Clientes al día con sus pagos"
                       color="green"
                     />
                     <StatCard
-                      icon={BarChart3}
-                      title="Etapas"
-                      value={stats.totalStages.toString()}
-                      description="Total de etapas configuradas"
+                      icon={UserX}
+                      title="Clientes en Mora"
+                      value={stats.overdueClients.toString()}
+                      description="Clientes con pagos vencidos"
+                      color="red"
+                    />
+                    <StatCard
+                      icon={DollarSign}
+                      title="Total Adeudado"
+                      value={formatCurrency(stats.totalOwed)}
+                      description="Monto total en mora"
                       color="amber"
                     />
                     <StatCard
-                      icon={Home}
-                      title="Corrales"
-                      value={stats.totalCorrals.toString()}
-                      description="Total de corrales Registrados"
+                      icon={XCircle}
+                      title="Desistimientos"
+                      value={stats.cancellations.toString()}
+                      description="Pagos cancelados este mes"
                       color="purple"
+                    />
+                  </div>
+
+                  {/* Tarjeta de recaudo total */}
+                  <div className="grid grid-cols-1 mb-4">
+                    <StatCard
+                      icon={CreditCard}
+                      title="Recaudado Total en el Mes"
+                      value={formatCurrency(stats.monthlyRevenue)}
+                      description="Dinero total recaudado este mes"
+                      color="teal"
+                    />
+                  </div>
+
+                  {/* Tarjetas de recaudos por proyecto */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <StatCard
+                      icon={Building2}
+                      title="Luxury - Mes Actual"
+                      value={formatCurrency(stats.luxuryMonthly)}
+                      description="Recaudo mensual proyecto Luxury"
+                      color="blue"
+                    />
+                    <StatCard
+                      icon={Building2}
+                      title="Reservas - Mes Actual"
+                      value={formatCurrency(stats.reservasMonthly)}
+                      description="Recaudo mensual proyecto Reservas"
+                      color="cyan"
+                    />
+                    <StatCard
+                      icon={Building2}
+                      title="Malibu - Mes Actual"
+                      value={formatCurrency(stats.malibuMonthly)}
+                      description="Recaudo mensual proyecto Malibu"
+                      color="green"
                     />
                   </div>
 
                   {/* Contenido principal y actividades recientes */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Tabla de lechones */}
+                    {/* Tabla de pagos recientes */}
                     <div className="lg:col-span-2 space-y-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle>Últimos Lechones Registrados</CardTitle>
+                          <CardTitle>Últimos Pagos Registrados</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <DataTable columns={pigletColumns} data={piglets} maxRows={5} />
+                          <DataTable columns={paymentColumns} data={payments} maxRows={5} />
                         </CardContent>
                         <CardFooter className="flex justify-end">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs text-blue-600 gap-1"
-                            onClick={() => navigateToPage("/dashboard/animals")}
+                            className="text-xs text-blue-600 gap-1 bg-transparent"
+                            onClick={() => navigateToPage("/dashboard/payments")}
                           >
-                            Ver todos los lechones
+                            Ver todos los pagos
                           </Button>
                         </CardFooter>
                       </Card>
@@ -745,14 +844,14 @@ export default function Dashboard() {
                       </Card>
 
                       <AlertCard
-                        title="Resumen de Datos"
+                        title="Resumen Financiero"
                         icon={Info}
                         color="blue"
                         messages={[
-                          `${piglets.length} lechones en total`,
-                          `${races.length} razas registradas`,
-                          `${stages.length} etapas configuradas`,
-                          `${corrals.length} corrales en total`,
+                          `${payments.length} pagos registrados`,
+                          `${stats.activeClients} clientes activos`,
+                          `${formatCurrency(stats.monthlyRevenue)} recaudado este mes`,
+                          `${formatCurrency(stats.totalOwed)} pendiente de cobro`,
                         ]}
                       />
                     </div>

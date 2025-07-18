@@ -1,11 +1,12 @@
-﻿using API_PESO_PIG.Functions;
-using API_PESO_PIG.Models;
-using API_PESO_PIG.Services;
+﻿using mym_softcom.Functions;
+using mym_softcom.Models;
+using mym_softcom.Services;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using mym_softcom.Models;
 
-namespace API_PESO_PIG.Middlewares
+namespace mym_softcom.Middlewares
 {
     public class Middleware
     {

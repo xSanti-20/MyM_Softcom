@@ -1,5 +1,6 @@
-﻿using API_PESO_PIG.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using mym_softcom.Models;
+using System.Numerics;
 
 public class AppDbContext : DbContext
 {
@@ -12,28 +13,21 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
 {
     modelBuilder.Entity<User>().ToTable("users");
-    modelBuilder.Entity<Corral>().ToTable("corrals");
-    modelBuilder.Entity<Feeding>().ToTable("feedings");
-    modelBuilder.Entity<Food>().ToTable("foods");
-    modelBuilder.Entity<Piglet>().ToTable("piglets");
-    modelBuilder.Entity<Entries>().ToTable("entries");
-    modelBuilder.Entity<Race>().ToTable("races");
-    modelBuilder.Entity<Stage>().ToTable("stages");
-    modelBuilder.Entity<Weighing>().ToTable("weighings");
+
 
     base.OnModelCreating(modelBuilder);
 }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    public DbSet<Client> Clients { get; set; }
+    public DbSet<Project> Projects { get; set; }
+    public DbSet<Lot> Lots { get; set; }
+    public DbSet<Plan> Plans { get; set; }
+    public DbSet<Sale> Sales { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<Withdrawal> Withdrawals { get; set; }
     public DbSet<User> Users { get; set; }
-    public DbSet<Corral> Corrals { get; set; }
-    public DbSet<Feeding> Feedings { get; set; }
-    public DbSet<Food> Foods { get; set; }
-    public DbSet<Piglet> Piglets { get; set; }
-    public DbSet<Entries> Entries { get; set; }
-    public DbSet<Race> Races { get; set; }
-    public DbSet<Stage> Stages { get; set; }
-    public DbSet<Weighing> Weighings { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

@@ -1,0 +1,175 @@
+
+
+/* Estilos para el overlay del modal (el fondo oscuro detrás del modal) */
+.dialog_overlay {
+  background-color: rgba(0, 0, 0, 0.8) !important; /* Fondo negro semi-transparente */
+}
+
+/* Contenedor principal del formulario de registro */
+.wrapper {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Ajustar min-height para que se adapte al contenido del modal, no a la ventana */
+  min-height: auto; /* Permitir que el contenido defina la altura */
+  width: 100%; /* Ocupa el 100% del espacio disponible en el modal */
+}
+
+/* Caja que contiene el formulario */
+.form_box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Ajustar min-height para que se adapte al contenido del modal */
+  min-height: auto;
+  width: 100%; /* Ocupa el 100% del espacio disponible en el wrapper */
+}
+
+/* Estilo principal del formulario (la caja negra) */
+.form {
+  background: var(--bg-color-negro); /* Fondo del formulario negro */
+  width: 100%; /* Ocupa el 100% del form_box */
+  max-width: 700px; /* Limitar el ancho máximo para que no sea demasiado grande en pantallas grandes */
+  padding: 25px;
+  display: flex;
+  flex-direction: column; /* Apilar elementos verticalmente */
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  border-radius: 10px;
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.3);
+  color: var(--text-color-dorado); /* Color dorado para texto */
+}
+
+/* Título del formulario */
+.title {
+  font-size: 38px;
+  text-align: center;
+  color: var(--text-color-dorado); /* Título dorado */
+  margin-bottom: 20px; /* Margen aumentado para el título */
+}
+
+/* Contenedor de las columnas del formulario */
+.form_content_grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr); /* Por defecto una columna en pantallas pequeñas */
+  gap: 20px;
+  width: 100%; /* Asegura que ocupe todo el ancho del formulario */
+}
+
+@media (min-width: 768px) {
+  /* Punto de quiebre md para dos columnas */
+  .form_content_grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Sección de cada columna (Información Personal, Contacto) */
+.column_section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Espacio entre grupos de input */
+}
+
+/* Título de sección dentro de las columnas */
+.section_title {
+  font-size: 20px; /* Ligeramente más grande para títulos de sección */
+  font-weight: bold;
+  color: var(--text-color-dorado); /* Títulos de sección dorados */
+  margin-bottom: 10px;
+}
+
+/* Grupo de input (label + input) */
+.input_group {
+  position: relative;
+  width: 100%;
+  height: 45px; /* Altura consistente para los inputs */
+}
+
+.input_group label {
+  display: none; /* Ocultar etiquetas por defecto, confiar en el placeholder o contexto visual */
+}
+
+.input_group input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: 1px solid var(--text-color-dorado); /* Borde dorado para los inputs */
+  border-radius: 40px; /* Esquinas redondeadas para los inputs */
+  color: var(--text-color-dorado); /* Texto del input dorado */
+  padding: 10px 20px; /* Padding ajustado */
+  outline: none;
+  font-size: 16px;
+}
+
+.input_group input::placeholder {
+  color: var(--text-color-dorado); /* Placeholder dorado */
+}
+
+/* Contenedor de botones */
+.button_container {
+  display: flex;
+  justify-content: flex-end; /* Alinear botones a la derecha */
+  gap: 15px;
+  width: 100%;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(148, 124, 76, 0.3); /* Borde dorado claro para separar botones */
+}
+
+/* Estilo general de los botones */
+.button {
+  height: 45px;
+  background: var(--text-color-dorado); /* Fondo dorado para el botón principal */
+  color: var(--bg-color-negro); /* Texto negro para el botón principal */
+  border: none;
+  border-radius: 40px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 10px 40px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.button:hover {
+  background: #b89e6b; /* Dorado ligeramente más claro al pasar el ratón */
+}
+
+/* Estilo para el botón de cancelar (outline) */
+.button.outline {
+  background: transparent;
+  border: 1px solid var(--text-color-dorado); /* Borde dorado para el botón de cancelar */
+  color: var(--text-color-dorado); /* Texto dorado para el botón de cancelar */
+}
+
+.button.outline:hover {
+  background: rgba(148, 124, 76, 0.1);
+  color: var(--text-color-dorado);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ajustes responsivos para pantallas más pequeñas */
+@media (max-width: 768px) {
+  .form {
+    padding: 15px; /* Ajustar padding para móviles */
+  }
+  .title {
+    font-size: 30px;
+  }
+  .button_container {
+    flex-direction: column; /* Apilar botones verticalmente en pantallas pequeñas */
+    align-items: center;
+  }
+  .button {
+    width: 100%; /* Botones de ancho completo en pantallas pequeñas */
+  }
+}

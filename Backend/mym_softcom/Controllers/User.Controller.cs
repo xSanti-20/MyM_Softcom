@@ -1,6 +1,6 @@
-﻿using API_PESO_PIG.Functions;
-using API_PESO_PIG.Models;
-using API_PESO_PIG.Services;
+﻿using mym_softcom.Functions;
+using mym_softcom.Models;
+using mym_softcom.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace API_PESO_PIG.Controllers
+namespace mym_softcom.Controllers
 {
     [ApiController]
     [Route("api/[Controller]")]

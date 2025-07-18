@@ -1,8 +1,8 @@
-﻿using API_PESO_PIG.Models;
+﻿using mym_softcom.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
-namespace API_PESO_PIG.Services
+namespace mym_softcom.Services
 {
     public class UserServices
     {

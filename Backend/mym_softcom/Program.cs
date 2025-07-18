@@ -1,5 +1,5 @@
-using API_PESO_PIG.Functions;
-using API_PESO_PIG.Services;
+using mym_softcom.Functions;
+using mym_softcom.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -37,15 +37,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 // 4. Registrar servicios personalizados
-builder.Services.AddScoped<WeighingServices>();
-builder.Services.AddScoped<PigletServices>();
 builder.Services.AddScoped<UserServices>();
-builder.Services.AddScoped<FoodServices>();
-builder.Services.AddScoped<CorralServices>();
-builder.Services.AddScoped<FeedingServices>();
-builder.Services.AddScoped<RaceServices>();
-builder.Services.AddScoped<StageServices>();
-builder.Services.AddScoped<EntriesServices>();
+builder.Services.AddScoped<ClientServices>();
+builder.Services.AddScoped<LotServices>();
+builder.Services.AddScoped<PaymentServices>();
+builder.Services.AddScoped<PlanServices>();
+builder.Services.AddScoped<ProjectServices>();
+builder.Services.AddScoped<SaleServices>();
+builder.Services.AddScoped<WithdrawalServices>();
 
 // 5. Configurar JWT
 var jwtKey = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:key"]);
