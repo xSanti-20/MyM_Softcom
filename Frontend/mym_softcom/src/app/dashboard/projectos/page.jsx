@@ -100,7 +100,7 @@ function ProjectPage() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <img src="/placeholder.svg?height=80&width=80" alt="Cargando..." className="w-20 h-20 animate-spin" />
+            <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
             <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-"use client"; 
+"use client"
 import { useEffect, useState } from "react"
 import NavPrivada from "@/components/nav/PrivateNav"
 import UserManagement from "./user-management"

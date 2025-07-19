@@ -4,23 +4,19 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
-  useReactTable,
   getSortedRowModel,
   getFilteredRowModel,
+  useReactTable,
 } from "@tanstack/react-table"
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
-// import { useIsMobile } from "@/hooks/use-mobile"
-import { MobileList } from "./MobileList" // Asegúrate de la ruta correcta
 
 export function DataTable({ columns, data }) {
   const [sorting, setSorting] = useState([])
   const [columnFilters, setColumnFilters] = useState([])
-
-  // const isMobile = useIsMobile()
 
   const table = useReactTable({
     data,
@@ -36,20 +32,6 @@ export function DataTable({ columns, data }) {
       columnFilters,
     },
   })
-
-  // if (isMobile) {
-  //   return (
-  //     <div className="p-4">
-  //       <Input
-  //         placeholder="Filtrar por nombre..."
-  //         value={table.getColumn("name")?.getFilterValue() ?? ""}
-  //         onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
-  //         className="mb-4"
-  //       />
-  //       <MobileList data={table.getRowModel().rows.map(row => row.original)} />
-  //     </div>
-  //   )
-  // }
 
   return (
     <div>

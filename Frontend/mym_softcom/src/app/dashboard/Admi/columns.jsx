@@ -12,7 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-export const columns = (toggleStatus, currentUserRole) => [
+
+// Actualizamos la firma para aceptar las nuevas funciones
+export const columns = (toggleStatus, currentUserRole, handleDeleteUser, handleViewDetails) => [
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -40,7 +42,7 @@ export const columns = (toggleStatus, currentUserRole) => [
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {
-      const status = row.getValue("status") // Será "Activo" o "Inactivo"
+      const status = row.getValue("status")
       return (
         <Badge
           variant={status === "Activo" ? "default" : "secondary"}
@@ -56,9 +58,9 @@ export const columns = (toggleStatus, currentUserRole) => [
     cell: ({ row }) => {
       const user = row.original
       const isTargetAdmin = user.role.toLowerCase() === "administrador"
-      const isViewerAdmin = currentUserRole.toLowerCase() === "administrador"
+      const isViewerAdmin = currentUserRole?.toLowerCase() === "administrador" // Usar optional chaining por si currentUserRole es null al inicio
 
-      // Si quieres que NADIE pueda desactivar admins, deja solo isTargetAdmin
+      // Si el usuario objetivo es un administrador, el switch está deshabilitado
       const disableSwitch = isTargetAdmin
 
       return (
@@ -79,17 +81,18 @@ export const columns = (toggleStatus, currentUserRole) => [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>
-                Copiar ID
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(user.id)}>Copiar ID</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-              <DropdownMenuItem>Editar usuario</DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600">Eliminar usuario</DropdownMenuItem>
+              {/* Asignamos la función handleViewDetails al onClick */}
+              <DropdownMenuItem onClick={() => handleViewDetails(user.id)}>Ver detalles</DropdownMenuItem>
+              {/* Asignamos la función handleDeleteUser al onClick */}
+              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteUser(user.id)}>
+                Eliminar usuario
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       )
     },
-  }
+  },
 ]

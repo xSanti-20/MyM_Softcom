@@ -711,7 +711,7 @@ export default function Dashboard() {
               <Tabs defaultValue="overview" className="mb-6" onValueChange={setActiveTab}>
                 <TabsList className="mb-6">
                   <TabsTrigger value="overview" className="text-sm">
-                    Resumen de Pagos
+                    Resumen Financiero
                   </TabsTrigger>
                 </TabsList>
 
