@@ -21,7 +21,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Lot)
-                    .ThenInclude(l => l.Project)
+                    .ThenInclude(l => l.project)
                 .Include(s => s.User)
                 .Include(s => s.Plan)
                 .ToListAsync();
@@ -32,7 +32,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Lot)
-                    .ThenInclude(l => l.Project)
+                    .ThenInclude(l => l.project)
                 .Include(s => s.User)
                 .Include(s => s.Plan)
                 .FirstOrDefaultAsync(x => x.Id_Sales == id_Sale);
@@ -47,7 +47,7 @@ namespace mym_softcom.Services
 
                 var lot = await _context.Lots.FindAsync(sale.Id_Lots);
                 if (lot == null) throw new InvalidOperationException("Lote no encontrado.");
-                if (lot.Status == "Vendido") throw new InvalidOperationException("El lote ya está vendido.");
+                if (lot.status == "Vendido") throw new InvalidOperationException("El lote ya está vendido.");
 
                 var user = await _context.Users.FindAsync(sale.Id_Users);
                 if (user == null) throw new InvalidOperationException("Usuario no encontrado.");
@@ -55,10 +55,10 @@ namespace mym_softcom.Services
                 var plan = await _context.Plans.FindAsync(sale.Id_Plans);
                 if (plan == null) throw new InvalidOperationException("Plan de financiación no encontrado.");
 
-                sale.Status = "active";
+                sale.status = "active";
                 sale.Total_Raised = sale.Initial_Payment;
 
-                lot.Status = "Vendido";
+                lot.status = "Vendido";
                 _context.Lots.Update(lot);
 
                 _context.Sales.Add(sale);
@@ -130,7 +130,7 @@ namespace mym_softcom.Services
 
                 if (sale.Lot != null)
                 {
-                    sale.Lot.Status = "Libre";
+                    sale.Lot.status = "Libre";
                     _context.Lots.Update(sale.Lot);
                 }
 
@@ -153,14 +153,14 @@ namespace mym_softcom.Services
             return await _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Lot)
-                    .ThenInclude(l => l.Project)
+                    .ThenInclude(l => l.project)
                 .Include(s => s.User)
                 .Include(s => s.Plan)
                 .Where(s => (s.Client != null && (s.Client.names.Contains(searchTerm) || s.Client.surnames.Contains(searchTerm))) ||
-                           (s.Lot != null && s.Lot.Block != null && s.Lot.Block.Contains(searchTerm)) ||
-                           (s.Lot != null && s.Lot.Lot_Number.ToString().Contains(searchTerm)) ||
-                           (s.Lot != null && s.Lot.Project != null && s.Lot.Project.name.Contains(searchTerm)) ||
-                           s.Status.Contains(searchTerm) ||
+                           (s.Lot != null && s.Lot.block != null && s.Lot.block.Contains(searchTerm)) ||
+                           (s.Lot != null && s.Lot.lot_number.ToString().Contains(searchTerm)) ||
+                           (s.Lot != null && s.Lot.project != null && s.Lot.project.name.Contains(searchTerm)) ||
+                           s.status.Contains(searchTerm) ||
                            s.Total_Value.ToString().Contains(searchTerm))
                 .ToListAsync();
         }
@@ -170,8 +170,8 @@ namespace mym_softcom.Services
             var query = _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Lot)
-                    .ThenInclude(l => l.Project)
-                .Where(s => s.Status == "active");
+                    .ThenInclude(l => l.project)
+                .Where(s => s.status == "active");
 
             if (clientId.HasValue)
             {
@@ -180,13 +180,13 @@ namespace mym_softcom.Services
 
             return await query
                 .OrderBy(s => s.Client != null ? s.Client.names : "")
-                .ThenBy(s => s.Lot != null && s.Lot.Project != null ? s.Lot.Project.name : "")
+                .ThenBy(s => s.Lot != null && s.Lot.project != null ? s.Lot.project.name : "")
                 .Select(s => new
                 {
                     Id_Sales = s.Id_Sales,
                     Description = $"{(s.Client != null ? s.Client.names + " " + s.Client.surnames : "N/A")} - " +
-                                  $"{(s.Lot != null && s.Lot.Project != null ? s.Lot.Project.name : "N/A")} - " +
-                                  $"Lote {(s.Lot != null ? s.Lot.Lot_Number : 0)} (Valor: {s.Total_Value:C0})"
+                                  $"{(s.Lot != null && s.Lot.project != null ? s.Lot.project.name : "N/A")} - " +
+                                  $"Lote {(s.Lot != null ? s.Lot.lot_number : 0)} (Valor: {s.Total_Value:C0})"
                 })
                 .ToListAsync();
         }

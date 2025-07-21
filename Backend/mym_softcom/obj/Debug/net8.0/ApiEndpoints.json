@@ -192,28 +192,29 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "GetLots",
-    "RelativePath": "api/Lot",
-    "HttpMethod": "GET",
+    "Method": "ChangeLotStatus",
+    "RelativePath": "api/Lot/ChangeLotStatus/{id}",
+    "HttpMethod": "PATCH",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
-    "ReturnTypes": [
+    "Parameters": [
       {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.Lot, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "newStatus",
+        "Type": "System.String",
+        "IsRequired": true
       }
-    ]
+    ],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
     "Method": "CreateLot",
-    "RelativePath": "api/Lot",
+    "RelativePath": "api/Lot/CreateLot",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -238,55 +239,8 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "GetLot",
-    "RelativePath": "api/Lot/{id}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "mym_softcom.Models.Lot",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
-  },
-  {
-    "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "UpdateLot",
-    "RelativePath": "api/Lot/{id}",
-    "HttpMethod": "PUT",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      },
-      {
-        "Name": "lot",
-        "Type": "mym_softcom.Models.Lot",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "mym_softcom.Controllers.LotController",
     "Method": "DeleteLot",
-    "RelativePath": "api/Lot/{id}",
+    "RelativePath": "api/Lot/DeleteLot/{id}",
     "HttpMethod": "DELETE",
     "IsController": true,
     "Order": 0,
@@ -301,29 +255,8 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "ChangeLotStatus",
-    "RelativePath": "api/Lot/{id}/status",
-    "HttpMethod": "PATCH",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      },
-      {
-        "Name": "newStatus",
-        "Type": "System.String",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "GetAvailableLots",
-    "RelativePath": "api/Lot/available",
+    "Method": "GetLots",
+    "RelativePath": "api/Lot/GetAllLot",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -342,8 +275,54 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
+    "Method": "GetAvailableLots",
+    "RelativePath": "api/Lot/GetAvailableLots",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.Lot, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.LotController",
+    "Method": "GetLot",
+    "RelativePath": "api/Lot/GetLotById/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "mym_softcom.Models.Lot",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.LotController",
     "Method": "GetLotsByProject",
-    "RelativePath": "api/Lot/byProject/{projectId}",
+    "RelativePath": "api/Lot/GetLotsByProject/{projectId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -368,8 +347,34 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
+    "Method": "GetLotsForSelect",
+    "RelativePath": "api/Lot/GetLotsForSelect",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "projectId",
+        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.LotController",
     "Method": "SearchLots",
-    "RelativePath": "api/Lot/search",
+    "RelativePath": "api/Lot/SearchLots",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
@@ -394,29 +399,24 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.LotController",
-    "Method": "GetLotsForSelect",
-    "RelativePath": "api/Lot/select",
-    "HttpMethod": "GET",
+    "Method": "UpdateLot",
+    "RelativePath": "api/Lot/UpdateLot/{id}",
+    "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "projectId",
-        "Type": "System.Nullable\u00601[[System.Int32, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
-        "IsRequired": false
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "lot",
+        "Type": "mym_softcom.Models.Lot",
+        "IsRequired": true
       }
     ],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[System.Object, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
+    "ReturnTypes": []
   },
   {
     "ContainingType": "mym_softcom.Controllers.PaymentController",

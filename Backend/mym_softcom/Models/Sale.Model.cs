@@ -33,7 +33,7 @@ namespace mym_softcom.Models
         public decimal Initial_Payment { get; set; } // decimal NOT NULL en SQL
 
         [StringLength(50)] // Para el enum 'active','cancelled'
-        public string Status { get; set; } = "active"; // enum DEFAULT 'active' en SQL
+        public string status { get; set; } = "active"; // enum DEFAULT 'active' en SQL
 
         [Column(TypeName = "decimal(10,2)")]
         public decimal Total_Raised { get; set; } = 0.00m; // decimal DEFAULT '0.00' en SQL

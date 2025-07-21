@@ -329,91 +329,7 @@
         }
       }
     },
-    "/api/Lot": {
-      "get": {
-        "tags": [
-          "Lot"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Lot"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Lot"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Lot"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Lot"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Lot"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Lot"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/Lot"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lot"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lot"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lot"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Lot/available": {
+    "/api/Lot/GetAllLot": {
       "get": {
         "tags": [
           "Lot"
@@ -451,7 +367,45 @@
         }
       }
     },
-    "/api/Lot/byProject/{projectId}": {
+    "/api/Lot/GetAvailableLots": {
+      "get": {
+        "tags": [
+          "Lot"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lot"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lot"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lot"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Lot/GetLotsByProject/{projectId}": {
       "get": {
         "tags": [
           "Lot"
@@ -500,7 +454,7 @@
         }
       }
     },
-    "/api/Lot/{id}": {
+    "/api/Lot/GetLotById/{id}": {
       "get": {
         "tags": [
           "Lot"
@@ -538,7 +492,57 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Lot/CreateLot": {
+      "post": {
+        "tags": [
+          "Lot"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lot"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lot"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lot"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Lot/UpdateLot/{id}": {
       "put": {
         "tags": [
           "Lot"
@@ -578,30 +582,9 @@
             "description": "OK"
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "Lot"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
       }
     },
-    "/api/Lot/{id}/status": {
+    "/api/Lot/ChangeLotStatus/{id}": {
       "patch": {
         "tags": [
           "Lot"
@@ -643,7 +626,30 @@
         }
       }
     },
-    "/api/Lot/search": {
+    "/api/Lot/DeleteLot/{id}": {
+      "delete": {
+        "tags": [
+          "Lot"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Lot/SearchLots": {
       "get": {
         "tags": [
           "Lot"
@@ -690,7 +696,7 @@
         }
       }
     },
-    "/api/Lot/select": {
+    "/api/Lot/GetLotsForSelect": {
       "get": {
         "tags": [
           "Lot"
@@ -2401,37 +2407,24 @@
             "type": "integer",
             "format": "int32"
           },
-          "id_Projects": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
           "block": {
-            "maxLength": 250,
-            "minLength": 0,
             "type": "string",
             "nullable": true
           },
-          "lot_Number": {
+          "lot_number": {
             "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "format": "int32"
           },
           "status": {
-            "maxLength": 50,
-            "minLength": 0,
             "type": "string",
             "nullable": true
+          },
+          "id_Projects": {
+            "type": "integer",
+            "format": "int32"
           },
           "project": {
             "$ref": "#/components/schemas/Project"
-          },
-          "sales": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Sale"
-            },
-            "nullable": true
           }
         },
         "additionalProperties": false

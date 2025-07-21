@@ -3,7 +3,7 @@ using mym_softcom.Models;
 using mym_softcom.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System; // Necesario para InvalidOperationException
+using System;
 
 namespace mym_softcom.Controllers
 {
@@ -18,47 +18,39 @@ namespace mym_softcom.Controllers
             _lotServices = lotServices;
         }
 
-        // GET: api/Lot
-        [HttpGet]
+        [HttpGet("GetAllLot")]
         public async Task<ActionResult<IEnumerable<Lot>>> GetLots()
         {
-            // CORRECCIÓN: Añadido 'await' aquí
             var lots = await _lotServices.GetLots();
             return Ok(lots);
         }
 
-        // GET: api/Lot/available
-        [HttpGet("available")]
+        [HttpGet("GetAvailableLots")]
         public async Task<ActionResult<IEnumerable<Lot>>> GetAvailableLots()
         {
-            // CORRECCIÓN: Añadido 'await' aquí
             var lots = await _lotServices.GetAvailableLots();
             return Ok(lots);
         }
 
-        // GET: api/Lot/byProject/{projectId}
-        [HttpGet("byProject/{projectId}")]
+        [HttpGet("GetLotsByProject/{projectId}")]
         public async Task<ActionResult<IEnumerable<Lot>>> GetLotsByProject(int projectId)
         {
-            // CORRECCIÓN: Añadido 'await' aquí
             var lots = await _lotServices.GetLotsByProject(projectId);
             return Ok(lots);
         }
 
-        // GET: api/Lot/{id}
-        [HttpGet("{id}")]
+        [HttpGet("GetLotById/{id}")]
         public async Task<ActionResult<Lot>> GetLot(int id)
         {
             var lot = await _lotServices.GetLotById(id);
             if (lot == null)
             {
-                return NotFound();
+                return NotFound("Lote no encontrado.");
             }
             return Ok(lot);
         }
 
-        // POST: api/Lot
-        [HttpPost]
+        [HttpPost("CreateLot")]
         public async Task<ActionResult<Lot>> CreateLot(Lot lot)
         {
             if (!ModelState.IsValid)
@@ -71,7 +63,8 @@ namespace mym_softcom.Controllers
                 var success = await _lotServices.CreateLot(lot);
                 if (success)
                 {
-                    return CreatedAtAction(nameof(GetLot), new { id = lot.Id_Lots }, lot);
+                    // Usar el nombre de la acción explícito para CreatedAtAction
+                    return CreatedAtAction(nameof(GetLot), new { id = lot.id_Lots }, lot);
                 }
                 return StatusCode(500, "Error al crear el lote.");
             }
@@ -85,11 +78,10 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // PUT: api/Lot/{id}
-        [HttpPut("{id}")]
+        [HttpPut("UpdateLot/{id}")]
         public async Task<IActionResult> UpdateLot(int id, Lot lot)
         {
-            if (id != lot.Id_Lots)
+            if (id != lot.id_Lots)
             {
                 return BadRequest("El ID del lote en la URL no coincide con el ID del lote en el cuerpo de la solicitud.");
             }
@@ -118,8 +110,7 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // PATCH: api/Lot/{id}/status
-        [HttpPatch("{id}/status")]
+        [HttpPatch("ChangeLotStatus/{id}")]
         public async Task<IActionResult> ChangeLotStatus(int id, [FromBody] string newStatus)
         {
             if (string.IsNullOrEmpty(newStatus))
@@ -146,8 +137,7 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // DELETE: api/Lot/{id}
-        [HttpDelete("{id}")]
+        [HttpDelete("DeleteLot/{id}")]
         public async Task<IActionResult> DeleteLot(int id)
         {
             try
@@ -169,16 +159,15 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // GET: api/Lot/search?term={searchTerm}
-        [HttpGet("search")]
+  
+        [HttpGet("SearchLots")]
         public async Task<ActionResult<IEnumerable<Lot>>> SearchLots([FromQuery] string searchTerm)
         {
             var lots = await _lotServices.SearchLots(searchTerm);
             return Ok(lots);
         }
 
-        // GET: api/Lot/select?projectId={projectId}
-        [HttpGet("select")]
+        [HttpGet("GetLotsForSelect")]
         public async Task<ActionResult<IEnumerable<object>>> GetLotsForSelect([FromQuery] int? projectId = null)
         {
             var lots = await _lotServices.GetLotsForSelect(projectId);

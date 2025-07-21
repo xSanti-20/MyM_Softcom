@@ -7,21 +7,15 @@ namespace mym_softcom.Models
     public class Lot
     {
         [Key]
-        public int Id_Lots { get; set; }
+        public int id_Lots { get; set; }
+        public string block { get; set; }
+        public int lot_number { get; set; }
+        public string status { get; set; } = "Libre";
 
-        public int? Id_Projects { get; set; } // int DEFAULT NULL en SQL
+        //foránea a la tabla Projects
+        public int id_Projects { get; set; }
 
-        [StringLength(250)]
-        public string? Block { get; set; } // varchar DEFAULT NULL en SQL
-
-        public int? Lot_Number { get; set; } // int DEFAULT NULL en SQL
-
-        [StringLength(50)] // Para el enum 'Libre','Vendido'
-        public string Status { get; set; } = "Libre"; // enum DEFAULT 'Libre' en SQL
-
-        [ForeignKey("Id_Projects")]
-        public virtual Project? Project { get; set; } // Propiedad de navegación
-
-        public virtual ICollection<Sale>? Sales { get; set; } // Propiedad de navegación
+        [ForeignKey("id_Projects")]
+        public Project? project { get; set; }
     }
 }
