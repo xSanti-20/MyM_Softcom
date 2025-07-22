@@ -8,7 +8,6 @@ namespace mym_softcom.DTOs
         public string Block { get; set; }
         public int Lot_Number { get; set; }
         public string Status { get; set; }
-        public DateTime Created_Date { get; set; }
 
         // Información del proyecto
         public int Id_Projects { get; set; }

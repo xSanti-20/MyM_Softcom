@@ -29,7 +29,7 @@ function NavPrivada({ children, title }) {
     { title: "Clientes", path: "/dashboard/clientes", icon: "👥" },         
     { title: "Ventas", path: "/dashboard/feeding", icon: "💰" },         
     { title: "Pagos", path: "/dashboard/weight", icon: "💳" },       
-    { title: "Plan Financiacion", path: "/dashboard/stage", icon: "📊" }, 
+    { title: "Plan Financiacion", path: "/dashboard/planes", icon: "📊" }, 
     { title: "Proyectos", path: "/dashboard/projectos", icon: "🏗️" },    
     { title: "Lotes", path: "/dashboard/lotes", icon: "📦" },               
     { title: "Desistimientos", path: "/dashboard/corral", icon: "🚫" }    

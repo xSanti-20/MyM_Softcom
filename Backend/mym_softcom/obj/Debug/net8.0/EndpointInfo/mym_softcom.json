@@ -970,7 +970,7 @@
         }
       }
     },
-    "/api/Plan": {
+    "/api/Plan/GetAllPlans": {
       "get": {
         "tags": [
           "Plan"
@@ -1006,7 +1006,49 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Plan/GetPlanID/{id}": {
+      "get": {
+        "tags": [
+          "Plan"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Plan/CreatePlan": {
       "post": {
         "tags": [
           "Plan"
@@ -1054,45 +1096,7 @@
         }
       }
     },
-    "/api/Plan/{id}": {
-      "get": {
-        "tags": [
-          "Plan"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plan"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plan"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plan"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/Plan/UpdatePlan/{id}": {
       "put": {
         "tags": [
           "Plan"
@@ -1132,7 +1136,9 @@
             "description": "OK"
           }
         }
-      },
+      }
+    },
+    "/api/Plan/DeletePlan/{id}": {
       "delete": {
         "tags": [
           "Plan"
@@ -1151,85 +1157,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Plan/search": {
-      "get": {
-        "tags": [
-          "Plan"
-        ],
-        "parameters": [
-          {
-            "name": "searchTerm",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plan"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plan"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plan"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Plan/select": {
-      "get": {
-        "tags": [
-          "Plan"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              }
-            }
           }
         }
       }
@@ -2488,21 +2415,9 @@
             "type": "string",
             "nullable": true
           },
-          "number_Quotas": {
+          "number_quotas": {
             "type": "integer",
             "format": "int32",
-            "nullable": true
-          },
-          "quotas_Value": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "sales": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Sale"
-            },
             "nullable": true
           }
         },
