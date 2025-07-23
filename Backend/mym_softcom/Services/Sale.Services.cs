@@ -29,6 +29,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
+                                 .ThenInclude(l => l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .ToListAsync();
@@ -43,6 +44,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
+                                 .ThenInclude(l => l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .FirstOrDefaultAsync(s => s.id_Sales == id_Sales);

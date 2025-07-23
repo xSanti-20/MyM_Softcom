@@ -27,7 +27,7 @@ function NavPrivada({ children, title }) {
     ...(role === "Administrador" ? [{ title: "Gestión de Usuarios", path: "/dashboard/Admi", icon: "👤" }] : []),
     { title: "Home", path: "/dashboard", icon: "📍" },
     { title: "Clientes", path: "/dashboard/clientes", icon: "👥" },         
-    { title: "Ventas", path: "/dashboard/feeding", icon: "💰" },         
+    { title: "Ventas", path: "/dashboard/ventas", icon: "💰" },         
     { title: "Pagos", path: "/dashboard/weight", icon: "💳" },       
     { title: "Plan Financiacion", path: "/dashboard/planes", icon: "📊" }, 
     { title: "Proyectos", path: "/dashboard/projectos", icon: "🏗️" },    
