@@ -1,56 +1,45 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Collections.Generic; // Necesario para ICollection
+using System.Collections.Generic;
+using System.ComponentModel.Design; // Necesario para ICollection
 
 namespace mym_softcom.Models
 {
     public class Sale
     {
         [Key]
-        public int Id_Sales { get; set; }
+        public int id_Sales { get; set; }
+        public DateTime sale_date { get; set; }
+        public decimal? total_value { get; set; }
+        public decimal? initial_payment { get; set; }
+        public decimal? total_raised { get; set; }
+        public decimal? quota_value { get; set; }
+        public decimal? total_debt { get; set; } // Valor total pendiente
+        public string status { get; set; } = "Active";
 
-        [Required]
-        public int Id_Clients { get; set; } // int NOT NULL en SQL
+        //foránea a la tabla Clients
+        public int id_Clients { get; set; }
 
-        [Required]
-        public int Id_Lots { get; set; } // int NOT NULL en SQL
+        [ForeignKey("id_Clients")]
+        public Client? client { get; set; }
 
-        [Required]
-        public int Id_Users { get; set; } // int NOT NULL en SQL
+        //foránea a la tabla Lots
+        public int id_Lots { get; set; }
 
-        [Required]
-        public int Id_Plans { get; set; } // int NOT NULL en SQL
+        [ForeignKey("id_Lots")]
+        public Lot? lot { get; set; }
 
-        [Required]
-        public DateTime Sale_Date { get; set; } // date NOT NULL en SQL
+        //foránea a la tabla Users
+        public int id_Users { get; set; }
 
-        [Required]
-        [Column(TypeName = "decimal(15,2)")]
-        public decimal Total_Value { get; set; } // decimal NOT NULL en SQL
+        [ForeignKey("id_Users")]
+        public User? user { get; set; }
 
-        [Required]
-        [Column(TypeName = "decimal(15,2)")]
-        public decimal Initial_Payment { get; set; } // decimal NOT NULL en SQL
+        //foránea a la tabla Plans
+        public int id_Plans { get; set; }
 
-        [StringLength(50)] // Para el enum 'active','cancelled'
-        public string status { get; set; } = "active"; // enum DEFAULT 'active' en SQL
+        [ForeignKey("id_Plans")]
+        public Plan? plan { get; set; }
 
-        [Column(TypeName = "decimal(10,2)")]
-        public decimal Total_Raised { get; set; } = 0.00m; // decimal DEFAULT '0.00' en SQL
-
-        [ForeignKey("Id_Clients")]
-        public virtual Client? Client { get; set; } // Propiedad de navegación
-
-        [ForeignKey("Id_Lots")]
-        public virtual Lot? Lot { get; set; } // Propiedad de navegación
-
-        [ForeignKey("Id_Users")]
-        public virtual User? User { get; set; } // Propiedad de navegación (asumiendo que tienes el modelo User)
-
-        [ForeignKey("Id_Plans")]
-        public virtual Plan? Plan { get; set; } // Propiedad de navegación
-
-        public virtual ICollection<Payment>? Payments { get; set; } // Propiedad de navegación
-        public virtual ICollection<Withdrawal>? Withdrawals { get; set; } // Propiedad de navegación
     }
 }

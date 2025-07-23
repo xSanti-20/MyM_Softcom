@@ -6,28 +6,15 @@ namespace mym_softcom.Models
     public class Payment
     {
         [Key]
-        public int Id_Payments { get; set; }
+        public int id_Payments { get; set; }
+        public DateTime payment_date { get; set; }
+        public decimal? amount { get; set; }
+        public string payment_method { get; set; }
 
-        [Required]
-        public int Id_Sales { get; set; } // int NOT NULL en SQL
+        //foránea a la tabla Sales
+        public int id_Sales { get; set; }
 
-        [Required]
-        public DateTime Payment_Date { get; set; } // date NOT NULL en SQL
-
-        [Required]
-        [Column(TypeName = "decimal(15,2)")]
-        public decimal Amount { get; set; } // decimal NOT NULL en SQL
-
-        [Required]
-        [StringLength(250)]
-        public string Payment_Method { get; set; } // varchar NOT NULL en SQL
-
-        [StringLength(50)]
-        public string? Reference_Month { get; set; } // varchar DEFAULT NULL en SQL
-
-        public string? Observation { get; set; } // text DEFAULT NULL en SQL
-
-        [ForeignKey("Id_Sales")]
-        public virtual Sale? Sale { get; set; } // Propiedad de navegación
+        [ForeignKey("id_Sales")]
+        public Sale? sale { get; set; }
     }
 }

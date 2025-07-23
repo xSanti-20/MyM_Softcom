@@ -20,7 +20,7 @@ namespace mym_softcom.Services
         {
             return await _context.Withdrawals
                 .Include(w => w.Sale)
-                    .ThenInclude(s => s.Client)
+                    .ThenInclude(s => s.client)
                 .ToListAsync();
         }
 
@@ -28,7 +28,7 @@ namespace mym_softcom.Services
         {
             return await _context.Withdrawals
                 .Include(w => w.Sale)
-                    .ThenInclude(s => s.Client)
+                    .ThenInclude(s => s.client)
                 .FirstOrDefaultAsync(x => x.Id_Withdrawals == id_Withdrawal);
         }
 
@@ -99,10 +99,10 @@ namespace mym_softcom.Services
 
             return await _context.Withdrawals
                 .Include(w => w.Sale)
-                    .ThenInclude(s => s.Client)
+                    .ThenInclude(s => s.client)
                 .Where(w => w.Reason.Contains(searchTerm) ||
                            w.Penalty.ToString().Contains(searchTerm) ||
-                           (w.Sale != null && w.Sale.Client != null && (w.Sale.Client.names.Contains(searchTerm) || w.Sale.Client.surnames.Contains(searchTerm))))
+                           (w.Sale != null && w.Sale.client != null && (w.Sale.client.names.Contains(searchTerm) || w.Sale.client.surnames.Contains(searchTerm))))
                 .ToListAsync();
         }
     }

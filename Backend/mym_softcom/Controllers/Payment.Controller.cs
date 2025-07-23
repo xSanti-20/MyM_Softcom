@@ -3,6 +3,7 @@ using mym_softcom.Models;
 using mym_softcom.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System;
 
 namespace mym_softcom.Controllers
 {
@@ -17,28 +18,55 @@ namespace mym_softcom.Controllers
             _paymentServices = paymentServices;
         }
 
-        // GET: api/Payment
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Payment>>> GetPayments()
+        /// <summary>
+        /// Obtiene todos los pagos registrados en el sistema.
+        /// </summary>
+        /// <returns>Una lista de objetos Payment.</returns>
+        // GET: api/Payment/GetAllPayments
+        [HttpGet("GetAllPayments")]
+        public async Task<ActionResult<IEnumerable<Payment>>> GetAllPayments()
         {
-            var payments = await _paymentServices.GetPayments();
+            var payments = await _paymentServices.GetAllPayments();
             return Ok(payments);
         }
 
-        // GET: api/Payment/{id}
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Payment>> GetPayment(int id)
+        /// <summary>
+        /// Obtiene un pago específico por su ID.
+        /// </summary>
+        /// <param name="id">El ID del pago.</param>
+        /// <returns>El objeto Payment si se encuentra, de lo contrario, NotFound.</returns>
+        // GET: api/Payment/GetPaymentID/{id}
+        [HttpGet("GetPaymentID/{id}")]
+        public async Task<ActionResult<Payment>> GetPaymentID(int id)
         {
             var payment = await _paymentServices.GetPaymentById(id);
             if (payment == null)
             {
-                return NotFound();
+                return NotFound("Pago no encontrado.");
             }
             return Ok(payment);
         }
 
-        // POST: api/Payment
-        [HttpPost]
+        /// <summary>
+        /// Obtiene todos los pagos asociados a una venta específica.
+        /// </summary>
+        /// <param name="saleId">El ID de la venta.</param>
+        /// <returns>Una lista de objetos Payment de la venta especificada.</returns>
+        // GET: api/Payment/GetPaymentsBySaleId/{saleId}
+        [HttpGet("GetPaymentsBySaleId/{saleId}")]
+        public async Task<ActionResult<IEnumerable<Payment>>> GetPaymentsBySaleId(int saleId)
+        {
+            var payments = await _paymentServices.GetPaymentsBySaleId(saleId);
+            return Ok(payments);
+        }
+
+        /// <summary>
+        /// Crea un nuevo pago en el sistema.
+        /// </summary>
+        /// <param name="payment">El objeto Payment a crear.</param>
+        /// <returns>El pago creado con su ID.</returns>
+        // POST: api/Payment/CreatePayment
+        [HttpPost("CreatePayment")]
         public async Task<ActionResult<Payment>> CreatePayment(Payment payment)
         {
             if (!ModelState.IsValid)
@@ -51,13 +79,18 @@ namespace mym_softcom.Controllers
                 var success = await _paymentServices.CreatePayment(payment);
                 if (success)
                 {
-                    return CreatedAtAction(nameof(GetPayment), new { id = payment.Id_Payments }, payment);
+                    // Usar el nombre de la acción explícito para CreatedAtAction
+                    return CreatedAtAction(nameof(GetPaymentID), new { id = payment.id_Payments }, payment);
                 }
                 return StatusCode(500, "Error al crear el pago.");
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(ex.Message); // Captura errores de lógica de negocio (ej. venta no existe)
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message); // Captura errores de argumentos (ej. monto inválido)
             }
             catch (Exception ex)
             {
@@ -65,11 +98,17 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // PUT: api/Payment/{id}
-        [HttpPut("{id}")]
+        /// <summary>
+        /// Actualiza un pago existente por su ID.
+        /// </summary>
+        /// <param name="id">El ID del pago a actualizar.</param>
+        /// <param name="payment">El objeto Payment con los datos actualizados.</param>
+        /// <returns>NoContent si la actualización es exitosa, de lo contrario, BadRequest o NotFound.</returns>
+        // PUT: api/Payment/UpdatePayment/{id}
+        [HttpPut("UpdatePayment/{id}")]
         public async Task<IActionResult> UpdatePayment(int id, Payment payment)
         {
-            if (id != payment.Id_Payments)
+            if (id != payment.id_Payments)
             {
                 return BadRequest("El ID del pago en la URL no coincide con el ID del pago en el cuerpo de la solicitud.");
             }
@@ -84,11 +123,15 @@ namespace mym_softcom.Controllers
                 var success = await _paymentServices.UpdatePayment(id, payment);
                 if (success)
                 {
-                    return NoContent();
+                    return NoContent(); // 204 No Content para una actualización exitosa sin retorno de datos
                 }
                 return NotFound("Pago no encontrado o error al actualizar.");
             }
             catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
             }
@@ -98,8 +141,13 @@ namespace mym_softcom.Controllers
             }
         }
 
-        // DELETE: api/Payment/{id}
-        [HttpDelete("{id}")]
+        /// <summary>
+        /// Elimina un pago del sistema por su ID.
+        /// </summary>
+        /// <param name="id">El ID del pago a eliminar.</param>
+        /// <returns>NoContent si la eliminación es exitosa, de lo contrario, NotFound.</returns>
+        // DELETE: api/Payment/DeletePayment/{id}
+        [HttpDelete("DeletePayment/{id}")]
         public async Task<IActionResult> DeletePayment(int id)
         {
             try
@@ -119,14 +167,6 @@ namespace mym_softcom.Controllers
             {
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
-        }
-
-        // GET: api/Payment/search?term={searchTerm}
-        [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<Payment>>> SearchPayments([FromQuery] string searchTerm)
-        {
-            var payments = await _paymentServices.SearchPayments(searchTerm);
-            return Ok(payments);
         }
     }
 }

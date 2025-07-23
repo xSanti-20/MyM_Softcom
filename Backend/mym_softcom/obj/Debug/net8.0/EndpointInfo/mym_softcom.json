@@ -738,7 +738,7 @@
         }
       }
     },
-    "/api/Payment": {
+    "/api/Payment/GetAllPayments": {
       "get": {
         "tags": [
           "Payment"
@@ -774,7 +774,98 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Payment/GetPaymentID/{id}": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Payment/GetPaymentsBySaleId/{saleId}": {
+      "get": {
+        "tags": [
+          "Payment"
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payment"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payment"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Payment/CreatePayment": {
       "post": {
         "tags": [
           "Payment"
@@ -822,45 +913,7 @@
         }
       }
     },
-    "/api/Payment/{id}": {
-      "get": {
-        "tags": [
-          "Payment"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payment"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payment"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Payment"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/Payment/UpdatePayment/{id}": {
       "put": {
         "tags": [
           "Payment"
@@ -900,7 +953,9 @@
             "description": "OK"
           }
         }
-      },
+      }
+    },
+    "/api/Payment/DeletePayment/{id}": {
       "delete": {
         "tags": [
           "Payment"
@@ -919,53 +974,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Payment/search": {
-      "get": {
-        "tags": [
-          "Payment"
-        ],
-        "parameters": [
-          {
-            "name": "searchTerm",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payment"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payment"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Payment"
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -1352,7 +1360,7 @@
         }
       }
     },
-    "/api/Sale": {
+    "/api/Sale/GetAllSales": {
       "get": {
         "tags": [
           "Sale"
@@ -1388,7 +1396,49 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Sale/GetSaleID/{id}": {
+      "get": {
+        "tags": [
+          "Sale"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sale"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sale"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sale"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Sale/CreateSale": {
       "post": {
         "tags": [
           "Sale"
@@ -1436,45 +1486,7 @@
         }
       }
     },
-    "/api/Sale/{id}": {
-      "get": {
-        "tags": [
-          "Sale"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Sale"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Sale"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Sale"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/Sale/UpdateSale/{id}": {
       "put": {
         "tags": [
           "Sale"
@@ -1514,7 +1526,9 @@
             "description": "OK"
           }
         }
-      },
+      }
+    },
+    "/api/Sale/DeleteSale/{id}": {
       "delete": {
         "tags": [
           "Sale"
@@ -1533,95 +1547,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Sale/search": {
-      "get": {
-        "tags": [
-          "Sale"
-        ],
-        "parameters": [
-          {
-            "name": "searchTerm",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Sale"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Sale"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Sale"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Sale/select": {
-      "get": {
-        "tags": [
-          "Sale"
-        ],
-        "parameters": [
-          {
-            "name": "clientId",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { }
-                }
-              }
-            }
           }
         }
       }
@@ -2357,44 +2282,28 @@
         "additionalProperties": false
       },
       "Payment": {
-        "required": [
-          "amount",
-          "id_Sales",
-          "payment_Date",
-          "payment_Method"
-        ],
         "type": "object",
         "properties": {
           "id_Payments": {
             "type": "integer",
             "format": "int32"
           },
-          "id_Sales": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "payment_Date": {
+          "payment_date": {
             "type": "string",
             "format": "date-time"
           },
           "amount": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
           },
-          "payment_Method": {
-            "maxLength": 250,
-            "minLength": 0,
-            "type": "string"
-          },
-          "reference_Month": {
-            "maxLength": 50,
-            "minLength": 0,
+          "payment_method": {
             "type": "string",
             "nullable": true
           },
-          "observation": {
-            "type": "string",
-            "nullable": true
+          "id_Sales": {
+            "type": "integer",
+            "format": "int32"
           },
           "sale": {
             "$ref": "#/components/schemas/Sale"
@@ -2465,84 +2374,72 @@
         "additionalProperties": false
       },
       "Sale": {
-        "required": [
-          "id_Clients",
-          "id_Lots",
-          "id_Plans",
-          "id_Users",
-          "initial_Payment",
-          "sale_Date",
-          "total_Value"
-        ],
         "type": "object",
         "properties": {
           "id_Sales": {
             "type": "integer",
             "format": "int32"
           },
+          "sale_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "total_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "initial_payment": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_raised": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "quota_value": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "total_debt": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
           "id_Clients": {
             "type": "integer",
             "format": "int32"
+          },
+          "client": {
+            "$ref": "#/components/schemas/Client"
           },
           "id_Lots": {
             "type": "integer",
             "format": "int32"
           },
+          "lot": {
+            "$ref": "#/components/schemas/Lot"
+          },
           "id_Users": {
             "type": "integer",
             "format": "int32"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
           },
           "id_Plans": {
             "type": "integer",
             "format": "int32"
           },
-          "sale_Date": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "total_Value": {
-            "type": "number",
-            "format": "double"
-          },
-          "initial_Payment": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
-            "maxLength": 50,
-            "minLength": 0,
-            "type": "string",
-            "nullable": true
-          },
-          "total_Raised": {
-            "type": "number",
-            "format": "double"
-          },
-          "client": {
-            "$ref": "#/components/schemas/Client"
-          },
-          "lot": {
-            "$ref": "#/components/schemas/Lot"
-          },
-          "user": {
-            "$ref": "#/components/schemas/User"
-          },
           "plan": {
             "$ref": "#/components/schemas/Plan"
-          },
-          "payments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Payment"
-            },
-            "nullable": true
-          },
-          "withdrawals": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Withdrawal"
-            },
-            "nullable": true
           }
         },
         "additionalProperties": false
