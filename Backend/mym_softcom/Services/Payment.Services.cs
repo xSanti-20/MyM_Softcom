@@ -28,8 +28,7 @@ namespace mym_softcom.Services
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.client) // Incluir cliente de la venta
                                  .Include(p => p.sale)
-                                 .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(s => s.lot)    // Incluir lote de la venta
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.plan)   // Incluir plan de la venta
                                  .ToListAsync();
@@ -46,7 +45,6 @@ namespace mym_softcom.Services
                                  .ThenInclude(s => s.client)
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.plan)
                                  .FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
@@ -75,13 +73,11 @@ namespace mym_softcom.Services
         {
             try
             {
-                // Asegurarse de que la fecha de pago esté establecida
                 if (payment.payment_date == default(DateTime))
                 {
-                    payment.payment_date = DateTime.UtcNow; // O DateTime.Now si prefieres la hora local
+                    payment.payment_date = DateTime.UtcNow;
                 }
 
-                // Obtener la venta asociada para actualizar sus valores
                 var sale = await _saleServices.GetSaleById(payment.id_Sales);
                 if (sale == null)
                 {
@@ -93,29 +89,30 @@ namespace mym_softcom.Services
                     throw new ArgumentException("El monto del pago debe ser un valor positivo.");
                 }
 
-                // Actualizar total_raised y total_debt en la venta
+                // Revertir el monto del pago anterior de la venta original
                 sale.total_raised = (sale.total_raised ?? 0) + payment.amount.Value;
                 sale.total_debt = (sale.total_debt ?? 0) - payment.amount.Value;
 
-                // Asegurarse de que total_debt no sea negativo
-                if (sale.total_debt < 0)
+                // Asegurarse de que total_debt no sea negativo y redondear para precisión
+                if (sale.total_debt < 0.01m) // Usar un pequeño umbral para considerar que es cero
                 {
-                    sale.total_debt = 0;
+                    sale.total_debt = 0m; // Asegurar que sea exactamente cero
                 }
 
-                // Opcional: Actualizar el estado de la venta si la deuda es 0
+                // ✅ ACTUALIZACIÓN: Cambiar el estado a "Escriturar" si la deuda es 0
                 if (sale.total_debt == 0)
                 {
-                    sale.status = "Completed"; // ✅ Considera añadir 'Completed' al ENUM de Sale en la DB
+                    sale.status = "Escriturar";
                 }
-                else if (sale.status == "Pending") // Si tenías un estado "Pendiente" para la venta
+                // Si la venta estaba en "Cancelled" y se realiza un pago, podría volver a "Active"
+                else if (sale.status == "Cancelled" && sale.total_debt > 0)
                 {
-                    sale.status = "Active"; // O el estado que indique que la venta está en curso
+                    sale.status = "Active";
                 }
 
 
                 _context.Payments.Add(payment);
-                _context.Sales.Update(sale); // Marcar la venta para actualización
+                _context.Sales.Update(sale);
 
                 await _context.SaveChangesAsync();
                 return true;
@@ -149,7 +146,6 @@ namespace mym_softcom.Services
                     throw new ArgumentException("El monto del pago debe ser un valor positivo.");
                 }
 
-                // Obtener la venta asociada original y la nueva (si cambió)
                 var oldSale = await _saleServices.GetSaleById(existingPayment.id_Sales);
                 var newSale = await _saleServices.GetSaleById(updatedPayment.id_Sales);
 
@@ -161,22 +157,33 @@ namespace mym_softcom.Services
                 // Revertir el monto del pago anterior de la venta original
                 oldSale.total_raised = (oldSale.total_raised ?? 0) - (existingPayment.amount ?? 0);
                 oldSale.total_debt = (oldSale.total_debt ?? 0) + (existingPayment.amount ?? 0);
-                if (oldSale.total_raised < 0) oldSale.total_raised = 0; // Asegurar no negativos
-                // Revertir estado si se completó y ahora tiene deuda
-                if (oldSale.status == "Completed" && oldSale.total_debt > 0) oldSale.status = "Active"; // O el estado que corresponda
+                if (oldSale.total_raised < 0) oldSale.total_raised = 0;
+                // ✅ ACTUALIZACIÓN: Revertir estado si se completó y ahora tiene deuda
+                if (oldSale.status == "Escriturar" && oldSale.total_debt > 0) oldSale.status = "Active";
+
 
                 // Aplicar el nuevo monto del pago a la venta (puede ser la misma o una nueva)
                 newSale.total_raised = (newSale.total_raised ?? 0) + updatedPayment.amount.Value;
                 newSale.total_debt = (newSale.total_debt ?? 0) - updatedPayment.amount.Value;
-                if (newSale.total_debt < 0) newSale.total_debt = 0; // Asegurar no negativos
-                // Actualizar estado si se completa
-                if (newSale.total_debt == 0) newSale.status = "Completed";
-                else if (newSale.status == "Pending") newSale.status = "Active";
+
+                // Asegurarse de que total_debt no sea negativo y redondear para precisión
+                if (newSale.total_debt < 0.01m) // Usar un pequeño umbral para considerar que es cero
+                {
+                    newSale.total_debt = 0m; // Asegurar que sea exactamente cero
+                }
+                else if (newSale.total_debt < 0) // Si es negativo después del umbral, forzar a cero
+                {
+                    newSale.total_debt = 0m;
+                }
+
+                // ✅ ACTUALIZACIÓN: Actualizar estado si se completa
+                if (newSale.total_debt == 0) newSale.status = "Escriturar";
+                else if (newSale.status == "Cancelled" && newSale.total_debt > 0) newSale.status = "Active";
 
 
-                _context.Entry(existingPayment).CurrentValues.SetValues(updatedPayment); // Actualizar propiedades del pago
-                _context.Sales.Update(oldSale); // Marcar venta original para actualización
-                if (oldSale.id_Sales != newSale.id_Sales) // Si la venta cambió, marcar la nueva también
+                _context.Entry(existingPayment).CurrentValues.SetValues(updatedPayment);
+                _context.Sales.Update(oldSale);
+                if (oldSale.id_Sales != newSale.id_Sales)
                 {
                     _context.Sales.Update(newSale);
                 }
@@ -205,32 +212,28 @@ namespace mym_softcom.Services
                 var payment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
                 if (payment == null) return false;
 
-                // Obtener la venta asociada para revertir sus valores
                 var sale = await _saleServices.GetSaleById(payment.id_Sales);
                 if (sale == null)
                 {
-                    // Esto no debería pasar si la integridad referencial está bien, pero es una precaución
                     throw new InvalidOperationException("La venta asociada al pago no existe.");
                 }
 
-                // Revertir total_raised y total_debt en la venta
                 sale.total_raised = (sale.total_raised ?? 0) - (payment.amount ?? 0);
                 sale.total_debt = (sale.total_debt ?? 0) + (payment.amount ?? 0);
 
-                // Asegurarse de que total_raised no sea negativo
                 if (sale.total_raised < 0)
                 {
                     sale.total_raised = 0;
                 }
 
-                // Opcional: Actualizar el estado de la venta si ya no está completa
-                if (sale.status == "Completed" && sale.total_debt > 0)
+                // ✅ ACTUALIZACIÓN: Actualizar el estado de la venta si ya no está "Escriturar"
+                if (sale.status == "Escriturar" && sale.total_debt > 0)
                 {
-                    sale.status = "Active"; // O el estado que indique que la venta está en curso
+                    sale.status = "Active";
                 }
 
                 _context.Payments.Remove(payment);
-                _context.Sales.Update(sale); // Marcar la venta para actualización
+                _context.Sales.Update(sale);
 
                 await _context.SaveChangesAsync();
                 return true;

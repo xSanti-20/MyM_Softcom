@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
-import RegisterWeighing from "./formweight"
+import RegisterWeighing from "./formpagos"
 import AlertModal from "@/components/AlertModal"
 import { FaChartLine } from "react-icons/fa"
 

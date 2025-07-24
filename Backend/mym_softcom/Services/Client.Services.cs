@@ -26,6 +26,8 @@ namespace mym_softcom.Services
         // Consultar cliente por ID
         public async Task<Client?> GetClientById(int id_Clients)
         {
+            // ¡NUEVO: Añadimos un log para ver el ID que se está buscando!
+            Console.WriteLine($"[ClientServices] Buscando cliente con Id_Clients: {id_Clients}");
             return await _context.Clients.FirstOrDefaultAsync(c => c.id_Clients == id_Clients);
         }
 
@@ -61,7 +63,7 @@ namespace mym_softcom.Services
                     throw new ArgumentException("El ID del cliente no coincide.");
 
                 var existingClient = await _context.Clients.AsNoTracking()
-                                            .FirstOrDefaultAsync(c => c.id_Clients == id_Clients);
+                                          .FirstOrDefaultAsync(c => c.id_Clients == id_Clients);
 
                 if (existingClient == null) return false;
 
@@ -136,10 +138,39 @@ namespace mym_softcom.Services
                 .OrderBy(c => c.names)
                 .Select(c => new
                 {
-                    id_Clients = c.id_Clients,
+                    Id_Clients = c.id_Clients,
                     FullName = $"{c.names} {c.surnames}" // Combinar nombres y apellidos
                 })
                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Obtiene todos los clientes con un resumen de sus ventas (valor total, recaudo, deuda).
+        /// </summary>
+        public async Task<IEnumerable<object>> GetClientsWithSalesSummary()
+        {
+            var clientsWithSales = await _context.Clients
+                .GroupJoin(
+                    _context.Sales,
+                    client => client.id_Clients,
+                    sale => sale.id_Clients,
+                    (client, sales) => new
+                    {
+                        client.id_Clients,
+                        client.names,
+                        client.surnames,
+                        client.document,
+                        client.phone,
+                        client.email,
+                        client.status,
+                        TotalSalesValue = sales.Sum(s => s.total_value ?? 0),
+                        TotalRaised = sales.Sum(s => s.total_raised ?? 0),
+                        TotalDebt = sales.Sum(s => s.total_debt ?? 0)
+                    }
+                )
+                .ToListAsync();
+
+            return clientsWithSales;
         }
     }
 }

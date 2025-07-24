@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
-import RegisterSale from "./formventas" // Importar el nuevo componente
+import RegisterSale from "./formventas"
 import AlertModal from "@/components/AlertModal"
 
 function SalesPage() {
@@ -101,21 +101,7 @@ function SalesPage() {
             maximumFractionDigits: 0,
           }) || "N/A",
 
-          status: (
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${sale.status === "Active"
-                  ? "bg-green-100 text-green-800"
-                  : sale.status === "Cancelled"
-                    ? "bg-red-100 text-red-800"
-                    : sale.status === "Escriturar"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                }`}
-            >
-              {sale.status}
-            </span>
-          ),
-
+          status: sale.status || "N/A",
           client: sale.client ? `${sale.client.names} ${sale.client.surnames}` : "N/A",
 
           lot: sale.lot

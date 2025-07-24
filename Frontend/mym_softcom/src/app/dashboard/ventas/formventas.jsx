@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import axiosInstance from "@/lib/axiosInstance"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, DollarSign, Search, User } from "lucide-react"
+import { Calendar, DollarSign, Search, User, MapPin, Loader2, X, Building } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showAlert }) {
   const [formData, setFormData] = useState({
@@ -19,16 +20,30 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     id_Plans: "",
   })
 
+  // Estados para búsqueda de cliente
   const [clientDocument, setClientDocument] = useState("")
   const [foundClient, setFoundClient] = useState(null)
   const [clientSearchLoading, setClientSearchLoading] = useState(false)
   const [clientSearchError, setClientSearchError] = useState(null)
 
-  const [lots, setLots] = useState([])
+  // Estados para proyectos y lotes
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState("")
+  const [lotSearchTerm, setLotSearchTerm] = useState("")
+  const [lotSearchResults, setLotSearchResults] = useState([])
+  const [lotSearchLoading, setLotSearchLoading] = useState(false)
+  const [lotSearchError, setLotSearchError] = useState(null)
+  const [selectedLot, setSelectedLot] = useState(null)
+  const [showLotResults, setShowLotResults] = useState(false)
+
   const [users, setUsers] = useState([])
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(false)
   const isEditing = !!saleToEdit
+
+  // Refs para debounce y manejo de clicks fuera
+  const lotSearchDebounceRef = useRef(null)
+  const lotSearchContainerRef = useRef(null)
 
   // Función para buscar cliente por documento
   const handleSearchClient = useCallback(async () => {
@@ -57,31 +72,206 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       if (response.status === 200 && response.data) {
         setFoundClient(response.data)
         setFormData((prev) => ({ ...prev, id_Clients: response.data.id_Clients }))
-        // Eliminado: showAlert("success", `Cliente encontrado: ${response.data.names} ${response.data.surnames}`);
       } else {
         setClientSearchError("Cliente no encontrado con ese documento.")
-        showAlert("error", "Cliente no encontrado con ese documento.") // Mantener alerta para errores
+        showAlert("error", "Cliente no encontrado con ese documento.")
       }
     } catch (error) {
       console.error("Error al buscar cliente:", error)
       setClientSearchError("Error al buscar cliente. Intente de nuevo.")
-      showAlert("error", "Error al buscar cliente. Intente de nuevo.") // Mantener alerta para errores
+      showAlert("error", "Error al buscar cliente. Intente de nuevo.")
     } finally {
       setClientSearchLoading(false)
     }
   }, [clientDocument, showAlert])
 
-  // Fetch data for dropdowns (excluding clients now)
+  // Función para cargar proyectos
+  const fetchProjects = useCallback(async () => {
+    try {
+      // Obtener todos los lotes para extraer los proyectos únicos
+      const response = await axiosInstance.get("/api/Lot/GetAllLot")
+      if (response.data && Array.isArray(response.data)) {
+        // Extraer proyectos únicos de los lotes
+        const uniqueProjects = []
+        const projectIds = new Set()
+
+        response.data.forEach((lot) => {
+          if (lot.project && !projectIds.has(lot.project.id_Projects)) {
+            projectIds.add(lot.project.id_Projects)
+            uniqueProjects.push({
+              id_Projects: lot.project.id_Projects,
+              name: lot.project.name,
+              status: lot.project.status || "Activo",
+            })
+          }
+        })
+
+        // Filtrar solo proyectos activos
+        const activeProjects = uniqueProjects.filter(
+          (project) => project.status === "Activo" || project.status === "Active",
+        )
+
+        setProjects(activeProjects)
+        console.log("Proyectos cargados:", activeProjects)
+      }
+    } catch (error) {
+      console.error("Error al cargar proyectos:", error)
+      showAlert("error", "No se pudieron cargar los proyectos.")
+    }
+  }, [showAlert])
+
+  // Función mejorada para filtrar lotes localmente
+  const filterLotsLocally = (lots, searchTerm) => {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      return lots
+    }
+
+    const term = searchTerm.trim().toUpperCase()
+
+    return lots.filter((lot) => {
+      const lotBlock = (lot.block || "").toUpperCase()
+      const lotNumber = (lot.lot_number || "").toString()
+      const fullLotName = `${lotBlock}-${lotNumber}`
+      const compactLotName = `${lotBlock}${lotNumber}`
+
+      // Búsqueda más precisa
+      return (
+        // Coincidencia exacta con el bloque
+        lotBlock === term ||
+        // Coincidencia exacta con el número
+        lotNumber === term ||
+        // Coincidencia con formato completo (A-28)
+        fullLotName === term ||
+        // Coincidencia con formato compacto (A28)
+        compactLotName === term ||
+        // Coincidencia que empiece con el término (para búsquedas parciales)
+        lotBlock.startsWith(term) ||
+        fullLotName.startsWith(term) ||
+        compactLotName.startsWith(term)
+      )
+    })
+  }
+
+  // Función para buscar lotes por proyecto usando tus endpoints
+  const searchLotsByProject = useCallback(
+    async (projectId, searchTerm) => {
+      if (!projectId) {
+        setLotSearchResults([])
+        setShowLotResults(false)
+        setLotSearchError("Primero seleccione un proyecto.")
+        return
+      }
+
+      setLotSearchLoading(true)
+      setLotSearchError(null)
+
+      try {
+        // Siempre obtener todos los lotes del proyecto
+        const response = await axiosInstance.get(`/api/Lot/GetLotsByProject/${projectId}`)
+        const allLots = response.data || []
+
+        // Filtrar solo lotes disponibles (excepto en edición)
+        const availableLots = allLots.filter((lot) => {
+          const isAvailable =
+            lot.status === "Libre" ||
+            lot.status === "Disponible" ||
+            (isEditing && lot.id_Lots === Number.parseInt(formData.id_Lots))
+          return isAvailable
+        })
+
+        // Aplicar filtro de búsqueda localmente
+        const filteredLots = filterLotsLocally(availableLots, searchTerm)
+
+        setLotSearchResults(filteredLots)
+        setShowLotResults(true)
+
+        if (filteredLots.length === 0 && searchTerm && searchTerm.trim().length > 0) {
+          setLotSearchError(
+            `No se encontraron lotes disponibles que coincidan con "${searchTerm}" en el proyecto seleccionado.`,
+          )
+        } else if (availableLots.length === 0) {
+          setLotSearchError("No hay lotes disponibles en el proyecto seleccionado.")
+        }
+      } catch (error) {
+        console.error("Error al buscar lotes:", error)
+        setLotSearchError("Error al buscar lotes. Intente de nuevo.")
+        setLotSearchResults([])
+      } finally {
+        setLotSearchLoading(false)
+      }
+    },
+    [formData.id_Lots, isEditing],
+  )
+
+  // Debounce para búsqueda de lotes
+  useEffect(() => {
+    if (lotSearchDebounceRef.current) {
+      clearTimeout(lotSearchDebounceRef.current)
+    }
+
+    lotSearchDebounceRef.current = setTimeout(() => {
+      if (selectedProject) {
+        searchLotsByProject(selectedProject, lotSearchTerm)
+      }
+    }, 300)
+
+    return () => {
+      if (lotSearchDebounceRef.current) {
+        clearTimeout(lotSearchDebounceRef.current)
+      }
+    }
+  }, [lotSearchTerm, selectedProject, searchLotsByProject])
+
+  // Manejar clicks fuera del contenedor de búsqueda de lotes
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (lotSearchContainerRef.current && !lotSearchContainerRef.current.contains(event.target)) {
+        setShowLotResults(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  // Función para seleccionar un lote
+  const handleSelectLot = (lot) => {
+    setSelectedLot(lot)
+    setFormData((prev) => ({ ...prev, id_Lots: lot.id_Lots.toString() }))
+    setLotSearchTerm(`${lot.block}-${lot.lot_number}`)
+    setShowLotResults(false)
+    // Limpiar error al seleccionar un lote
+    setLotSearchError(null)
+  }
+
+  // Función para limpiar selección de lote
+  const handleClearLotSelection = () => {
+    setSelectedLot(null)
+    setFormData((prev) => ({ ...prev, id_Lots: "" }))
+    setLotSearchTerm("")
+    setLotSearchResults([])
+    setShowLotResults(false)
+    setLotSearchError(null)
+  }
+
+  // Función para manejar cambio de proyecto
+  const handleProjectChange = (projectId) => {
+    setSelectedProject(projectId)
+    // Limpiar selección de lote al cambiar proyecto
+    handleClearLotSelection()
+  }
+
+  // Cargar datos iniciales
   useEffect(() => {
     async function fetchDataForSelects() {
       try {
-        const [lotsRes, usersRes, plansRes] = await Promise.all([
-          axiosInstance.get("/api/Lot/GetLotsForSelect"),
+        const [usersRes, plansRes] = await Promise.all([
           axiosInstance.get("/api/User/ConsultAllUser"),
           axiosInstance.get("/api/Plan/GetAllPlans"),
         ])
 
-        setLots(lotsRes.data)
         setUsers(usersRes.data.filter((user) => user.status !== "Inactivo"))
         setPlans(plansRes.data)
 
@@ -96,10 +286,12 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         showAlert("error", "No se pudieron cargar las opciones necesarias para el formulario de ventas.")
       }
     }
-    fetchDataForSelects()
-  }, [isEditing, showAlert])
 
-  // Populate form for editing and fetch client details
+    fetchDataForSelects()
+    fetchProjects()
+  }, [isEditing, showAlert, fetchProjects])
+
+  // Poblar formulario para edición
   useEffect(() => {
     if (isEditing && saleToEdit) {
       setFormData({
@@ -112,6 +304,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         id_Plans: saleToEdit.id_Plans?.toString() || "",
       })
 
+      // Cargar cliente para edición
       if (saleToEdit.id_Clients) {
         const fetchClientForEdit = async () => {
           try {
@@ -127,8 +320,16 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         }
         fetchClientForEdit()
       }
+
+      // Cargar lote y proyecto para edición
+      if (saleToEdit.lot) {
+        setSelectedLot(saleToEdit.lot)
+        setSelectedProject(saleToEdit.lot.project?.id_Projects?.toString() || "")
+        setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
+      }
     } else {
-      setFormData((prev) => ({
+      // Resetear estados
+      setFormData({
         sale_date: new Date().toISOString().split("T")[0],
         total_value: "",
         initial_payment: "",
@@ -136,10 +337,16 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         id_Lots: "",
         id_Users: "",
         id_Plans: "",
-      }))
+      })
       setClientDocument("")
       setFoundClient(null)
       setClientSearchError(null)
+      setSelectedProject("")
+      setLotSearchTerm("")
+      setSelectedLot(null)
+      setLotSearchResults([])
+      setShowLotResults(false)
+      setLotSearchError(null)
     }
   }, [saleToEdit, isEditing])
 
@@ -165,6 +372,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
     if (!sale_date || !total_value || !initial_payment || !id_Clients || !id_Lots || !id_Users || !id_Plans) {
       showAlert("error", "Todos los campos obligatorios deben ser completados.")
+      return
+    }
+
+    if (!selectedProject) {
+      showAlert("error", "Debe seleccionar un proyecto.")
       return
     }
 
@@ -228,6 +440,12 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         setClientDocument("")
         setFoundClient(null)
         setClientSearchError(null)
+        setSelectedProject("")
+        setLotSearchTerm("")
+        setSelectedLot(null)
+        setLotSearchResults([])
+        setShowLotResults(false)
+        setLotSearchError(null)
       }
 
       if (closeModal) closeModal()
@@ -349,7 +567,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                   disabled={clientSearchLoading}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  <Search className="mr-2 h-4 w-4" />
+                  {clientSearchLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="mr-2 h-4 w-4" />
+                  )}
                   {clientSearchLoading ? "Buscando..." : "Buscar"}
                 </Button>
               </div>
@@ -373,28 +595,135 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               )}
             </div>
 
-            {/* Lote */}
+            {/* Selección de Proyecto */}
             <div>
-              <Label htmlFor="id_Lots" className="block text-sm font-medium text-gray-700 mb-1">
-                Lote *
+              <Label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">
+                Proyecto *
               </Label>
-              <Select
-                name="id_Lots"
-                value={formData.id_Lots}
-                onValueChange={(value) => handleSelectChange("id_Lots", value)}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona un lote" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lots.map((lot) => (
-                    <SelectItem key={lot.id_Lots} value={lot.id_Lots.toString()}>
-                      {lot.Display}
-                    </SelectItem>
+              <div className="relative">
+                <Select name="project" value={selectedProject} onValueChange={handleProjectChange} required>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un proyecto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Building
+                  className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                  size={16}
+                />
+              </div>
+            </div>
+
+            {/* Búsqueda de Lotes Mejorada */}
+            <div ref={lotSearchContainerRef} className="relative">
+              <Label htmlFor="lot_search" className="block text-sm font-medium text-gray-700 mb-1">
+                Buscar Lote *
+              </Label>
+              <div className="text-xs text-gray-500 mb-2">Formatos válidos: A-28, A28, B-5, B5, etc.</div>
+              <div className="relative">
+                <Input
+                  type="text"
+                  id="lot_search"
+                  name="lot_search"
+                  placeholder={selectedProject ? "Ej: A-28, A28, B-5..." : "Primero seleccione un proyecto"}
+                  value={lotSearchTerm}
+                  onChange={(e) => {
+                    setLotSearchTerm(e.target.value)
+                    if (!e.target.value.trim()) {
+                      handleClearLotSelection()
+                    }
+                  }}
+                  onFocus={() => {
+                    if (lotSearchResults.length > 0) {
+                      setShowLotResults(true)
+                    }
+                  }}
+                  className="w-full pr-20"
+                  required
+                  disabled={!selectedProject}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {lotSearchLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+                  {selectedLot && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearLotSelection}
+                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                  <MapPin className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Resultados de búsqueda de lotes - UI mejorada */}
+              {showLotResults && lotSearchResults.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <div className="sticky top-0 bg-gray-50 px-3 py-2 text-xs text-gray-600 border-b">
+                    {lotSearchResults.length} lote{lotSearchResults.length !== 1 ? "s" : ""} encontrado
+                    {lotSearchResults.length !== 1 ? "s" : ""}
+                  </div>
+                  {lotSearchResults.map((lot) => (
+                    <div
+                      key={lot.id_Lots}
+                      onClick={() => handleSelectLot(lot)}
+                      className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">
+                            {lot.block || lot.manzana}-{lot.lot_number || lot.numero}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {lot.price?.toLocaleString("es-CO", {
+                              style: "currency",
+                              currency: "COP",
+                              minimumFractionDigits: 0,
+                            })}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={lot.status === "Libre" || lot.status === "Disponible" ? "default" : "secondary"}
+                          className="ml-2 shrink-0"
+                        >
+                          {lot.status}
+                        </Badge>
+                      </div>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
+
+              {/* Error de búsqueda de lotes - Solo mostrar si no hay lote seleccionado */}
+              {lotSearchError && !selectedLot && <p className="text-red-500 text-sm mt-1">{lotSearchError}</p>}
+
+              {/* Lote seleccionado */}
+              {selectedLot && (
+                <div className="mt-2 p-3 border border-green-200 bg-green-50 rounded-md text-sm text-green-800">
+                  <p className="font-semibold">Lote Seleccionado:</p>
+                  <p>
+                    <strong>Lote:</strong> {selectedLot.block || selectedLot.manzana}-
+                    {selectedLot.lot_number || selectedLot.numero}
+                  </p>
+                  <p>
+                    <strong>Proyecto:</strong> {selectedLot.project?.name || "N/A"}
+                  </p>
+                </div>
+              )}
+
+              {/* Mensaje cuando no hay proyecto seleccionado */}
+              {!selectedProject && (
+                <p className="text-amber-600 text-sm mt-1">⚠️ Seleccione primero un proyecto para buscar lotes</p>
+              )}
             </div>
 
             {/* Usuario */}
@@ -447,7 +776,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           </div>
         </div>
 
-        {/* Campos de solo lectura para edición (si aplica) */}
+        {/* Campos de solo lectura para edición */}
         {isEditing && saleToEdit && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t mt-6">
             <div className="space-y-4">
@@ -509,8 +838,17 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           <Button type="button" onClick={onCancelEdit} variant="outline" disabled={loading}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-            {loading ? (isEditing ? "Actualizando..." : "Registrando...") : isEditing ? "Actualizar" : "Registrar"}
+          <Button type="submit" disabled={loading || !selectedProject} className="bg-blue-600 hover:bg-blue-700">
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEditing ? "Actualizando..." : "Registrando..."}
+              </>
+            ) : isEditing ? (
+              "Actualizar"
+            ) : (
+              "Registrar"
+            )}
           </Button>
         </div>
       </form>

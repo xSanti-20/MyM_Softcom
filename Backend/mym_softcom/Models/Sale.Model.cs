@@ -41,5 +41,6 @@ namespace mym_softcom.Models
         [ForeignKey("id_Plans")]
         public Plan? plan { get; set; }
 
+
     }
 }

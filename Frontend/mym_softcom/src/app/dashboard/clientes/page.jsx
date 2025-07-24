@@ -24,7 +24,43 @@ function ClientPage() {
     redirectUrl: null,
   })
 
-  const titlesClient = ["ID", "Nombres", "Apellidos", "Documento", "Teléfono", "Email"]
+  // ✅ NUEVO: Función de formato de moneda para eliminar .00 (copiada de sales/page.jsx)
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined) return "N/A"
+    const num = Number.parseFloat(value)
+    if (isNaN(num)) return "N/A"
+
+    // Si es un número entero, no mostrar decimales
+    if (num % 1 === 0) {
+      return num.toLocaleString("es-CO", {
+        style: "currency",
+        currency: "COP",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+    }
+    // Si tiene decimales, mostrar hasta 2 decimales
+    return num.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  }
+
+  // ✅ MODIFICADO: Definición de TitlesTable como un array de strings, en el orden esperado por DataTable
+  const clientTitles = [
+    "ID",
+    "Nombres",
+    "Apellidos",
+    "Documento",
+    "Teléfono",
+    "Email",
+    "Valor Total",
+    "Recaudo Total",
+    "Deuda Total",
+    // El estado se maneja por `showStatusColumn` en DataTable, no se incluye aquí directamente
+  ]
 
   const showAlert = (type, message, onSuccessCallback = null) => {
     setAlertInfo({
@@ -49,18 +85,23 @@ function ClientPage() {
   async function fetchClients() {
     try {
       setIsLoading(true)
-      const response = await axiosInstance.get("/api/Client/GetAll")
+      // ✅ MODIFICADO: Llamar al nuevo endpoint que incluye el resumen de ventas
+      const response = await axiosInstance.get("/api/Client/GetClientsWithSalesSummary")
 
       if (response.status === 200) {
         const data = response.data.map((client) => {
+          // ✅ IMPORTANTE: El orden de las propiedades aquí debe coincidir con el orden en clientTitles
           return {
-            id: client.id_Clients, // ¡CORRECCIÓN: Usar id_Clients (minúscula) del JSON!
+            id: client.id_Clients,
             names: client.names,
             surnames: client.surnames,
             document: client.document,
             phone: client.phone ?? "N/A",
             email: client.email ?? "N/A",
-            isActive: client.status === "Activo",
+            total_sales_value: formatCurrency(client.totalSalesValue), // Mapear y formatear
+            total_raised: formatCurrency(client.totalRaised), // Mapear y formatear
+            total_debt: formatCurrency(client.totalDebt), // Mapear y formatear
+            isActive: client.status === "Activo", // Usado por statusField en DataTable
             original: client,
           }
         })
@@ -93,11 +134,11 @@ function ClientPage() {
 
   const handleUpdate = async (row) => {
     try {
-      // ¡CORRECCIÓN: Usar row.id que ya está mapeado a id_Clients!
       const clientId = row.id
-      console.log("Intentando obtener cliente con ID:", clientId) // Para depuración
+      console.log("Intentando obtener cliente con ID:", clientId)
 
-      const response = await axiosInstance.get(`/api/Client/GetAllByID${clientId}`)
+      // ✅ CORREGIDO: Usar el endpoint correcto para obtener un cliente por ID
+      const response = await axiosInstance.get(`/api/Client/${clientId}`)
 
       if (response.status === 200) {
         setEditingClient(response.data)
@@ -131,8 +172,9 @@ function ClientPage() {
         </div>
       )}
 
-      {!isLoading && (
-        <>
+      {!isLoading &&
+        (
+          <>
           <div className="mb-4 flex gap-4 flex-wrap">
             <Button
               onClick={() => setShowInactiveRecords(!showInactiveRecords)}
@@ -154,11 +196,12 @@ function ClientPage() {
 
             <DataTable
               Data={clientData}
-              TitlesTable={titlesClient}
+              TitlesTable={clientTitles}
               onUpdate={handleUpdate}
               onToggleStatus={handleToggleStatus}
               showDeleteButton={false}
               showToggleButton={true}
+              statusField="isActive"
               showInactiveRecords={showInactiveRecords}
               showStatusColumn={true}
               extraActions={[]}
@@ -167,7 +210,8 @@ function ClientPage() {
 
           {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-black rounded-lg max-w-3xl w-full mx-4  overflow-y-auto">
+              <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                {/* ✅ MODIFICADO: max-w-4xl y bg-white */}
                 <RegisterClient
                   refreshData={fetchClients}
                   clientToEdit={editingClient}
@@ -179,7 +223,7 @@ function ClientPage() {
             </div>
           )}
         </>
-      )}
+        )}
 
       {error && <div className="text-red-600">{error}</div>}
 

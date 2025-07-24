@@ -27,7 +27,7 @@ namespace mym_softcom.Controllers
         }
 
         // GET: api/Client/{id} (Consultar por ID) - Se mantiene RESTful por convención
-        [HttpGet("GetAllByID{id}")]
+        [HttpGet("{id}")]
         public async Task<ActionResult<Client>> GetClient(int id)
         {
             var client = await _clientServices.GetClientById(id);
@@ -159,6 +159,18 @@ namespace mym_softcom.Controllers
         {
             var clientsForSelect = await _clientServices.GetActiveClientsForSelect();
             return Ok(clientsForSelect);
+        }
+
+        /// <summary>
+        /// Obtiene todos los clientes con un resumen de sus ventas (valor total, recaudo, deuda).
+        /// </summary>
+        /// <returns>Una lista de objetos anónimos con datos del cliente y resumen de ventas.</returns>
+        // GET: api/Client/GetClientsWithSalesSummary
+        [HttpGet("GetClientsWithSalesSummary")]
+        public async Task<ActionResult<IEnumerable<object>>> GetClientsWithSalesSummary()
+        {
+            var clients = await _clientServices.GetClientsWithSalesSummary();
+            return Ok(clients);
         }
     }
 }
