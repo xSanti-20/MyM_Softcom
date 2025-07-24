@@ -46,8 +46,7 @@
               "RelativeToolTip": "Models\\Sale.Model.cs",
               "ViewState": "AgIAAB0AAAAAAAAAAAA9wCkAAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-24T14:40:16.707Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-24T14:40:16.707Z"
             },
             {
               "$type": "Document",
@@ -59,8 +58,7 @@
               "RelativeToolTip": "Services\\Sale.Services.cs",
               "ViewState": "AgIAAKAAAAAAAAAAAAAcwC4AAAA9AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-23T17:01:01.604Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-23T17:01:01.604Z"
             },
             {
               "$type": "Document",
@@ -72,8 +70,7 @@
               "RelativeToolTip": "Controllers\\Payment.Controller.cs",
               "ViewState": "AgIAAEkAAAAAAAAAAAAYwEYAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-23T14:08:17.767Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-23T14:08:17.767Z"
             },
             {
               "$type": "Document",
@@ -85,8 +82,7 @@
               "RelativeToolTip": "Models\\Payment.Model.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-23T14:08:00.106Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-23T14:08:00.106Z"
             },
             {
               "$type": "Document",
@@ -96,7 +92,7 @@
               "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
               "RelativeToolTip": "Services\\Payment.Services.cs",
-              "ViewState": "AgIAAKYAAAAAAAAAAAAAwO8AAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAKkAAAAAAAAAAAAAwO8AAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-23T14:07:55.211Z",
               "EditorCaption": ""

@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import styles from "./page.module.css" // Asegúrate de que este sea el nombre correcto de tu archivo CSS
 import axiosInstance from "@/lib/axiosInstance"
+import { Button } from "@/components/ui/button"
+import { User } from "lucide-react"
 
 function RegisterClient({ refreshData, clientToEdit, onCancelEdit, closeModal, showAlert }) {
   const [formData, setFormData] = useState({
@@ -80,7 +81,6 @@ function RegisterClient({ refreshData, clientToEdit, onCancelEdit, closeModal, s
         }
       } catch (err) {
         if (err.response && err.response.status !== 404) {
-          console.error("Error al verificar documento duplicado:", err)
           showAlert("error", "Error al validar el documento del cliente.")
           setLoading(false)
           return
@@ -109,8 +109,6 @@ function RegisterClient({ refreshData, clientToEdit, onCancelEdit, closeModal, s
       closeModal()
       onCancelEdit()
     } catch (error) {
-      console.error("Error al procesar cliente:", error)
-
       const errorMessage =
         error.response?.data?.errors?.document?.[0] ||
         error.response?.data?.errors?.phone?.[0] ||
@@ -123,105 +121,112 @@ function RegisterClient({ refreshData, clientToEdit, onCancelEdit, closeModal, s
   }
 
   return (
-    // Mantenemos la estructura original con .wrapper y .form_box
-    <div className={styles.wrapper}>
-      <div className={styles.form_box}>
-        <form onSubmit={handleSubmit} className={styles.form}>
-          {/* Agrega la imagen aquí, similar al formulario de inicio de sesión */}
-          <img src="/assets/img/mymsoftcom.png" alt="M&M" width="65" height="60" />
-          <h1 className={styles.title}>{clientToEdit ? "Editar Cliente" : "Registrar Nuevo Cliente"}</h1>
-          <div className={styles.form_content_grid}>
-            {/* Columna izquierda */}
-            <div className={styles.column_section}>
-              <h3 className={styles.section_title}>Información Personal</h3>
-
-              <div className={styles.input_group}>
-                <label htmlFor="names">Nombres *</label>
-                <input
-                  type="text"
-                  id="names"
-                  name="names"
-                  value={formData.names}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Nombres"
-                />
-              </div>
-
-              <div className={styles.input_group}>
-                <label htmlFor="surnames">Apellidos *</label>
-                <input
-                  type="text"
-                  id="surnames"
-                  name="surnames"
-                  value={formData.surnames}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Apellidos"
-                />
-              </div>
-
-              <div className={styles.input_group}>
-                <label htmlFor="document">Documento *</label>
-                <input
-                  type="number"
-                  id="document"
-                  name="document"
-                  value={formData.document}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Documento"
-                />
-              </div>
-            </div>
-
-            {/* Columna derecha */}
-            <div className={styles.column_section}>
-              <h3 className={styles.section_title}>Contacto</h3>
-
-              <div className={styles.input_group}>
-                <label htmlFor="phone">Teléfono</label>
-                <input
-                  type="number"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Teléfono"
-                />
-              </div>
-
-              <div className={styles.input_group}>
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Email"
-                />
-              </div>
-            </div>
-          </div>
-          <div className={styles.button_container}>
-            <button
-              type="button"
-              onClick={() => {
-                closeModal()
-                onCancelEdit()
-              }}
-              className={`${styles.button} ${styles.outline}`}
-              disabled={loading}
-            >
-              Cancelar
-            </button>
-            <button type="submit" className={styles.button} disabled={loading}>
-              {loading ? "Procesando..." : clientToEdit ? "Actualizar" : "Registrar"}
-            </button>
-          </div>
-        </form>
+    <div className="max-w-3xl mx-auto p-6 bg-white rounded-lg shadow-md">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {clientToEdit ? "Editar Cliente" : "Registrar Nuevo Cliente"}
+        </h2>
+        <img src="/assets/img/mymsoftcom.png" alt="M&M" width={50} />
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Información Personal</h3>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1" htmlFor="names">
+                Nombres *
+              </label>
+              <input
+                type="text"
+                id="names"
+                name="names"
+                value={formData.names}
+                onChange={handleInputChange}
+                required
+                placeholder="Nombres"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1" htmlFor="surnames">
+                Apellidos *
+              </label>
+              <input
+                type="text"
+                id="surnames"
+                name="surnames"
+                value={formData.surnames}
+                onChange={handleInputChange}
+                required
+                placeholder="Apellidos"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1" htmlFor="document">
+                Documento *
+              </label>
+              <input
+                type="number"
+                id="document"
+                name="document"
+                value={formData.document}
+                onChange={handleInputChange}
+                required
+                placeholder="Documento"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Contacto</h3>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1" htmlFor="phone">
+                Teléfono
+              </label>
+              <input
+                type="number"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Teléfono"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 mb-1" htmlFor="email">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Email"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-4 pt-6 border-t">
+          <Button type="button" onClick={() => { closeModal(); onCancelEdit() }} variant="outline" disabled={loading}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+            {loading ? (clientToEdit ? "Actualizando..." : "Registrando...") : clientToEdit ? "Actualizar" : "Registrar"}
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }
