@@ -4,17 +4,20 @@ import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
-import RegisterWeighing from "./formpagos"
+import RegisterPayment from "./formpagos"
 import AlertModal from "@/components/AlertModal"
-import { FaChartLine } from "react-icons/fa"
+import { FaMoneyBillWave } from "react-icons/fa"
+import { Label } from "@/components/ui/label"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Filter } from "lucide-react"
 
-function Weighing() {
-  const TitlePage = "Pesajes"
-  const [weighingData, setWeighingData] = useState([])
+function Payments() {
+  const TitlePage = "Pagos"
+  const [paymentData, setPaymentData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingWeighing, setEditingWeighing] = useState(null)
+  const [editingPayment, setEditingPayment] = useState(null)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -22,100 +25,199 @@ function Weighing() {
     redirectUrl: null,
   })
 
-  const titlesWeighing = [
-    "ID",
-    "Peso Actual",
-    "Ganancia de Peso",
-    "Fecha de Pesaje",
-    "Nombre del Animal",
-    "Registrado por",
-  ]
+  const [projects, setProjects] = useState([]) // Para el filtro de proyectos
+  const [selectedProjectId, setSelectedProjectId] = useState("") // ID del proyecto seleccionado para filtrar
 
-  const closeAlert = () => {
+  const titlesPayments = ["ID", "Monto", "Fecha de Pago", "Método de Pago", "Cliente", "Documento", "Lote", "Proyecto"]
+
+  const showAlert = (type, message, onSuccessCallback = null) => {
     setAlertInfo({
-      ...alertInfo,
-      isOpen: false,
+      isOpen: true,
+      message,
+      type,
+      onSuccessCallback,
     })
   }
 
-  async function fetchWeighings() {
-    try {
-      setIsLoading(true)
-      const response = await axiosInstance.get("/api/Weighing/ConsultAllWeighings")
+  const closeAlert = () => {
+    const callback = alertInfo.onSuccessCallback
+    setAlertInfo({
+      isOpen: false,
+      message: "",
+      type: "success",
+      onSuccessCallback: null,
+    })
+    if (callback) callback()
+  }
 
-      if (response.status === 200) {
-        const data = response.data.map((weighing) => ({
-          id: weighing.id_Weighing,
-          pesoActual: weighing.weight_Current != null ? weighing.weight_Current.toFixed(2) + " kg" : "Sin dato",
-          gananciaPeso:
-            weighing.weight_Gain != null
-              ? (weighing.weight_Gain >= 0 ? "+" : "") + weighing.weight_Gain.toFixed(2) + " kg"
-              : "Sin dato",
-          fechaPesaje: weighing.fec_Weight ? new Date(weighing.fec_Weight).toLocaleDateString() : "Sin fecha",
-          nombreAnimal: weighing.name_Piglet || "Sin nombre",
-          registradoPor: weighing.nom_Users || "Desconocido",
-          original: weighing,
+  // Función auxiliar para obtener el nombre del proyecto
+  const getProjectName = (payment) => {
+    // Intentar obtener el proyecto directamente del lote
+    if (payment.sale?.lot?.project?.name) {
+      return payment.sale.lot.project.name
+    }
+
+    // Intentar con diferentes capitalizaciones
+    if (payment.sale?.lot?.Project?.name) {
+      return payment.sale.lot.Project.name
+    }
+
+    // Intentar con diferentes estructuras
+    if (payment.sale?.Lot?.project?.name) {
+      return payment.sale.Lot.project.name
+    }
+
+    if (payment.sale?.Lot?.Project?.name) {
+      return payment.sale.Lot.Project.name
+    }
+
+    // Intentar con propiedades directas
+    if (payment.sale?.lot?.project_name) {
+      return payment.sale.lot.project_name
+    }
+
+    // Intentar obtener el ID del proyecto y usar un mapeo
+    const projectId = payment.sale?.lot?.id_Projects || payment.sale?.lot?.project?.id_Projects
+    if (projectId) {
+      // Aquí podrías tener un mapeo de IDs a nombres si es necesario
+      // Por ahora, solo mostraremos el ID
+      return `Proyecto #${projectId}`
+    }
+
+    return "Sin proyecto"
+  }
+
+  // Función para cargar todos los proyectos para el filtro
+  async function fetchProjectsForFilter() {
+    try {
+      // Usar directamente el endpoint de proyectos
+      const response = await axiosInstance.get("/api/Project/GetAllProjects")
+      if (response.data && Array.isArray(response.data)) {
+        console.log("Todos los proyectos desde el backend:", response.data)
+
+        // Mostrar todos los proyectos sin filtrar por estado inicialmente
+        const allProjects = response.data.map((project) => ({
+          id_Projects: project.id_Projects,
+          name: project.name,
+          status: project.status || "Sin estado",
         }))
-        setWeighingData(data)
+
+        console.log("Proyectos procesados:", allProjects)
+
+        // Opcional: Si quieres filtrar por estado, descomenta la siguiente línea
+        // const activeProjects = allProjects.filter(
+        //   (project) => project.status === "Activo" || project.status === "Active"
+        // )
+
+        setProjects(allProjects) // Cambiar por activeProjects si quieres filtrar
       }
     } catch (error) {
-      setError("No se pudieron cargar los datos de pesaje.")
-      setAlertInfo({
-        isOpen: true,
-        message: "No se pudieron cargar los datos de pesaje.",
-        type: "error",
-      })
+      console.error("Error al cargar proyectos para el filtro:", error)
+      showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
+    }
+  }
+
+  // Función para cargar pagos, con o sin filtro de proyecto
+  async function fetchPayments(projectId = null) {
+    try {
+      setIsLoading(true)
+      const response = await axiosInstance.get("/api/Payment/GetAllPayments")
+
+      if (response.status === 200) {
+        console.log("Total de pagos recibidos:", response.data.length)
+
+        let filteredPayments = response.data
+
+        // Aplicar filtro de proyecto si se seleccionó uno
+        if (projectId && projectId !== "all") {
+          const targetProjectId = Number.parseInt(projectId, 10)
+          console.log("Filtrando por proyecto ID:", targetProjectId)
+
+          filteredPayments = response.data.filter((payment) => {
+            const paymentProjectId =
+              payment.sale?.lot?.project?.id_Projects ||
+              payment.sale?.lot?.Project?.id_Projects ||
+              payment.sale?.lot?.id_Projects ||
+              payment.sale?.Lot?.project?.id_Projects ||
+              payment.sale?.Lot?.Project?.id_Projects
+
+            console.log(`Pago ${payment.id_Payments} - Proyecto ID: ${paymentProjectId}`)
+            return paymentProjectId === targetProjectId
+          })
+
+          console.log("Pagos filtrados:", filteredPayments.length)
+        }
+
+        const data = filteredPayments.map((payment) => ({
+          id: payment.id_Payments,
+          monto:
+            payment.amount != null
+              ? payment.amount.toLocaleString("es-CO", {
+                  style: "currency",
+                  currency: "COP",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })
+              : "Sin monto",
+          fechaPago: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("es-CO") : "Sin fecha",
+          metodoPago: payment.payment_method || "Sin método",
+          cliente: payment.sale?.client
+            ? `${payment.sale.client.names} ${payment.sale.client.surnames}`
+            : "Sin cliente",
+          documento: payment.sale?.client?.document || "Sin documento",
+          lote: payment.sale?.lot ? `${payment.sale.lot.block}-${payment.sale.lot.lot_number}` : "Sin lote",
+          proyecto: getProjectName(payment),
+          original: payment,
+          searchableIdentifier: `${payment.id_Payments} ${payment.sale?.client?.names} ${payment.sale?.client?.surnames} ${payment.sale?.lot?.block}-${payment.sale.lot?.lot_number} ${getProjectName(payment)} ${payment.payment_method}`,
+        }))
+        setPaymentData(data)
+      }
+    } catch (error) {
+      console.error("Error al cargar pagos:", error)
+      setError("No se pudieron cargar los datos de pagos.")
+      showAlert("error", "No se pudieron cargar los datos de pagos.")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Manejar cambio en el filtro de proyecto
+  const handleProjectFilterChange = (value) => {
+    setSelectedProjectId(value)
+    fetchPayments(value === "all" ? null : value)
+  }
+
   useEffect(() => {
-    fetchWeighings()
+    fetchProjectsForFilter()
+    fetchPayments() // Cargar todos los pagos inicialmente
   }, [])
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
-      const response = await axiosInstance.delete(`/api/Weighing/DeleteWeighing?id_Weighings=${numericId}`)
+      const response = await axiosInstance.delete(`/api/Payment/DeletePayment/${numericId}`)
 
-      fetchWeighings()
-      setAlertInfo({
-        isOpen: true,
-        message:
-          response.data.message ||
-          "Pesaje eliminado correctamente. Se han recalculado los pesos y verificado las etapas.",
-        type: "success",
-      })
+      fetchPayments(selectedProjectId === "all" ? null : selectedProjectId) // Refrescar con el filtro actual
+      showAlert("success", response.data?.message || "Pago eliminado y recaudo actualizado correctamente.")
     } catch (error) {
-      console.error("Error detallado al eliminar:", error)
-      const errorMessage = error.response?.data?.message || "Error al eliminar el pesaje"
-      setAlertInfo({
-        isOpen: true,
-        message: errorMessage,
-        type: "error",
-      })
+      console.error("Error al eliminar:", error)
+      const errorMessage = error.response?.data?.message || "Error al eliminar el pago"
+      showAlert("error", errorMessage)
     }
   }
 
   const handleUpdate = async (row) => {
     try {
-      const weighingId = row.original.id_Weighing
-      const response = await axiosInstance.get(`/api/Weighing/GetWeighingId?id_Weighings=${weighingId}`)
+      const paymentId = row.original.id_Payments
+      const response = await axiosInstance.get(`/api/Payment/GetPaymentID/${paymentId}`)
 
       if (response.status === 200) {
-        const weighingData = response.data
-        console.log("Pesaje a editar (datos completos):", weighingData)
-        setEditingWeighing(weighingData)
-        setIsModalOpen(true)
-      } else {
-        console.log("Usando datos parciales para editar:", row.original)
-        setEditingWeighing(row.original)
+        setEditingPayment(response.data)
         setIsModalOpen(true)
       }
     } catch (error) {
-      console.error("Error al obtener datos completos del pesaje:", error)
-      setEditingWeighing(row.original)
+      console.error("Error al obtener datos del pago:", error)
+      setEditingPayment(row.original)
       setIsModalOpen(true)
     }
   }
@@ -123,130 +225,8 @@ function Weighing() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setTimeout(() => {
-      setEditingWeighing(null)
+      setEditingPayment(null)
     }, 300)
-  }
-
-  const recalculatePigletWeight = async (row) => {
-    try {
-      if (!row || !row.original) {
-        setAlertInfo({
-          isOpen: true,
-          message: "No se puede recalcular el peso para este registro.",
-          type: "error",
-        })
-        return
-      }
-
-      // Obtener el ID del lechón desde el pesaje
-      const weighingId = row.original.id_Weighing
-      const weighingResponse = await axiosInstance.get(`/api/Weighing/GetWeighingId?id_Weighings=${weighingId}`)
-
-      if (!weighingResponse.data || !weighingResponse.data.id_Piglet) {
-        setAlertInfo({
-          isOpen: true,
-          message: "No se pudo obtener la información del lechón asociado.",
-          type: "error",
-        })
-        return
-      }
-
-      const pigletId = weighingResponse.data.id_Piglet
-
-      // Obtener los datos del lechón para conocer su peso inicial
-      const pigletResponse = await axiosInstance.get(`/api/Piglet/GetPigletId?id_Piglet=${pigletId}`)
-      const piglet = pigletResponse.data
-
-      if (!piglet) {
-        setAlertInfo({
-          isOpen: true,
-          message: "No se encontró el lechón asociado a este pesaje.",
-          type: "error",
-        })
-        return
-      }
-
-      // Llamar al endpoint para recalcular el peso
-      const response = await axiosInstance.post(
-        `/api/Weighing/RecalculatePigletWeight?id_Piglet=${pigletId}&newInitialWeight=${piglet.weight_Initial}`,
-      )
-
-      setAlertInfo({
-        isOpen: true,
-        message:
-          response.data.message ||
-          "Peso del lechón recalculado correctamente. Se han actualizado todos los pesajes y verificado la etapa.",
-        type: "success",
-      })
-      fetchWeighings()
-    } catch (error) {
-      console.error("Error al recalcular el peso:", error)
-      const errorMessage = error.response?.data?.message || "Ocurrió un error al recalcular el peso del lechón."
-      setAlertInfo({
-        isOpen: true,
-        message: errorMessage,
-        type: "error",
-      })
-    }
-  }
-
-  const checkPigletStage = async (row) => {
-    try {
-      if (!row || !row.original) {
-        setAlertInfo({
-          isOpen: true,
-          message: "No se puede verificar la etapa para este registro.",
-          type: "error",
-        })
-        return
-      }
-
-      // Obtener el ID del lechón desde el pesaje
-      const weighingId = row.original.id_Weighing
-      const weighingResponse = await axiosInstance.get(`/api/Weighing/GetWeighingId?id_Weighings=${weighingId}`)
-
-      if (!weighingResponse.data || !weighingResponse.data.id_Piglet) {
-        setAlertInfo({
-          isOpen: true,
-          message: "No se pudo obtener la información del lechón asociado.",
-          type: "error",
-        })
-        return
-      }
-
-      const pigletId = weighingResponse.data.id_Piglet
-      const response = await axiosInstance.post(`/api/Piglet/CheckStage/${pigletId}`)
-
-      if (response.data.success) {
-        if (response.data.stageChanged) {
-          setAlertInfo({
-            isOpen: true,
-            message: `${response.data.pigletName} cambió a etapa ${response.data.newStage}. Razón: ${response.data.transitionReason}`,
-            type: "success",
-          })
-          fetchWeighings()
-        } else {
-          setAlertInfo({
-            isOpen: true,
-            message: `${response.data.pigletName}: ${response.data.message}`,
-            type: "info",
-          })
-        }
-      } else {
-        setAlertInfo({
-          isOpen: true,
-          message: response.data.message || "Error al verificar la etapa",
-          type: "error",
-        })
-      }
-    } catch (error) {
-      console.error("Error al verificar etapa:", error)
-      setAlertInfo({
-        isOpen: true,
-        message: "Error al verificar la etapa del lechón.",
-        type: "error",
-      })
-    }
   }
 
   return (
@@ -254,79 +234,69 @@ function Weighing() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <img src="/assets/img/pesopig.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
-            <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
+            <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
+            <p className="text-lg text-gray-700 font-semibold mt-2">Cargando pagos...</p>
           </div>
         </div>
       )}
 
       {!isLoading && (
         <>
-          <div className="mb-4">
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-2 flex items-center">
-                <FaChartLine className="mr-2" />
-                Sistema de Pesaje Inteligente
-              </h3>
-              <ul className="text-sm text-blue-600 space-y-1">
-                <li>• La ganancia de peso se calcula automáticamente basada en el pesaje anterior</li>
-                <li>• Las etapas se verifican automáticamente después de cada pesaje</li>
-                <li>• Al eliminar un pesaje, se recalculan todos los pesos y se verifican las etapas</li>
-                <li>• Los cambios de etapa se realizan por peso alcanzado o tiempo transcurrido</li>
-              </ul>
+          <div className="mb-4 flex items-center gap-4 flex-wrap">
+            <div className="relative w-full max-w-xs">
+              <Label htmlFor="project-filter" className="sr-only">
+                Filtrar por Proyecto
+              </Label>
+              <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
+                <SelectTrigger className="w-full">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Filtrar por Proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los Proyectos</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+            {selectedProjectId && selectedProjectId !== "all" && (
+              <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
+                Mostrando pagos del proyecto:{" "}
+                {projects.find((p) => p.id_Projects.toString() === selectedProjectId)?.name}
+              </div>
+            )}
           </div>
-
           <ContentPage
             TitlePage={TitlePage}
-            Data={weighingData}
-            showDeleteButton={true} // ✅ Mostrar eliminar
-            showToggleButton={false} // ✅ No mostrar toggle
-            showStatusColumn={false} // ✅ IMPORTANTE: No mostrar columna
-            showPdfButton={false} // ✅ Ocultar botón PDF solo en esta página
-
-            TitlesTable={titlesWeighing}
+            Data={paymentData}
+            showDeleteButton={true}
+            showToggleButton={false}
+            showStatusColumn={false}
+            showPdfButton={false}
+            TitlesTable={titlesPayments}
             FormPage={() => (
-              <RegisterWeighing
-                refreshData={fetchWeighings}
-                weighingToEdit={editingWeighing}
+              <RegisterPayment
+                refreshData={fetchPayments}
+                paymentToEdit={editingPayment}
                 onCancelEdit={handleCloseModal}
                 closeModal={handleCloseModal}
-                showAlert={(message, type, redirectUrl = null) => {
-                  setAlertInfo({
-                    isOpen: true,
-                    message,
-                    type,
-                    redirectUrl,
-                  })
-                }}
+                showAlert={showAlert}
               />
             )}
             onDelete={handleDelete}
             onUpdate={handleUpdate}
-            endpoint="/api/Weighing/DeleteWeighing"
+            endpoint="/api/Payment/DeletePayment"
             isModalOpen={isModalOpen}
             setIsModalOpen={setIsModalOpen}
-            refreshData={fetchWeighings}
-            extraActions={[
-              {
-                label: "Recalcular Peso",
-                onClick: recalculatePigletWeight,
-                icon: "calculator",
-                tooltip: "Recalcula todos los pesajes del lechón y verifica la etapa",
-              },
-              {
-                label: "Verificar Etapa",
-                onClick: checkPigletStage,
-                icon: "exchange-alt",
-                tooltip: "Verifica si el lechón debe cambiar de etapa",
-              },
-            ]}
+            refreshData={() => fetchPayments(selectedProjectId === "all" ? null : selectedProjectId)}
           />
         </>
       )}
 
-      {error && <div className="text-red-600">{error}</div>}
+      {error && <div className="text-red-600 text-center mt-4">{error}</div>}
 
       <AlertModal
         isOpen={alertInfo.isOpen}
@@ -339,4 +309,4 @@ function Weighing() {
   )
 }
 
-export default Weighing
+export default Payments

@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, DollarSign, Search, User, Loader2, CreditCard } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar, Search, User, Loader2, AlertTriangle, FileText, Calculator } from "lucide-react"
 
-function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal, showAlert }) {
+function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, closeModal, showAlert }) {
   const [formData, setFormData] = useState({
-    amount: "",
-    payment_date: "",
-    payment_method: "",
+    withdrawal_date: "",
+    reason: "",
     id_Sales: "",
   })
 
@@ -27,49 +27,25 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
   const [selectedSale, setSelectedSale] = useState(null)
   const [salesLoading, setSalesLoading] = useState(false)
 
-  const [loading, setLoading] = useState(false)
-  const isEditing = !!paymentToEdit
+  // Estados para cálculo de penalización
+  const [calculatedPenalty, setCalculatedPenalty] = useState(null)
+  const [penaltyLoading, setPenaltyLoading] = useState(false)
 
-  // Métodos de pago disponibles
-  const paymentMethods = [
-    { value: "EFECTIVO", label: "Efectivo", icon: <DollarSign className="w-4 h-4" /> },
-    { value: "BANCO", label: "Transferencia Bancaria", icon: <CreditCard className="w-4 h-4" /> },
-  ]
+  const [loading, setLoading] = useState(false)
+  const isEditing = !!withdrawalToEdit
 
   // Función auxiliar para obtener el nombre del proyecto
   const getProjectName = (sale) => {
-    // Intentar obtener el proyecto directamente del lote
     if (sale?.lot?.project?.name) {
       return sale.lot.project.name
     }
-
-    // Intentar con diferentes capitalizaciones
     if (sale?.lot?.Project?.name) {
       return sale.lot.Project.name
     }
-
-    // Intentar con diferentes estructuras
-    if (sale?.Lot?.project?.name) {
-      return sale.Lot.project.name
-    }
-
-    if (sale?.Lot?.Project?.name) {
-      return sale.Lot.Project.name
-    }
-
-    // Intentar con propiedades directas
-    if (sale?.lot?.project_name) {
-      return sale.lot.project_name
-    }
-
-    // Intentar obtener el ID del proyecto y usar un mapeo
     const projectId = sale?.lot?.id_Projects || sale?.lot?.project?.id_Projects
     if (projectId) {
-      // Aquí podrías tener un mapeo de IDs a nombres si es necesario
-      // Por ahora, solo mostraremos el ID
       return `Proyecto #${projectId}`
     }
-
     return "Sin proyecto"
   }
 
@@ -80,6 +56,7 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       setFoundClient(null)
       setClientSales([])
       setSelectedSale(null)
+      setCalculatedPenalty(null)
       setFormData((prev) => ({ ...prev, id_Sales: "" }))
       return
     }
@@ -90,6 +67,7 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       setFoundClient(null)
       setClientSales([])
       setSelectedSale(null)
+      setCalculatedPenalty(null)
       setFormData((prev) => ({ ...prev, id_Sales: "" }))
       return
     }
@@ -99,14 +77,15 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
     setFoundClient(null)
     setClientSales([])
     setSelectedSale(null)
+    setCalculatedPenalty(null)
     setFormData((prev) => ({ ...prev, id_Sales: "" }))
 
     try {
       const response = await axiosInstance.get(`/api/Client/GetByDocument/${parsedDocument}`)
       if (response.status === 200 && response.data) {
         setFoundClient(response.data)
-        // Buscar ventas del cliente
-        await fetchClientSales(response.data.id_Clients)
+        // Buscar ventas activas del cliente
+        await fetchClientActiveSales(response.data.id_Clients)
       } else {
         setClientSearchError("Cliente no encontrado con ese documento.")
         showAlert("error", "Cliente no encontrado con ese documento.")
@@ -120,23 +99,21 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
     }
   }, [clientDocument, showAlert])
 
-  // Función para obtener ventas del cliente
-  const fetchClientSales = async (clientId) => {
+  // Función para obtener ventas activas del cliente
+  const fetchClientActiveSales = async (clientId) => {
     setSalesLoading(true)
     try {
       const response = await axiosInstance.get("/api/Sale/GetAllSales")
       if (response.data && Array.isArray(response.data)) {
-        // Filtrar ventas del cliente específico que tengan deuda pendiente
+        // Filtrar ventas del cliente específico que estén activas
         const clientActiveSales = response.data.filter(
-          (sale) =>
-            sale.id_Clients === clientId &&
-            (sale.status === "Activo" || sale.status === "Active") &&
-            sale.total_debt > 0,
+          (sale) => sale.id_Clients === clientId && (sale.status === "Activo" || sale.status === "Active"),
         )
+
         setClientSales(clientActiveSales)
 
         if (clientActiveSales.length === 0) {
-          setClientSearchError("Este cliente no tiene ventas activas con deuda pendiente.")
+          setClientSearchError("Este cliente no tiene ventas activas disponibles para desistimiento.")
         }
       }
     } catch (error) {
@@ -147,11 +124,47 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
     }
   }
 
-  // Función para seleccionar una venta
-  const handleSelectSale = (saleId) => {
+  // Función para seleccionar una venta y calcular penalización
+  const handleSelectSale = async (saleId) => {
     const sale = clientSales.find((s) => s.id_Sales.toString() === saleId)
     setSelectedSale(sale)
     setFormData((prev) => ({ ...prev, id_Sales: saleId }))
+
+    // Calcular penalización automáticamente
+    if (sale) {
+      await calculatePenalty(sale.id_Sales)
+    }
+  }
+
+  // Función para calcular la penalización
+  const calculatePenalty = async (saleId) => {
+    setPenaltyLoading(true)
+    try {
+      const response = await axiosInstance.get(`/api/Withdrawal/CalculatePenalty/${saleId}`)
+      if (response.status === 200) {
+        // Manejar diferentes formatos de respuesta
+        const penalty = response.data.penalty || response.data
+        setCalculatedPenalty(penalty)
+      }
+    } catch (error) {
+      console.error("Error al calcular penalización:", error)
+
+      // Si el endpoint no existe, calcular localmente
+      if (error.response?.status === 404) {
+        if (selectedSale) {
+          const totalRaised = selectedSale.total_raised || 0
+          const totalValue = selectedSale.total_value || 0
+          const penaltyPercentage = totalValue * 0.1
+          const penalty = Math.max(0, totalRaised - penaltyPercentage)
+          setCalculatedPenalty(penalty)
+        }
+      } else {
+        showAlert("error", "Error al calcular la penalización.")
+        setCalculatedPenalty(0)
+      }
+    } finally {
+      setPenaltyLoading(false)
+    }
   }
 
   // Cargar datos iniciales
@@ -159,36 +172,35 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
     if (!isEditing) {
       setFormData((prev) => ({
         ...prev,
-        payment_date: new Date().toISOString().split("T")[0],
+        withdrawal_date: new Date().toISOString().split("T")[0],
       }))
     }
   }, [isEditing])
 
   // Poblar formulario para edición
   useEffect(() => {
-    if (isEditing && paymentToEdit) {
+    if (isEditing && withdrawalToEdit) {
       setFormData({
-        amount: paymentToEdit.amount?.toString() || "",
-        payment_date: paymentToEdit.payment_date
-          ? new Date(paymentToEdit.payment_date).toISOString().split("T")[0]
+        withdrawal_date: withdrawalToEdit.withdrawal_date
+          ? new Date(withdrawalToEdit.withdrawal_date).toISOString().split("T")[0]
           : "",
-        payment_method: paymentToEdit.payment_method || "",
-        id_Sales: paymentToEdit.id_Sales?.toString() || "",
+        reason: withdrawalToEdit.reason || "",
+        id_Sales: withdrawalToEdit.id_Sales?.toString() || "",
       })
 
       // Cargar datos del cliente y venta para edición
-      if (paymentToEdit.sale?.client) {
-        setFoundClient(paymentToEdit.sale.client)
-        setClientDocument(paymentToEdit.sale.client.document?.toString() || "")
-        setSelectedSale(paymentToEdit.sale)
-        setClientSales([paymentToEdit.sale])
+      if (withdrawalToEdit.sale?.client) {
+        setFoundClient(withdrawalToEdit.sale.client)
+        setClientDocument(withdrawalToEdit.sale.client.document?.toString() || "")
+        setSelectedSale(withdrawalToEdit.sale)
+        setClientSales([withdrawalToEdit.sale])
+        setCalculatedPenalty(withdrawalToEdit.penalty)
       }
     } else {
       // Resetear estados
       setFormData({
-        amount: "",
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "",
+        withdrawal_date: new Date().toISOString().split("T")[0],
+        reason: "",
         id_Sales: "",
       })
       setClientDocument("")
@@ -196,8 +208,9 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       setClientSearchError(null)
       setClientSales([])
       setSelectedSale(null)
+      setCalculatedPenalty(null)
     }
-  }, [paymentToEdit, isEditing])
+  }, [withdrawalToEdit, isEditing])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -217,58 +230,53 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const { amount, payment_date, payment_method, id_Sales } = formData
+    const { withdrawal_date, reason, id_Sales } = formData
 
-    if (!amount || !payment_date || !payment_method || !id_Sales) {
+    if (!withdrawal_date || !reason || !id_Sales) {
       showAlert("error", "Todos los campos obligatorios deben ser completados.")
       return
     }
 
-    const parsedAmount = Number.parseFloat(amount)
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      showAlert("error", "El monto debe ser un número positivo.")
+    if (!selectedSale) {
+      showAlert("error", "Debe seleccionar una venta válida.")
       return
     }
 
-    // Validar que el monto no exceda la deuda pendiente
-    if (selectedSale && parsedAmount > selectedSale.total_debt) {
-      showAlert(
-        "error",
-        `El monto no puede exceder la deuda pendiente de ${selectedSale.total_debt.toLocaleString("es-CO", { style: "currency", currency: "COP" })}.`,
-      )
-      return
-    }
-
+    // Construir el cuerpo de la solicitud según si es edición o creación
     const body = {
-      Amount: parsedAmount,
-      Payment_Date: new Date(payment_date).toISOString(),
-      Payment_Method: payment_method,
-      Id_Sales: Number.parseInt(id_Sales, 10),
+      reason: reason.trim(),
+      withdrawal_date: new Date(withdrawal_date).toISOString(),
+      id_Sales: Number.parseInt(id_Sales, 10),
     }
 
     if (isEditing) {
-      body.Id_Payments = paymentToEdit.id_Payments
+      // Para edición, incluimos el ID del desistimiento y la penalización existente
+      body.id_Withdrawals = withdrawalToEdit.id_Withdrawals
+      body.penalty = withdrawalToEdit.penalty || 0 // Mantener la penalización original
     }
+    // Para creación, no incluimos id_Withdrawals ni penalty, ya que son autoincremental/autocalculado por el backend.
+
+    console.log("Datos enviados al backend:", body)
 
     try {
       setLoading(true)
       let response
       if (isEditing) {
-        response = await axiosInstance.put("/api/Payment/UpdatePayment", body)
+        response = await axiosInstance.put(`/api/Withdrawal/UpdateWithdrawal/${body.id_Withdrawals}`, body)
       } else {
-        response = await axiosInstance.post("/api/Payment/CreatePayment", body)
+        response = await axiosInstance.post("/api/Withdrawal/CreateWithdrawal", body)
       }
 
       const successMessage =
-        response.data?.message || (isEditing ? "Pago actualizado con éxito." : "Pago registrado con éxito.")
+        response.data?.message ||
+        (isEditing ? "Desistimiento actualizado con éxito." : "Desistimiento registrado con éxito.")
 
       showAlert("success", successMessage)
 
       if (!isEditing || closeModal) {
         setFormData({
-          amount: "",
-          payment_date: new Date().toISOString().split("T")[0],
-          payment_method: "",
+          withdrawal_date: new Date().toISOString().split("T")[0],
+          reason: "",
           id_Sales: "",
         })
         setClientDocument("")
@@ -276,18 +284,30 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
         setClientSearchError(null)
         setClientSales([])
         setSelectedSale(null)
+        setCalculatedPenalty(null)
       }
 
       if (closeModal) closeModal()
       if (typeof refreshData === "function") refreshData()
     } catch (error) {
       console.error("Error completo:", error)
-      const errorMessage = error.response?.data?.message || error.response?.data || "Error desconocido"
 
-      showAlert(
-        "error",
-        `Ocurrió un error al ${isEditing ? "actualizar" : "registrar"} el pago: ` + JSON.stringify(errorMessage),
-      )
+      // Manejo mejorado de errores
+      let errorMessage = "Error desconocido"
+
+      if (error.response?.data) {
+        if (typeof error.response.data === "string") {
+          errorMessage = error.response.data
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message
+        } else {
+          errorMessage = JSON.stringify(error.response.data)
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
+      showAlert("error", `Error al ${isEditing ? "actualizar" : "registrar"} el desistimiento: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -296,7 +316,10 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">{isEditing ? "Editar Pago" : "Registrar Nuevo Pago"}</h2>
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+          <AlertTriangle className="mr-2 text-red-500" />
+          {isEditing ? "Editar Desistimiento" : "Registrar Nuevo Desistimiento"}
+        </h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -364,11 +387,11 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
         {/* Sección de Venta */}
         {foundClient && clientSales.length > 0 && (
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Selección de Venta</h3>
+            <h3 className="text-lg font-semibold text-gray-700 mb-4">Selección de Venta para Desistimiento</h3>
 
             <div>
               <Label htmlFor="id_Sales" className="block text-sm font-medium text-gray-700 mb-1">
-                Venta a Pagar *
+                Venta a Desistir *
               </Label>
               <Select
                 name="id_Sales"
@@ -401,8 +424,8 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
                           </span>
                           <span className="text-xs text-gray-500 ml-2">{getProjectName(sale)}</span>
                         </div>
-                        <div className="text-sm text-red-600 font-medium mt-1">
-                          Deuda: {sale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                        <div className="text-sm text-green-600 font-medium mt-1">
+                          Recaudo: {sale.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
                         </div>
                       </div>
                     </SelectItem>
@@ -413,9 +436,9 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
             {/* Información de la Venta Seleccionada */}
             {selectedSale && (
-              <div className="mt-4 p-4 border border-green-200 bg-green-50 rounded-md text-sm">
-                <p className="font-semibold text-green-800 mb-2">Venta Seleccionada:</p>
-                <div className="grid grid-cols-2 gap-3 text-green-700">
+              <div className="mt-4 p-4 border border-amber-200 bg-amber-50 rounded-md text-sm">
+                <p className="font-semibold text-amber-800 mb-2">Venta Seleccionada para Desistimiento:</p>
+                <div className="grid grid-cols-2 gap-3 text-amber-700">
                   <div>
                     <p>
                       <strong>ID:</strong> #{selectedSale.id_Sales}
@@ -448,52 +471,51 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
                 </p>
               </div>
             )}
+
+            {/* Cálculo de Penalización */}
+            {selectedSale && (
+              <div className="mt-4 p-4 border border-red-200 bg-red-50 rounded-md text-sm">
+                <div className="flex items-center mb-2">
+                  <Calculator className="mr-2 text-red-600" size={16} />
+                  <p className="font-semibold text-red-800">Cálculo de Penalización (10%):</p>
+                </div>
+                {penaltyLoading ? (
+                  <div className="flex items-center text-red-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Calculando penalización...
+                  </div>
+                ) : calculatedPenalty !== null ? (
+                  <div className="text-red-700">
+                    <p>
+                      <strong>Penalización a aplicar:</strong>{" "}
+                      {calculatedPenalty.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                    </p>
+                    <p className="text-xs mt-1">Fórmula: Recaudo Total - (Valor Total × 10%) = Penalización</p>
+                  </div>
+                ) : (
+                  <p className="text-red-600">Error al calcular la penalización</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Sección de Detalles del Pago */}
+        {/* Sección de Detalles del Desistimiento */}
         <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Detalles del Pago</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Detalles del Desistimiento</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Monto */}
+            {/* Fecha de Desistimiento */}
             <div>
-              <Label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
-                Monto *
-              </Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  id="amount"
-                  name="amount"
-                  placeholder="Ej: 500000"
-                  value={formData.amount}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  required
-                  className="w-full pr-10"
-                />
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              </div>
-              {selectedSale && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Máximo: {selectedSale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-                </p>
-              )}
-            </div>
-
-            {/* Fecha de Pago */}
-            <div>
-              <Label htmlFor="payment_date" className="block text-sm font-medium text-gray-700 mb-1">
-                Fecha de Pago *
+              <Label htmlFor="withdrawal_date" className="block text-sm font-medium text-gray-700 mb-1">
+                Fecha de Desistimiento *
               </Label>
               <div className="relative">
                 <Input
                   type="date"
-                  id="payment_date"
-                  name="payment_date"
-                  value={formData.payment_date}
+                  id="withdrawal_date"
+                  name="withdrawal_date"
+                  value={formData.withdrawal_date}
                   onChange={handleChange}
                   required
                   className="w-full pr-10"
@@ -503,33 +525,51 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
             </div>
           </div>
 
-          {/* Método de Pago */}
+          {/* Motivo del Desistimiento */}
           <div className="mt-4">
-            <Label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago *</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {paymentMethods.map((method) => (
-                <label
-                  key={method.value}
-                  className="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <input
-                    type="radio"
-                    name="payment_method"
-                    value={method.value}
-                    checked={formData.payment_method === method.value}
-                    onChange={handleChange}
-                    className="mr-3"
-                    required
-                  />
-                  <div className="flex items-center">
-                    {method.icon}
-                    <span className="ml-2 font-medium">{method.label}</span>
-                  </div>
-                </label>
-              ))}
+            <Label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo del Desistimiento *
+            </Label>
+            <div className="relative">
+              <Textarea
+                id="reason"
+                name="reason"
+                placeholder="Describa el motivo del desistimiento..."
+                value={formData.reason}
+                onChange={handleChange}
+                required
+                className="w-full min-h-[100px]"
+                maxLength={500}
+              />
+              <FileText className="absolute right-3 top-3 text-gray-400" size={20} />
             </div>
+            <p className="text-xs text-gray-500 mt-1">{formData.reason.length}/500 caracteres</p>
           </div>
         </div>
+
+        {/* Advertencia sobre consecuencias */}
+        {selectedSale && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-red-700">
+                <p className="font-semibold mb-2">Consecuencias del Desistimiento:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>
+                    Se aplicará una penalización de{" "}
+                    {calculatedPenalty?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) ||
+                      "calculando..."}
+                  </li>
+                  <li>
+                    El lote {selectedSale.lot?.block}-{selectedSale.lot?.lot_number} será liberado automáticamente
+                  </li>
+                  <li>La venta cambiará a estado "Desistida"</li>
+                  <li>El cliente solo se desactivará si no tiene otras ventas activas</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end space-x-4 pt-6 border-t">
           <Button type="button" onClick={onCancelEdit} variant="outline" disabled={loading}>
@@ -538,7 +578,7 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
           <Button
             type="submit"
             disabled={loading || !foundClient || !selectedSale}
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-red-600 hover:bg-red-700"
           >
             {loading ? (
               <>
@@ -546,9 +586,9 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
                 {isEditing ? "Actualizando..." : "Registrando..."}
               </>
             ) : isEditing ? (
-              "Actualizar Pago"
+              "Actualizar Desistimiento"
             ) : (
-              "Registrar Pago"
+              "Registrar Desistimiento"
             )}
           </Button>
         </div>
@@ -557,4 +597,4 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
   )
 }
 
-export default RegisterPayment
+export default RegisterWithdrawal

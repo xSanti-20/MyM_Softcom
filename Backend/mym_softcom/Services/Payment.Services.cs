@@ -29,6 +29,7 @@ namespace mym_softcom.Services
                                  .ThenInclude(s => s.client) // Incluir cliente de la venta
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.lot)    // Incluir lote de la venta
+                                 .ThenInclude(l => l.project) // Incluir proyecto del lote
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.plan)   // Incluir plan de la venta
                                  .ToListAsync();
@@ -45,6 +46,7 @@ namespace mym_softcom.Services
                                  .ThenInclude(s => s.client)
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.lot)
+                                 .ThenInclude(l => l.project) // Incluir proyecto del lote
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.plan)
                                  .FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
@@ -61,6 +63,7 @@ namespace mym_softcom.Services
                                  .ThenInclude(s => s.client)
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.lot)
+                                 .ThenInclude(l => l.project) // Incluir proyecto del lote
                                  .Include(p => p.sale)
                                  .ThenInclude(s => s.plan)
                                  .ToListAsync();

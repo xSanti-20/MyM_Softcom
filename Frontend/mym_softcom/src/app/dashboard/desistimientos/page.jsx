@@ -4,18 +4,18 @@ import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
-import RegisterSale from "./formventas"
+import RegisterWithdrawal from "./formdesistimientos"
 import AlertModal from "@/components/AlertModal"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter } from "lucide-react"
+import { Filter, AlertTriangle } from "lucide-react"
 
-function SalesPage() {
-  const TitlePage = "Ventas"
-  const [salesData, setSalesData] = useState([])
+function WithdrawalsPage() {
+  const TitlePage = "Desistimientos"
+  const [withdrawalData, setWithdrawalData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [editingSale, setEditingSale] = useState(null)
+  const [editingWithdrawal, setEditingWithdrawal] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
@@ -27,20 +27,18 @@ function SalesPage() {
   const [projects, setProjects] = useState([]) // Para el filtro de proyectos
   const [selectedProjectId, setSelectedProjectId] = useState("") // ID del proyecto seleccionado para filtrar
 
-  const titlesSale = [
+  const titlesWithdrawal = [
     "ID",
-    "Fecha Venta",
-    "Valor Total",
-    "Cuota Inicial",
-    "Recaudo Total",
-    "Deuda Total",
-    "Valor Cuota",
-    "Estado",
+    "Fecha Desistimiento",
+    "Penalización",
+    "Motivo",
     "Cliente",
+    "Documento",
     "Lote",
     "Proyecto",
-    "Vendedor",
-    "Plan",
+    "Valor Venta",
+    "Recaudo Total",
+    "Estado Venta",
   ]
 
   const showAlert = (type, message, onSuccessCallback = null) => {
@@ -64,56 +62,30 @@ function SalesPage() {
   }
 
   // Función auxiliar para obtener el nombre del proyecto
-  const getProjectName = (sale) => {
-    // Intentar obtener el proyecto directamente del lote
-    if (sale.lot?.project?.name) {
-      return sale.lot.project.name
+  const getProjectName = (withdrawal) => {
+    if (withdrawal.sale?.lot?.project?.name) {
+      return withdrawal.sale.lot.project.name
     }
-
-    // Intentar con diferentes capitalizaciones
-    if (sale.lot?.Project?.name) {
-      return sale.lot.Project.name
+    if (withdrawal.sale?.lot?.Project?.name) {
+      return withdrawal.sale.lot.Project.name
     }
-
-    // Intentar con diferentes estructuras
-    if (sale.Lot?.project?.name) {
-      return sale.Lot.project.name
-    }
-
-    if (sale.Lot?.Project?.name) {
-      return sale.Lot.Project.name
-    }
-
-    // Intentar con propiedades directas
-    if (sale.lot?.project_name) {
-      return sale.lot.project_name
-    }
-
-    // Intentar obtener el ID del proyecto y usar un mapeo
-    const projectId = sale.lot?.id_Projects || sale.lot?.project?.id_Projects
+    const projectId = withdrawal.sale?.lot?.id_Projects || withdrawal.sale?.lot?.project?.id_Projects
     if (projectId) {
       return `Proyecto #${projectId}`
     }
-
     return "Sin proyecto"
   }
 
   // Función para cargar todos los proyectos para el filtro
   async function fetchProjectsForFilter() {
     try {
-      // Usar directamente el endpoint de proyectos
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.data && Array.isArray(response.data)) {
-        console.log("Todos los proyectos desde el backend:", response.data)
-
-        // Mostrar todos los proyectos sin filtrar por estado inicialmente
         const allProjects = response.data.map((project) => ({
           id_Projects: project.id_Projects,
           name: project.name,
           status: project.status || "Sin estado",
         }))
-
-        console.log("Proyectos procesados:", allProjects)
         setProjects(allProjects)
       }
     } catch (error) {
@@ -122,51 +94,62 @@ function SalesPage() {
     }
   }
 
-  // Función para cargar ventas, con o sin filtro de proyecto
-  async function fetchSales(projectId = null) {
+  // Función para cargar desistimientos, con o sin filtro de proyecto
+  async function fetchWithdrawals(projectId = null) {
     try {
       setIsLoading(true)
-      const response = await axiosInstance.get("/api/Sale/GetAllSales")
+      const response = await axiosInstance.get("/api/Withdrawal/GetAllWithdrawals")
 
       if (response.status === 200) {
-        console.log("Total de ventas recibidas:", response.data.length)
+        console.log("Total de desistimientos recibidos:", response.data.length)
 
-        let filteredSales = response.data
+        let filteredWithdrawals = response.data
 
         // Aplicar filtro de proyecto si se seleccionó uno
         if (projectId && projectId !== "all") {
           const targetProjectId = Number.parseInt(projectId, 10)
           console.log("Filtrando por proyecto ID:", targetProjectId)
 
-          filteredSales = response.data.filter((sale) => {
-            const saleProjectId =
-              sale.lot?.project?.id_Projects ||
-              sale.lot?.Project?.id_Projects ||
-              sale.lot?.id_Projects ||
-              sale.Lot?.project?.id_Projects ||
-              sale.Lot?.Project?.id_Projects
+          filteredWithdrawals = response.data.filter((withdrawal) => {
+            const withdrawalProjectId =
+              withdrawal.sale?.lot?.project?.id_Projects ||
+              withdrawal.sale?.lot?.Project?.id_Projects ||
+              withdrawal.sale?.lot?.id_Projects
 
-            console.log(`Venta ${sale.id_Sales} - Proyecto ID: ${saleProjectId}`)
-            return saleProjectId === targetProjectId
+            return withdrawalProjectId === targetProjectId
           })
 
-          console.log("Ventas filtradas:", filteredSales.length)
+          console.log("Desistimientos filtrados:", filteredWithdrawals.length)
         }
 
-        const data = filteredSales.map((sale) => ({
-          id: sale.id_Sales,
-          sale_date: sale.sale_date ? new Date(sale.sale_date).toLocaleDateString() : "N/A",
+        const data = filteredWithdrawals.map((withdrawal) => ({
+          id: withdrawal.id_Withdrawals,
+          withdrawal_date: withdrawal.withdrawal_date
+            ? new Date(withdrawal.withdrawal_date).toLocaleDateString("es-CO")
+            : "N/A",
 
-          total_value:
-            sale.total_value?.toLocaleString("es-CO", {
+          penalty:
+            withdrawal.penalty?.toLocaleString("es-CO", {
               style: "currency",
               currency: "COP",
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
 
-          initial_payment:
-            sale.initial_payment?.toLocaleString("es-CO", {
+          reason: withdrawal.reason || "Sin motivo especificado",
+
+          client: withdrawal.sale?.client
+            ? `${withdrawal.sale.client.names} ${withdrawal.sale.client.surnames}`
+            : "N/A",
+
+          document: withdrawal.sale?.client?.document || "N/A",
+
+          lot: withdrawal.sale?.lot ? `${withdrawal.sale.lot.block}-${withdrawal.sale.lot.lot_number}` : "N/A",
+
+          project: getProjectName(withdrawal),
+
+          sale_value:
+            withdrawal.sale?.total_value?.toLocaleString("es-CO", {
               style: "currency",
               currency: "COP",
               minimumFractionDigits: 0,
@@ -174,47 +157,25 @@ function SalesPage() {
             }) || "N/A",
 
           total_raised:
-            sale.total_raised?.toLocaleString("es-CO", {
+            withdrawal.sale?.total_raised?.toLocaleString("es-CO", {
               style: "currency",
               currency: "COP",
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
 
-          total_debt:
-            sale.total_debt?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
+          sale_status: withdrawal.sale?.status || "N/A",
 
-          quota_value:
-            sale.quota_value?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          status: sale.status || "N/A",
-          client: sale.client ? `${sale.client.names} ${sale.client.surnames}` : "N/A",
-
-          lot: sale.lot ? `${sale.lot.block}-${sale.lot.lot_number}` : "N/A",
-
-          project: getProjectName(sale), // Nueva columna separada para el proyecto
-
-          user: sale.user?.nom_Users || "N/A",
-          plan: sale.plan?.name || "N/A",
-          original: sale,
-          searchableIdentifier: `${sale.id_Sales} ${sale.client?.names} ${sale.client?.surnames} ${sale.lot?.block}-${sale.lot?.lot_number} ${getProjectName(sale)} ${sale.status} ${sale.plan?.name}`,
+          original: withdrawal,
+          searchableIdentifier: `${withdrawal.id_Withdrawals} ${withdrawal.sale?.client?.names} ${withdrawal.sale?.client?.surnames} ${withdrawal.sale?.lot?.block}-${withdrawal.sale?.lot?.lot_number} ${getProjectName(withdrawal)} ${withdrawal.reason}`,
         }))
-        setSalesData(data)
+
+        setWithdrawalData(data)
       }
     } catch (error) {
-      console.error("Error al cargar ventas:", error)
-      setError("No se pudieron cargar los datos de las ventas.")
-      showAlert("error", "No se pudieron cargar los datos de las ventas.")
+      console.error("Error al cargar desistimientos:", error)
+      setError("No se pudieron cargar los datos de desistimientos.")
+      showAlert("error", "No se pudieron cargar los datos de desistimientos.")
     } finally {
       setIsLoading(false)
     }
@@ -223,41 +184,45 @@ function SalesPage() {
   // Manejar cambio en el filtro de proyecto
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
-    fetchSales(value === "all" ? null : value)
+    fetchWithdrawals(value === "all" ? null : value)
   }
 
   useEffect(() => {
     fetchProjectsForFilter()
-    fetchSales() // Cargar todas las ventas inicialmente
+    fetchWithdrawals() // Cargar todos los desistimientos inicialmente
   }, [])
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
-      await axiosInstance.delete(`/api/Sale/DeleteSale/${numericId}`)
-      fetchSales(selectedProjectId === "all" ? null : selectedProjectId) // Refrescar con el filtro actual
-      showAlert("success", "Venta eliminada correctamente. El lote asociado ha sido liberado.")
+      const response = await axiosInstance.delete(`/api/Withdrawal/DeleteWithdrawal/${numericId}`)
+      fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId) // Refrescar con el filtro actual
+      showAlert(
+        "success",
+        response.data?.message || "Desistimiento eliminado correctamente. La venta ha sido reactivada.",
+      )
     } catch (error) {
-      console.error("Error detallado al eliminar:", error)
-      showAlert("error", "Error al eliminar la venta.")
+      console.error("Error al eliminar desistimiento:", error)
+      const errorMessage = error.response?.data?.message || "Error al eliminar el desistimiento"
+      showAlert("error", errorMessage)
     }
   }
 
   const handleUpdate = async (row) => {
     try {
-      const saleId = row.id
-      const response = await axiosInstance.get(`/api/Sale/GetSaleID/${saleId}`)
+      const withdrawalId = row.id
+      const response = await axiosInstance.get(`/api/Withdrawal/GetWithdrawalID/${withdrawalId}`)
 
       if (response.status === 200) {
-        setEditingSale(response.data)
+        setEditingWithdrawal(response.data)
         setIsModalOpen(true)
       } else {
-        setEditingSale(row.original)
+        setEditingWithdrawal(row.original)
         setIsModalOpen(true)
       }
     } catch (error) {
-      console.error("Error al obtener datos completos de la venta:", error)
-      setEditingSale(row.original)
+      console.error("Error al obtener datos completos del desistimiento:", error)
+      setEditingWithdrawal(row.original)
       setIsModalOpen(true)
     }
   }
@@ -265,7 +230,7 @@ function SalesPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setTimeout(() => {
-      setEditingSale(null)
+      setEditingWithdrawal(null)
     }, 300)
   }
 
@@ -275,13 +240,28 @@ function SalesPage() {
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
             <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
-            <p className="text-lg text-gray-700 font-semibold mt-2">Cargando ventas...</p>
+            <p className="text-lg text-gray-700 font-semibold mt-2">Cargando desistimientos...</p>
           </div>
         </div>
       )}
 
       {!isLoading && (
         <>
+          {/* Alerta informativa sobre desistimientos */}
+          <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-700 p-4 mb-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm">
+                  <strong>Información:</strong> Los desistimientos aplican una penalización del 10% y liberan
+                  automáticamente el lote. El cliente solo se desactiva si no tiene otras ventas activas.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-4 flex items-center gap-4 flex-wrap">
             <div className="relative w-full max-w-xs">
               <Label htmlFor="project-filter" className="sr-only">
@@ -304,7 +284,7 @@ function SalesPage() {
             </div>
             {selectedProjectId && selectedProjectId !== "all" && (
               <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
-                Mostrando ventas del proyecto:{" "}
+                Mostrando desistimientos del proyecto:{" "}
                 {projects.find((p) => p.id_Projects.toString() === selectedProjectId)?.name}
               </div>
             )}
@@ -312,16 +292,16 @@ function SalesPage() {
 
           <ContentPage
             TitlePage={TitlePage}
-            Data={salesData}
-            TitlesTable={titlesSale}
+            Data={withdrawalData}
+            TitlesTable={titlesWithdrawal}
             showDeleteButton={true}
             showToggleButton={false}
-            showStatusColumn={true}
+            showStatusColumn={false}
             showPdfButton={false}
             FormPage={() => (
-              <RegisterSale
-                refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
-                saleToEdit={editingSale}
+              <RegisterWithdrawal
+                refreshData={() => fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)}
+                withdrawalToEdit={editingWithdrawal}
                 onCancelEdit={handleCloseModal}
                 closeModal={handleCloseModal}
                 showAlert={showAlert}
@@ -329,10 +309,10 @@ function SalesPage() {
             )}
             onDelete={handleDelete}
             onUpdate={handleUpdate}
-            endpoint="/api/Sale/DeleteSale"
+            endpoint="/api/Withdrawal/DeleteWithdrawal"
             isModalOpen={isModalOpen}
             setIsModalOpen={setIsModalOpen}
-            refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
+            refreshData={() => fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)}
           />
         </>
       )}
@@ -350,4 +330,4 @@ function SalesPage() {
   )
 }
 
-export default SalesPage
+export default WithdrawalsPage

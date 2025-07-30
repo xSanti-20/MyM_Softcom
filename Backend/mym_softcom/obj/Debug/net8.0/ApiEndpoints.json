@@ -1138,15 +1138,21 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.WithdrawalController",
-    "Method": "GetWithdrawals",
-    "RelativePath": "api/Withdrawal",
+    "Method": "CalculatePenalty",
+    "RelativePath": "api/Withdrawal/CalculatePenalty/{id_Sales}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "id_Sales",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": [
       {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.Withdrawal, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "Type": "System.Decimal",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -1159,7 +1165,7 @@
   {
     "ContainingType": "mym_softcom.Controllers.WithdrawalController",
     "Method": "CreateWithdrawal",
-    "RelativePath": "api/Withdrawal",
+    "RelativePath": "api/Withdrawal/CreateWithdrawal",
     "HttpMethod": "POST",
     "IsController": true,
     "Order": 0,
@@ -1184,14 +1190,50 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.WithdrawalController",
-    "Method": "GetWithdrawal",
-    "RelativePath": "api/Withdrawal/{id}",
+    "Method": "DeleteWithdrawal",
+    "RelativePath": "api/Withdrawal/DeleteWithdrawal/{id_Withdrawals}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id_Withdrawals",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.WithdrawalController",
+    "Method": "GetAllWithdrawals",
+    "RelativePath": "api/Withdrawal/GetAllWithdrawals",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.Withdrawal, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.WithdrawalController",
+    "Method": "GetWithdrawalID",
+    "RelativePath": "api/Withdrawal/GetWithdrawalID/{id_Withdrawals}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "id",
+        "Name": "id_Withdrawals",
         "Type": "System.Int32",
         "IsRequired": true
       }
@@ -1211,64 +1253,22 @@
   {
     "ContainingType": "mym_softcom.Controllers.WithdrawalController",
     "Method": "UpdateWithdrawal",
-    "RelativePath": "api/Withdrawal/{id}",
+    "RelativePath": "api/Withdrawal/UpdateWithdrawal/{id_Withdrawals}",
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "id",
+        "Name": "id_Withdrawals",
         "Type": "System.Int32",
         "IsRequired": true
       },
       {
-        "Name": "withdrawal",
+        "Name": "updatedWithdrawal",
         "Type": "mym_softcom.Models.Withdrawal",
         "IsRequired": true
       }
     ],
     "ReturnTypes": []
-  },
-  {
-    "ContainingType": "mym_softcom.Controllers.WithdrawalController",
-    "Method": "DeleteWithdrawal",
-    "RelativePath": "api/Withdrawal/{id}",
-    "HttpMethod": "DELETE",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": []
-  },
-  {
-    "ContainingType": "mym_softcom.Controllers.WithdrawalController",
-    "Method": "SearchWithdrawals",
-    "RelativePath": "api/Withdrawal/search",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "searchTerm",
-        "Type": "System.String",
-        "IsRequired": false
-      }
-    ],
-    "ReturnTypes": [
-      {
-        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.Withdrawal, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
-        "MediaTypes": [
-          "text/plain",
-          "application/json",
-          "text/json"
-        ],
-        "StatusCode": 200
-      }
-    ]
   }
 ]

@@ -1994,7 +1994,7 @@
         }
       }
     },
-    "/api/Withdrawal": {
+    "/api/Withdrawal/GetAllWithdrawals": {
       "get": {
         "tags": [
           "Withdrawal"
@@ -2030,7 +2030,92 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/Withdrawal/GetWithdrawalID/{id_Withdrawals}": {
+      "get": {
+        "tags": [
+          "Withdrawal"
+        ],
+        "parameters": [
+          {
+            "name": "id_Withdrawals",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Withdrawal"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Withdrawal/CalculatePenalty/{id_Sales}": {
+      "get": {
+        "tags": [
+          "Withdrawal"
+        ],
+        "parameters": [
+          {
+            "name": "id_Sales",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "number",
+                  "format": "double"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "number",
+                  "format": "double"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Withdrawal/CreateWithdrawal": {
       "post": {
         "tags": [
           "Withdrawal"
@@ -2078,52 +2163,14 @@
         }
       }
     },
-    "/api/Withdrawal/{id}": {
-      "get": {
-        "tags": [
-          "Withdrawal"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/Withdrawal"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Withdrawal"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Withdrawal"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/Withdrawal/UpdateWithdrawal/{id_Withdrawals}": {
       "put": {
         "tags": [
           "Withdrawal"
         ],
         "parameters": [
           {
-            "name": "id",
+            "name": "id_Withdrawals",
             "in": "path",
             "required": true,
             "schema": {
@@ -2156,14 +2203,16 @@
             "description": "OK"
           }
         }
-      },
+      }
+    },
+    "/api/Withdrawal/DeleteWithdrawal/{id_Withdrawals}": {
       "delete": {
         "tags": [
           "Withdrawal"
         ],
         "parameters": [
           {
-            "name": "id",
+            "name": "id_Withdrawals",
             "in": "path",
             "required": true,
             "schema": {
@@ -2175,53 +2224,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/Withdrawal/search": {
-      "get": {
-        "tags": [
-          "Withdrawal"
-        ],
-        "parameters": [
-          {
-            "name": "searchTerm",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Withdrawal"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Withdrawal"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Withdrawal"
-                  }
-                }
-              }
-            }
           }
         }
       }
@@ -2546,33 +2548,28 @@
         "additionalProperties": false
       },
       "Withdrawal": {
-        "required": [
-          "id_Sales",
-          "penalty",
-          "reason",
-          "withdrawal_Date"
-        ],
         "type": "object",
         "properties": {
           "id_Withdrawals": {
             "type": "integer",
             "format": "int32"
           },
-          "id_Sales": {
-            "type": "integer",
-            "format": "int32"
-          },
           "reason": {
-            "minLength": 1,
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
-          "withdrawal_Date": {
+          "withdrawal_date": {
             "type": "string",
             "format": "date-time"
           },
           "penalty": {
             "type": "number",
-            "format": "double"
+            "format": "double",
+            "nullable": true
+          },
+          "id_Sales": {
+            "type": "integer",
+            "format": "int32"
           },
           "sale": {
             "$ref": "#/components/schemas/Sale"
