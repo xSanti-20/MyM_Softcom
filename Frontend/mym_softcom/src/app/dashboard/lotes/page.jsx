@@ -1,16 +1,16 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
 import { useState, useEffect } from "react"
-
+import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
-import PrivateNav from "@/components/nav/PrivateNav" // Asegúrate de que la ruta sea correcta
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter } from "lucide-react" // Icono para el filtro
-import ContentPage from "@/components/utils/ContentPage" // Asegúrate de que la ruta sea correcta
 import RegisterLot from "./formlotes"
 import AlertModal from "@/components/AlertModal"
+import DataTable from "@/components/utils/DataTable"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { Filter, Plus } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 function LotPage() {
   const TitlePage = "Lotes"
@@ -19,9 +19,8 @@ function LotPage() {
   const [error, setError] = useState(null)
   const [editingLot, setEditingLot] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [projects, setProjects] = useState([]) // Para el filtro de proyectos
-  const [selectedProjectId, setSelectedProjectId] = useState("") // ID del proyecto seleccionado para filtrar
-
+  const [projects, setProjects] = useState([])
+  const [selectedProjectId, setSelectedProjectId] = useState("")
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -29,7 +28,6 @@ function LotPage() {
     redirectUrl: null,
   })
 
-  // Columnas para la tabla de lotes - "Estado" se manejará automáticamente por DataTable
   const titlesLot = ["ID", "Manzana", "Número de Lote", "Estado", "Proyecto"]
 
   const showAlert = (type, message, onSuccessCallback = null) => {
@@ -52,16 +50,41 @@ function LotPage() {
     if (callback) callback()
   }
 
-  // Función para cargar lotes, con o sin filtro de proyecto
+  const createLotStatusBadge = (status) => {
+    if (!status) return "N/A"
+    const statusLower = status.toLowerCase()
+    let badgeClass = ""
+    let displayText = status
+
+    switch (statusLower) {
+      case "libre":
+      case "disponible":
+        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        displayText = "Libre"
+        break
+      case "vendido":
+      case "ocupado":
+        badgeClass = "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+        displayText = "Vendido"
+        break
+      default:
+        badgeClass = "bg-gray-100 text-gray-800 border-gray-200"
+    }
+
+    return (
+      <Badge variant="outline" className={`${badgeClass} font-medium`}>
+        {displayText}
+      </Badge>
+    )
+  }
+
   async function fetchLots(projectId = null) {
     try {
       setIsLoading(true)
       let response
       if (projectId && projectId !== "all") {
-        // Usar el endpoint para filtrar por proyecto
         response = await axiosInstance.get(`/api/Lot/GetLotsByProject/${projectId}`)
       } else {
-        // Obtener todos los lotes
         response = await axiosInstance.get("/api/Lot/GetAllLot")
       }
 
@@ -70,10 +93,9 @@ function LotPage() {
           id: lot.id_Lots,
           block: lot.block,
           lot_number: lot.lot_number,
-          status: lot.status,
-          project: lot.project?.name || "N/A", // Mostrar el nombre del proyecto
+          status: createLotStatusBadge(lot.status || "Libre"),
+          project: lot.project?.name || "N/A",
           original: lot,
-          // ✅ NUEVO: Campo combinado para búsqueda rápida
           searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""}`,
         }))
         setLotData(data)
@@ -86,7 +108,6 @@ function LotPage() {
     }
   }
 
-  // Función para cargar todos los proyectos para el filtro
   async function fetchProjectsForFilter() {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
@@ -99,23 +120,21 @@ function LotPage() {
     }
   }
 
-  // Cargar proyectos y lotes al montar el componente
   useEffect(() => {
     fetchProjectsForFilter()
-    fetchLots() // Cargar todos los lotes inicialmente
+    fetchLots()
   }, [])
 
-  // Manejar cambio en el filtro de proyecto
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
-    fetchLots(value === "all" ? null : Number.parseInt(value, 10)) // Si es "all", no pasar projectId
+    fetchLots(value === "all" ? null : Number.parseInt(value, 10))
   }
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
       await axiosInstance.delete(`/api/Lot/DeleteLot/${numericId}`)
-      fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10)) // Refrescar con el filtro actual
+      fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))
       showAlert("success", "Lote eliminado correctamente")
     } catch (error) {
       console.error("Error detallado al eliminar:", error)
@@ -124,7 +143,6 @@ function LotPage() {
   }
 
   const handleUpdate = (row) => {
-    console.log("Lote a editar:", row.original)
     setEditingLot(row.original)
     setIsModalOpen(true)
   }
@@ -134,6 +152,41 @@ function LotPage() {
     setTimeout(() => {
       setEditingLot(null)
     }, 300)
+  }
+
+  const headerActions = {
+    title: TitlePage,
+    button: (
+      <div className="flex flex-wrap gap-3 items-center justify-between w-full">
+        <div className="w-full sm:w-auto">
+          <Label htmlFor="project-filter" className="sr-only">
+            Filtrar por Proyecto
+          </Label>
+          <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
+            <SelectTrigger className="w-full sm:w-64">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Filtrar por Proyecto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los Proyectos</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Agregar Lote</span>
+        </Button>
+      </div>
+    ),
   }
 
   return (
@@ -148,57 +201,34 @@ function LotPage() {
       )}
 
       {!isLoading && (
-        <>
-          <div className="mb-4 flex items-center gap-4 flex-wrap">
-            <div className="relative w-full max-w-xs">
-              <Label htmlFor="project-filter" className="sr-only">
-                Filtrar por Proyecto
-              </Label>
-              <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
-                <SelectTrigger className="w-full">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filtrar por Proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los Proyectos</SelectItem>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <ContentPage
-            TitlePage={TitlePage}
+        <div className="container mx-auto p-4 sm:p-6">
+          <DataTable
             Data={lotData}
             TitlesTable={titlesLot}
-            showDeleteButton={true}
-            showToggleButton={false}
-            showStatusColumn={true}
-            statusField="status"
-            showPdfButton={false}
-            FormPage={() => (
-              <RegisterLot
-                refreshData={() =>
-                  fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))
-                }
-                lotToEdit={editingLot}
-                onCancelEdit={handleCloseModal}
-                closeModal={handleCloseModal}
-                showAlert={showAlert}
-              />
-            )}
             onDelete={handleDelete}
             onUpdate={handleUpdate}
-            endpoint="/api/Lot/DeleteLot" // Endpoint base para eliminar
-            isModalOpen={isModalOpen}
-            setIsModalOpen={setIsModalOpen}
-            refreshData={() => fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))}
+            showDeleteButton={true}
+            showToggleButton={false}
+            showPdfButton={false}
+            headerActions={headerActions}
           />
-        </>
+
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <RegisterLot
+                  refreshData={() =>
+                    fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))
+                  }
+                  lotToEdit={editingLot}
+                  onCancelEdit={handleCloseModal}
+                  closeModal={handleCloseModal}
+                  showAlert={showAlert}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}

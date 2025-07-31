@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
-import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterPlan from "./formplanes"
 import AlertModal from "@/components/AlertModal"
+import DataTable from "@/components/utils/DataTable"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 
 function PlanPage() {
   const TitlePage = "Planes"
@@ -13,7 +15,7 @@ function PlanPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [editingPlan, setEditingPlan] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false) // Mantener este estado, ContentPage lo usa
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -46,15 +48,14 @@ function PlanPage() {
   async function fetchPlans() {
     try {
       setIsLoading(true)
-      const response = await axiosInstance.get("/api/Plan/GetAllPlans") // Endpoint correcto
+      const response = await axiosInstance.get("/api/Plan/GetAllPlans")
 
       if (response.status === 200) {
         const data = response.data.map((plan) => ({
           id: plan.id_Plans,
           name: plan.name,
-          number_quotas: plan.number_quotas ?? "N/A", // Mostrar N/A si es null
+          number_quotas: plan.number_quotas ?? "N/A",
           original: plan,
-          // Campo combinado para búsqueda rápida (si es necesario)
           searchableIdentifier: `${plan.name || ""} ${plan.number_quotas || ""}`,
         }))
         setPlanData(data)
@@ -74,8 +75,8 @@ function PlanPage() {
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
-      await axiosInstance.delete(`/api/Plan/DeletePlan/${numericId}`) // Endpoint correcto
-      fetchPlans() // Refrescar planes
+      await axiosInstance.delete(`/api/Plan/DeletePlan/${numericId}`)
+      fetchPlans()
       showAlert("success", "Plan eliminado correctamente")
     } catch (error) {
       console.error("Error detallado al eliminar:", error)
@@ -86,29 +87,41 @@ function PlanPage() {
   const handleUpdate = async (row) => {
     try {
       const planId = row.id
-      console.log("Intentando obtener plan con ID:", planId)
-
-      const response = await axiosInstance.get(`/api/Plan/GetPlanID/${planId}`) // Endpoint correcto
+      const response = await axiosInstance.get(`/api/Plan/GetPlanID/${planId}`)
 
       if (response.status === 200) {
         setEditingPlan(response.data)
-        setIsModalOpen(true) // Abre el modal de ContentPage
+        setIsModalOpen(true)
       } else {
         setEditingPlan(row.original)
-        setIsModalOpen(true) // Abre el modal de ContentPage
+        setIsModalOpen(true)
       }
     } catch (error) {
       console.error("Error al obtener datos completos del plan:", error)
       setEditingPlan(row.original)
-      setIsModalOpen(true) // Abre el modal de ContentPage
+      setIsModalOpen(true)
     }
   }
 
   const handleCloseModal = () => {
-    setIsModalOpen(false) // Cierra el modal de ContentPage
+    setIsModalOpen(false)
     setTimeout(() => {
       setEditingPlan(null)
     }, 300)
+  }
+
+  // Configuración del header del DataTable
+  const headerActions = {
+    title: TitlePage,
+    button: (
+      <Button
+        onClick={() => setIsModalOpen(true)}
+        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Agregar Plan</span>
+      </Button>
+    ),
   }
 
   return (
@@ -123,34 +136,20 @@ function PlanPage() {
       )}
 
       {!isLoading && (
-        <>
-          <ContentPage
-            TitlePage={TitlePage}
+        <div className="container mx-auto p-6">
+          <DataTable
             Data={planData}
             TitlesTable={titlesPlan}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
             showDeleteButton={true}
             showToggleButton={false}
             showStatusColumn={false}
             showPdfButton={false}
-            FormPage={() => (
-              <RegisterPlan
-                refreshData={fetchPlans}
-                planToEdit={editingPlan}
-                onCancelEdit={handleCloseModal}
-                closeModal={handleCloseModal}
-                showAlert={showAlert}
-              />
-            )}
-            onDelete={handleDelete}
-            onUpdate={handleUpdate}
-            endpoint="/api/Plan/DeletePlan"
-            isModalOpen={isModalOpen} // Pasar el estado del modal a ContentPage
-            setIsModalOpen={setIsModalOpen} // Pasar la función para controlar el modal
-            refreshData={fetchPlans}
+            headerActions={headerActions}
           />
 
-          {/* ✅ ELIMINADO: El modal duplicado que causaba el problema */}
-          {/* {isModalOpen && (
+          {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <RegisterPlan
@@ -162,8 +161,8 @@ function PlanPage() {
                 />
               </div>
             </div>
-          )} */}
-        </>
+          )}
+        </div>
       )}
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}

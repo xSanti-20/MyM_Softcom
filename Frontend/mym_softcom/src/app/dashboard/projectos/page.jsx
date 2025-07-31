@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
-import ContentPage from "@/components/utils/ContentPage" // Asumo que tienes este componente
 import axiosInstance from "@/lib/axiosInstance"
-import RegisterProject from "./formproject" // Importar el nuevo componente
+import RegisterProject from "./formproject"
 import AlertModal from "@/components/AlertModal"
+import DataTable from "@/components/utils/DataTable"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 
 function ProjectPage() {
   const TitlePage = "Proyectos"
   const [projectData, setProjectData] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [editingProject, setEditingProject] = useState(null) // Cambiado de editingRace
+  const [editingProject, setEditingProject] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
@@ -21,7 +23,7 @@ function ProjectPage() {
     redirectUrl: null,
   })
 
-  const titlesProject = ["ID", "Nombre"] // Cambiado de titlesRace
+  const titlesProject = ["ID", "Nombre"]
 
   const showAlert = (type, message, onSuccessCallback = null) => {
     setAlertInfo({
@@ -44,19 +46,18 @@ function ProjectPage() {
   }
 
   async function fetchProjects() {
-    // Cambiado de fetchRaces
     try {
       setIsLoading(true)
-      const response = await axiosInstance.get("/api/Project/GetAllProjects") // Endpoint correcto
+      const response = await axiosInstance.get("/api/Project/GetAllProjects")
 
       if (response.status === 200) {
         const data = response.data.map((project) => ({
-          // Mapear project
-          id: project.id_Projects, // Usar id_Projects
-          name: project.name, // Usar name
+          id: project.id_Projects,
+          name: project.name,
           original: project,
+          searchableIdentifier: `${project.name || ""}`,
         }))
-        setProjectData(data) // Cambiado de setRaceData
+        setProjectData(data)
       }
     } catch (error) {
       setError("No se pudieron cargar los datos de los proyectos.")
@@ -67,14 +68,14 @@ function ProjectPage() {
   }
 
   useEffect(() => {
-    fetchProjects() // Llamar a fetchProjects
+    fetchProjects()
   }, [])
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
-      await axiosInstance.delete(`/api/Project/DeleteProject/${numericId}`) // Endpoint correcto
-      fetchProjects() // Refrescar proyectos
+      await axiosInstance.delete(`/api/Project/DeleteProject/${numericId}`)
+      fetchProjects()
       showAlert("success", "Proyecto eliminado correctamente")
     } catch (error) {
       console.error("Error detallado al eliminar:", error)
@@ -83,16 +84,29 @@ function ProjectPage() {
   }
 
   const handleUpdate = (row) => {
-    console.log("Proyecto a editar:", row.original)
-    setEditingProject(row.original) // Cambiado de setEditingRace
+    setEditingProject(row.original)
     setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setTimeout(() => {
-      setEditingProject(null) // Cambiado de setEditingRace
+      setEditingProject(null)
     }, 300)
+  }
+
+  // Configuración del header del DataTable
+  const headerActions = {
+    title: TitlePage,
+    button: (
+      <Button
+        onClick={() => setIsModalOpen(true)}
+        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Agregar Proyecto</span>
+      </Button>
+    ),
   }
 
   return (
@@ -107,30 +121,33 @@ function ProjectPage() {
       )}
 
       {!isLoading && (
-        <ContentPage
-          TitlePage={TitlePage}
-          Data={projectData} // Cambiado de raceData
-          TitlesTable={titlesProject} // Cambiado de titlesRace
-          showDeleteButton={true}
-          showToggleButton={false}
-          showStatusColumn={false}
-          showPdfButton={false}
-          FormPage={() => (
-            <RegisterProject // Usar RegisterProject
-              refreshData={fetchProjects} // Refrescar proyectos
-              projectToEdit={editingProject} // Pasar projectToEdit
-              onCancelEdit={handleCloseModal}
-              closeModal={handleCloseModal}
-              showAlert={showAlert}
-            />
+        <div className="container mx-auto p-6">
+          <DataTable
+            Data={projectData}
+            TitlesTable={titlesProject}
+            onDelete={handleDelete}
+            onUpdate={handleUpdate}
+            showDeleteButton={true}
+            showToggleButton={false}
+            showStatusColumn={false}
+            showPdfButton={false}
+            headerActions={headerActions}
+          />
+
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <RegisterProject
+                  refreshData={fetchProjects}
+                  projectToEdit={editingProject}
+                  onCancelEdit={handleCloseModal}
+                  closeModal={handleCloseModal}
+                  showAlert={showAlert}
+                />
+              </div>
+            </div>
           )}
-          onDelete={handleDelete}
-          onUpdate={handleUpdate}
-          endpoint="/api/Project/DeleteProject" // Endpoint correcto
-          isModalOpen={isModalOpen}
-          setIsModalOpen={setIsModalOpen}
-          refreshData={fetchProjects} // Refrescar proyectos
-        />
+        </div>
       )}
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}

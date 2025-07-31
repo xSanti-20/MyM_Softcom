@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
-import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterWithdrawal from "./formdesistimientos"
 import AlertModal from "@/components/AlertModal"
+import DataTable from "@/components/utils/DataTable"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter, AlertTriangle } from "lucide-react"
+import { Filter, Plus, AlertTriangle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 function WithdrawalsPage() {
   const TitlePage = "Desistimientos"
@@ -17,15 +19,14 @@ function WithdrawalsPage() {
   const [error, setError] = useState(null)
   const [editingWithdrawal, setEditingWithdrawal] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [projects, setProjects] = useState([])
+  const [selectedProjectId, setSelectedProjectId] = useState("")
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
     type: "success",
     redirectUrl: null,
   })
-
-  const [projects, setProjects] = useState([]) // Para el filtro de proyectos
-  const [selectedProjectId, setSelectedProjectId] = useState("") // ID del proyecto seleccionado para filtrar
 
   const titlesWithdrawal = [
     "ID",
@@ -61,22 +62,47 @@ function WithdrawalsPage() {
     if (callback) callback()
   }
 
-  // Función auxiliar para obtener el nombre del proyecto
+  // Función para crear badge de estado de ventas (para desistimientos)
+  const createSaleStatusBadge = (status) => {
+    if (!status) status = "Desistida" // Por defecto en desistimientos
+
+    const statusLower = status.toLowerCase()
+    let badgeClass = ""
+    let displayText = status
+
+    switch (statusLower) {
+      case "active":
+      case "activa":
+        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        displayText = "Activa"
+        break
+      case "desistida":
+        badgeClass = "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+        displayText = "Desistida"
+        break
+      case "escrituras":
+        badgeClass = "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+        displayText = "Escrituras"
+        break
+      default:
+        badgeClass = "bg-gray-100 text-gray-800 border-gray-200"
+    }
+
+    return (
+      <Badge variant="outline" className={`${badgeClass} font-medium`}>
+        {displayText}
+      </Badge>
+    )
+  }
+
   const getProjectName = (withdrawal) => {
-    if (withdrawal.sale?.lot?.project?.name) {
-      return withdrawal.sale.lot.project.name
-    }
-    if (withdrawal.sale?.lot?.Project?.name) {
-      return withdrawal.sale.lot.Project.name
-    }
+    if (withdrawal.sale?.lot?.project?.name) return withdrawal.sale.lot.project.name
+    if (withdrawal.sale?.lot?.Project?.name) return withdrawal.sale.lot.Project.name
     const projectId = withdrawal.sale?.lot?.id_Projects || withdrawal.sale?.lot?.project?.id_Projects
-    if (projectId) {
-      return `Proyecto #${projectId}`
-    }
+    if (projectId) return `Proyecto #${projectId}`
     return "Sin proyecto"
   }
 
-  // Función para cargar todos los proyectos para el filtro
   async function fetchProjectsForFilter() {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
@@ -94,32 +120,23 @@ function WithdrawalsPage() {
     }
   }
 
-  // Función para cargar desistimientos, con o sin filtro de proyecto
   async function fetchWithdrawals(projectId = null) {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Withdrawal/GetAllWithdrawals")
 
       if (response.status === 200) {
-        console.log("Total de desistimientos recibidos:", response.data.length)
-
         let filteredWithdrawals = response.data
 
-        // Aplicar filtro de proyecto si se seleccionó uno
         if (projectId && projectId !== "all") {
           const targetProjectId = Number.parseInt(projectId, 10)
-          console.log("Filtrando por proyecto ID:", targetProjectId)
-
           filteredWithdrawals = response.data.filter((withdrawal) => {
             const withdrawalProjectId =
               withdrawal.sale?.lot?.project?.id_Projects ||
               withdrawal.sale?.lot?.Project?.id_Projects ||
               withdrawal.sale?.lot?.id_Projects
-
             return withdrawalProjectId === targetProjectId
           })
-
-          console.log("Desistimientos filtrados:", filteredWithdrawals.length)
         }
 
         const data = filteredWithdrawals.map((withdrawal) => ({
@@ -127,7 +144,6 @@ function WithdrawalsPage() {
           withdrawal_date: withdrawal.withdrawal_date
             ? new Date(withdrawal.withdrawal_date).toLocaleDateString("es-CO")
             : "N/A",
-
           penalty:
             withdrawal.penalty?.toLocaleString("es-CO", {
               style: "currency",
@@ -135,19 +151,13 @@ function WithdrawalsPage() {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
-
           reason: withdrawal.reason || "Sin motivo especificado",
-
           client: withdrawal.sale?.client
             ? `${withdrawal.sale.client.names} ${withdrawal.sale.client.surnames}`
             : "N/A",
-
           document: withdrawal.sale?.client?.document || "N/A",
-
           lot: withdrawal.sale?.lot ? `${withdrawal.sale.lot.block}-${withdrawal.sale.lot.lot_number}` : "N/A",
-
           project: getProjectName(withdrawal),
-
           sale_value:
             withdrawal.sale?.total_value?.toLocaleString("es-CO", {
               style: "currency",
@@ -155,7 +165,6 @@ function WithdrawalsPage() {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
-
           total_raised:
             withdrawal.sale?.total_raised?.toLocaleString("es-CO", {
               style: "currency",
@@ -163,9 +172,7 @@ function WithdrawalsPage() {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
-
-          sale_status: withdrawal.sale?.status || "N/A",
-
+          sale_status: createSaleStatusBadge(withdrawal.sale?.status || "Desistida"), // ✅ Badge del estado de la venta
           original: withdrawal,
           searchableIdentifier: `${withdrawal.id_Withdrawals} ${withdrawal.sale?.client?.names} ${withdrawal.sale?.client?.surnames} ${withdrawal.sale?.lot?.block}-${withdrawal.sale?.lot?.lot_number} ${getProjectName(withdrawal)} ${withdrawal.reason}`,
         }))
@@ -181,7 +188,6 @@ function WithdrawalsPage() {
     }
   }
 
-  // Manejar cambio en el filtro de proyecto
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
     fetchWithdrawals(value === "all" ? null : value)
@@ -189,14 +195,14 @@ function WithdrawalsPage() {
 
   useEffect(() => {
     fetchProjectsForFilter()
-    fetchWithdrawals() // Cargar todos los desistimientos inicialmente
+    fetchWithdrawals()
   }, [])
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
       const response = await axiosInstance.delete(`/api/Withdrawal/DeleteWithdrawal/${numericId}`)
-      fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId) // Refrescar con el filtro actual
+      fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)
       showAlert(
         "success",
         response.data?.message || "Desistimiento eliminado correctamente. La venta ha sido reactivada.",
@@ -234,6 +240,42 @@ function WithdrawalsPage() {
     }, 300)
   }
 
+  // Configuración del header del DataTable
+  const headerActions = {
+    title: TitlePage,
+    button: (
+      <div className="flex items-center space-x-3">
+        <div className="relative w-full max-w-xs">
+          <Label htmlFor="project-filter" className="sr-only">
+            Filtrar por Proyecto
+          </Label>
+          <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
+            <SelectTrigger className="w-full">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Filtrar por Proyecto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los Proyectos</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Agregar Desistimiento</span>
+        </Button>
+      </div>
+    ),
+  }
+
   return (
     <PrivateNav>
       {isLoading && (
@@ -246,29 +288,16 @@ function WithdrawalsPage() {
       )}
 
       {!isLoading && (
-        <>
-          {/* Alerta informativa sobre desistimientos */}
-          <div className="bg-amber-50 border-l-4 border-amber-400 text-amber-700 p-4 mb-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm">
-                  <strong>Información:</strong> Los desistimientos aplican una penalización del 10% y liberan
-                  automáticamente el lote. El cliente solo se desactiva si no tiene otras ventas activas.
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="container mx-auto px-4 sm:px-6 py-6">
 
-          <div className="mb-4 flex items-center gap-4 flex-wrap">
-            <div className="relative w-full max-w-xs">
+          {/* Tabla y filtros responsivos */}
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="w-full md:w-auto">
               <Label htmlFor="project-filter" className="sr-only">
                 Filtrar por Proyecto
               </Label>
               <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full md:w-[250px]">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Filtrar por Proyecto" />
                 </SelectTrigger>
@@ -282,40 +311,46 @@ function WithdrawalsPage() {
                 </SelectContent>
               </Select>
             </div>
-            {selectedProjectId && selectedProjectId !== "all" && (
-              <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
-                Mostrando desistimientos del proyecto:{" "}
-                {projects.find((p) => p.id_Projects.toString() === selectedProjectId)?.name}
-              </div>
-            )}
+
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2 w-full md:w-auto justify-center"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar Desistimiento</span>
+            </Button>
           </div>
 
-          <ContentPage
-            TitlePage={TitlePage}
-            Data={withdrawalData}
-            TitlesTable={titlesWithdrawal}
-            showDeleteButton={true}
-            showToggleButton={false}
-            showStatusColumn={false}
-            showPdfButton={false}
-            FormPage={() => (
-              <RegisterWithdrawal
-                refreshData={() => fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)}
-                withdrawalToEdit={editingWithdrawal}
-                onCancelEdit={handleCloseModal}
-                closeModal={handleCloseModal}
-                showAlert={showAlert}
-              />
-            )}
-            onDelete={handleDelete}
-            onUpdate={handleUpdate}
-            endpoint="/api/Withdrawal/DeleteWithdrawal"
-            isModalOpen={isModalOpen}
-            setIsModalOpen={setIsModalOpen}
-            refreshData={() => fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)}
-          />
-        </>
+          <div className="overflow-x-auto">
+            <DataTable
+              Data={withdrawalData}
+              TitlesTable={titlesWithdrawal}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+              showDeleteButton={true}
+              showToggleButton={false}
+              showPdfButton={false}
+              headerActions={{ title: TitlePage }} // Ya no se usa botón dentro
+            />
+          </div>
+
+          {/* Modal */}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <RegisterWithdrawal
+                  refreshData={() => fetchWithdrawals(selectedProjectId === "all" ? null : selectedProjectId)}
+                  withdrawalToEdit={editingWithdrawal}
+                  onCancelEdit={handleCloseModal}
+                  closeModal={handleCloseModal}
+                  showAlert={showAlert}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
+
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}
 

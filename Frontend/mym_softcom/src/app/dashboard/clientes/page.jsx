@@ -8,6 +8,8 @@ import AlertModal from "@/components/AlertModal"
 import DataTable from "@/components/utils/DataTable"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
 import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 function ClientPage() {
   const TitlePage = "Clientes"
@@ -24,13 +26,12 @@ function ClientPage() {
     redirectUrl: null,
   })
 
-  // ✅ NUEVO: Función de formato de moneda para eliminar .00 (copiada de sales/page.jsx)
+  // Función de formato de moneda
   const formatCurrency = (value) => {
     if (value === null || value === undefined) return "N/A"
     const num = Number.parseFloat(value)
     if (isNaN(num)) return "N/A"
 
-    // Si es un número entero, no mostrar decimales
     if (num % 1 === 0) {
       return num.toLocaleString("es-CO", {
         style: "currency",
@@ -39,7 +40,6 @@ function ClientPage() {
         maximumFractionDigits: 0,
       })
     }
-    // Si tiene decimales, mostrar hasta 2 decimales
     return num.toLocaleString("es-CO", {
       style: "currency",
       currency: "COP",
@@ -48,7 +48,35 @@ function ClientPage() {
     })
   }
 
-  // ✅ MODIFICADO: Definición de TitlesTable como un array de strings, en el orden esperado por DataTable
+  // Función para crear badge de estado de clientes
+  const createClientStatusBadge = (status) => {
+    if (!status) status = "Activo" // Valor por defecto
+
+    const statusLower = status.toLowerCase()
+    let badgeClass = ""
+    let displayText = status
+
+    switch (statusLower) {
+      case "activo":
+        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        displayText = "Activo"
+        break
+      case "inactivo":
+        badgeClass = "bg-slate-100 text-slate-600 border-slate-200"
+        displayText = "Inactivo"
+        break
+      default:
+        badgeClass = "bg-gray-100 text-gray-800 border-gray-200"
+    }
+
+    return (
+      <Badge variant="outline" className={`${badgeClass} font-medium`}>
+        {displayText}
+      </Badge>
+    )
+  }
+
+  // Títulos incluyendo el estado
   const clientTitles = [
     "ID",
     "Nombres",
@@ -56,10 +84,10 @@ function ClientPage() {
     "Documento",
     "Teléfono",
     "Email",
+    "Estado",
     "Valor Total",
     "Recaudo Total",
     "Deuda Total",
-    // El estado se maneja por `showStatusColumn` en DataTable, no se incluye aquí directamente
   ]
 
   const showAlert = (type, message, onSuccessCallback = null) => {
@@ -85,12 +113,10 @@ function ClientPage() {
   async function fetchClients() {
     try {
       setIsLoading(true)
-      // ✅ MODIFICADO: Llamar al nuevo endpoint que incluye el resumen de ventas
       const response = await axiosInstance.get("/api/Client/GetClientsWithSalesSummary")
 
       if (response.status === 200) {
         const data = response.data.map((client) => {
-          // ✅ IMPORTANTE: El orden de las propiedades aquí debe coincidir con el orden en clientTitles
           return {
             id: client.id_Clients,
             names: client.names,
@@ -98,14 +124,19 @@ function ClientPage() {
             document: client.document,
             phone: client.phone ?? "N/A",
             email: client.email ?? "N/A",
-            total_sales_value: formatCurrency(client.totalSalesValue), // Mapear y formatear
-            total_raised: formatCurrency(client.totalRaised), // Mapear y formatear
-            total_debt: formatCurrency(client.totalDebt), // Mapear y formatear
-            isActive: client.status === "Activo", // Usado por statusField en DataTable
+            status: createClientStatusBadge(client.status || "Activo"),
+            total_sales_value: formatCurrency(client.totalSalesValue),
+            total_raised: formatCurrency(client.totalRaised),
+            total_debt: formatCurrency(client.totalDebt),
+            isActive: (client.status || "Activo").toLowerCase() === "activo",
             original: client,
+            searchableIdentifier: `${client.names} ${client.surnames} ${client.document} ${client.status || "Activo"}`,
           }
         })
-        setClientData(data)
+
+        // Filtrar por estado si es necesario
+        const filteredData = showInactiveRecords ? data : data.filter((client) => client.isActive)
+        setClientData(filteredData)
       }
     } catch (error) {
       setError("No se pudieron cargar los datos de los clientes.")
@@ -117,15 +148,16 @@ function ClientPage() {
 
   useEffect(() => {
     fetchClients()
-  }, [])
+  }, [showInactiveRecords])
 
-  const handleToggleStatus = async (id, currentStatus) => {
+  const handleToggleStatus = async (id, currentRow) => {
     try {
       const numericId = Number.parseInt(id, 10)
       await axiosInstance.patch(`/api/Client/ToggleStatus/${numericId}`)
 
       fetchClients()
-      showAlert("success", `Cliente ${currentStatus ? "desactivado" : "activado"} correctamente`)
+      const newStatus = currentRow.isActive ? "desactivado" : "activado"
+      showAlert("success", `Cliente ${newStatus} correctamente`)
     } catch (error) {
       console.error("Error al cambiar estado:", error)
       showAlert("error", "Error al cambiar el estado del cliente")
@@ -135,9 +167,6 @@ function ClientPage() {
   const handleUpdate = async (row) => {
     try {
       const clientId = row.id
-      console.log("Intentando obtener cliente con ID:", clientId)
-
-      // ✅ CORREGIDO: Usar el endpoint correcto para obtener un cliente por ID
       const response = await axiosInstance.get(`/api/Client/${clientId}`)
 
       if (response.status === 200) {
@@ -161,6 +190,32 @@ function ClientPage() {
     }, 300)
   }
 
+  // Configuración del header del DataTable
+  const headerActions = {
+    title: "Clientes",
+    button: (
+      <div className="flex items-center space-x-3">
+        <Button
+          onClick={() => setShowInactiveRecords(!showInactiveRecords)}
+          variant="outline"
+          size="sm"
+          className="flex items-center space-x-2 border-slate-200 hover:bg-slate-50"
+        >
+          {showInactiveRecords ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+          <span className="hidden sm:inline">{showInactiveRecords ? "Ocultar Inactivos" : "Mostrar Inactivos"}</span>
+        </Button>
+
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Agregar Cliente</span>
+        </Button>
+      </div>
+    ),
+  }
+
   return (
     <PrivateNav>
       {isLoading && (
@@ -172,46 +227,23 @@ function ClientPage() {
         </div>
       )}
 
-      {!isLoading &&
-        (
-          <>
-          <div className="mb-4 flex gap-4 flex-wrap">
-            <Button
-              onClick={() => setShowInactiveRecords(!showInactiveRecords)}
-              variant="outline"
-              className="flex items-center space-x-2"
-            >
-              {showInactiveRecords ? <FaEyeSlash /> : <FaEye />}
-              <span>{showInactiveRecords ? "Ocultar Inactivos" : "Mostrar Inactivos"}</span>
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">{TitlePage}</h1>
-              <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-                Agregar Cliente
-              </Button>
-            </div>
-
-            <DataTable
-              Data={clientData}
-              TitlesTable={clientTitles}
-              onUpdate={handleUpdate}
-              onToggleStatus={handleToggleStatus}
-              showDeleteButton={false}
-              showToggleButton={true}
-              statusField="isActive"
-              showInactiveRecords={showInactiveRecords}
-              showStatusColumn={true}
-              extraActions={[]}
-            />
-          </div>
+      {!isLoading && (
+        <div className="container mx-auto p-6">
+          <DataTable
+            Data={clientData}
+            TitlesTable={clientTitles}
+            onUpdate={handleUpdate}
+            onToggleStatus={handleToggleStatus}
+            showDeleteButton={false}
+            showToggleButton={true}
+            showPdfButton={false}
+            extraActions={[]}
+            headerActions={headerActions}
+          />
 
           {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                {/* ✅ MODIFICADO: max-w-4xl y bg-white */}
                 <RegisterClient
                   refreshData={fetchClients}
                   clientToEdit={editingClient}
@@ -222,8 +254,8 @@ function ClientPage() {
               </div>
             </div>
           )}
-        </>
-        )}
+        </div>
+      )}
 
       {error && <div className="text-red-600">{error}</div>}
 

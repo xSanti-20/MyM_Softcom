@@ -2,13 +2,21 @@
 
 import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
-import ContentPage from "@/components/utils/ContentPage"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterSale from "./formventas"
 import AlertModal from "@/components/AlertModal"
+import DataTable from "@/components/utils/DataTable"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter } from "lucide-react"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { Filter, Plus } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 function SalesPage() {
   const TitlePage = "Ventas"
@@ -17,15 +25,14 @@ function SalesPage() {
   const [error, setError] = useState(null)
   const [editingSale, setEditingSale] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [projects, setProjects] = useState([])
+  const [selectedProjectId, setSelectedProjectId] = useState("")
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
     type: "success",
     redirectUrl: null,
   })
-
-  const [projects, setProjects] = useState([]) // Para el filtro de proyectos
-  const [selectedProjectId, setSelectedProjectId] = useState("") // ID del proyecto seleccionado para filtrar
 
   const titlesSale = [
     "ID",
@@ -63,57 +70,58 @@ function SalesPage() {
     if (callback) callback()
   }
 
-  // Función auxiliar para obtener el nombre del proyecto
+  const createSaleStatusBadge = (status) => {
+    if (!status) return "N/A"
+
+    const statusLower = status.toLowerCase()
+    let badgeClass = ""
+    let displayText = status
+
+    switch (statusLower) {
+      case "active":
+      case "activa":
+        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        displayText = "Activa"
+        break
+      case "desistida":
+        badgeClass = "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+        displayText = "Desistida"
+        break
+      case "escrituras":
+        badgeClass = "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200"
+        displayText = "Escrituras"
+        break
+      default:
+        badgeClass = "bg-gray-100 text-gray-800 border-gray-200"
+    }
+
+    return (
+      <Badge variant="outline" className={`${badgeClass} font-medium`}>
+        {displayText}
+      </Badge>
+    )
+  }
+
   const getProjectName = (sale) => {
-    // Intentar obtener el proyecto directamente del lote
-    if (sale.lot?.project?.name) {
-      return sale.lot.project.name
-    }
-
-    // Intentar con diferentes capitalizaciones
-    if (sale.lot?.Project?.name) {
-      return sale.lot.Project.name
-    }
-
-    // Intentar con diferentes estructuras
-    if (sale.Lot?.project?.name) {
-      return sale.Lot.project.name
-    }
-
-    if (sale.Lot?.Project?.name) {
-      return sale.Lot.Project.name
-    }
-
-    // Intentar con propiedades directas
-    if (sale.lot?.project_name) {
-      return sale.lot.project_name
-    }
-
-    // Intentar obtener el ID del proyecto y usar un mapeo
+    if (sale.lot?.project?.name) return sale.lot.project.name
+    if (sale.lot?.Project?.name) return sale.lot.Project.name
+    if (sale.Lot?.project?.name) return sale.Lot.project.name
+    if (sale.Lot?.Project?.name) return sale.Lot.Project.name
+    if (sale.lot?.project_name) return sale.lot.project_name
     const projectId = sale.lot?.id_Projects || sale.lot?.project?.id_Projects
-    if (projectId) {
-      return `Proyecto #${projectId}`
-    }
-
+    if (projectId) return `Proyecto #${projectId}`
     return "Sin proyecto"
   }
 
-  // Función para cargar todos los proyectos para el filtro
   async function fetchProjectsForFilter() {
     try {
-      // Usar directamente el endpoint de proyectos
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.data && Array.isArray(response.data)) {
-        console.log("Todos los proyectos desde el backend:", response.data)
-
-        // Mostrar todos los proyectos sin filtrar por estado inicialmente
         const allProjects = response.data.map((project) => ({
           id_Projects: project.id_Projects,
           name: project.name,
           status: project.status || "Sin estado",
         }))
-
-        console.log("Proyectos procesados:", allProjects)
         setProjects(allProjects)
       }
     } catch (error) {
@@ -122,22 +130,16 @@ function SalesPage() {
     }
   }
 
-  // Función para cargar ventas, con o sin filtro de proyecto
   async function fetchSales(projectId = null) {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Sale/GetAllSales")
 
       if (response.status === 200) {
-        console.log("Total de ventas recibidas:", response.data.length)
-
         let filteredSales = response.data
 
-        // Aplicar filtro de proyecto si se seleccionó uno
         if (projectId && projectId !== "all") {
           const targetProjectId = Number.parseInt(projectId, 10)
-          console.log("Filtrando por proyecto ID:", targetProjectId)
-
           filteredSales = response.data.filter((sale) => {
             const saleProjectId =
               sale.lot?.project?.id_Projects ||
@@ -145,65 +147,22 @@ function SalesPage() {
               sale.lot?.id_Projects ||
               sale.Lot?.project?.id_Projects ||
               sale.Lot?.Project?.id_Projects
-
-            console.log(`Venta ${sale.id_Sales} - Proyecto ID: ${saleProjectId}`)
             return saleProjectId === targetProjectId
           })
-
-          console.log("Ventas filtradas:", filteredSales.length)
         }
 
         const data = filteredSales.map((sale) => ({
           id: sale.id_Sales,
           sale_date: sale.sale_date ? new Date(sale.sale_date).toLocaleDateString() : "N/A",
-
-          total_value:
-            sale.total_value?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          initial_payment:
-            sale.initial_payment?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          total_raised:
-            sale.total_raised?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          total_debt:
-            sale.total_debt?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          quota_value:
-            sale.quota_value?.toLocaleString("es-CO", {
-              style: "currency",
-              currency: "COP",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }) || "N/A",
-
-          status: sale.status || "N/A",
+          total_value: sale.total_value?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          initial_payment: sale.initial_payment?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          total_raised: sale.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          total_debt: sale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          quota_value: sale.quota_value?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          status: createSaleStatusBadge(sale.status || "Active"),
           client: sale.client ? `${sale.client.names} ${sale.client.surnames}` : "N/A",
-
           lot: sale.lot ? `${sale.lot.block}-${sale.lot.lot_number}` : "N/A",
-
-          project: getProjectName(sale), // Nueva columna separada para el proyecto
-
+          project: getProjectName(sale),
           user: sale.user?.nom_Users || "N/A",
           plan: sale.plan?.name || "N/A",
           original: sale,
@@ -220,7 +179,6 @@ function SalesPage() {
     }
   }
 
-  // Manejar cambio en el filtro de proyecto
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
     fetchSales(value === "all" ? null : value)
@@ -228,14 +186,14 @@ function SalesPage() {
 
   useEffect(() => {
     fetchProjectsForFilter()
-    fetchSales() // Cargar todas las ventas inicialmente
+    fetchSales()
   }, [])
 
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
       await axiosInstance.delete(`/api/Sale/DeleteSale/${numericId}`)
-      fetchSales(selectedProjectId === "all" ? null : selectedProjectId) // Refrescar con el filtro actual
+      fetchSales(selectedProjectId === "all" ? null : selectedProjectId)
       showAlert("success", "Venta eliminada correctamente. El lote asociado ha sido liberado.")
     } catch (error) {
       console.error("Error detallado al eliminar:", error)
@@ -269,6 +227,40 @@ function SalesPage() {
     }, 300)
   }
 
+  const headerActions = {
+    title: TitlePage,
+    button: (
+      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="w-full sm:w-64">
+          <Label htmlFor="project-filter" className="sr-only">
+            Filtrar por Proyecto
+          </Label>
+          <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
+            <SelectTrigger className="w-full">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Filtrar por Proyecto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los Proyectos</SelectItem>
+              {projects.map((project) => (
+                <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          <span className="text-sm">Agregar Venta</span>
+        </Button>
+      </div>
+    ),
+  }
+
   return (
     <PrivateNav>
       {isLoading && (
@@ -281,60 +273,34 @@ function SalesPage() {
       )}
 
       {!isLoading && (
-        <>
-          <div className="mb-4 flex items-center gap-4 flex-wrap">
-            <div className="relative w-full max-w-xs">
-              <Label htmlFor="project-filter" className="sr-only">
-                Filtrar por Proyecto
-              </Label>
-              <Select name="project-filter" value={selectedProjectId} onValueChange={handleProjectFilterChange}>
-                <SelectTrigger className="w-full">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filtrar por Proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los Proyectos</SelectItem>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedProjectId && selectedProjectId !== "all" && (
-              <div className="text-sm text-gray-600 bg-blue-50 px-3 py-1 rounded-full">
-                Mostrando ventas del proyecto:{" "}
-                {projects.find((p) => p.id_Projects.toString() === selectedProjectId)?.name}
-              </div>
-            )}
+        <div className="container mx-auto px-4 sm:px-6 py-6">
+          <div className="overflow-x-auto">
+            <DataTable
+              Data={salesData}
+              TitlesTable={titlesSale}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+              showDeleteButton={true}
+              showToggleButton={false}
+              showPdfButton={false}
+              headerActions={headerActions}
+            />
           </div>
 
-          <ContentPage
-            TitlePage={TitlePage}
-            Data={salesData}
-            TitlesTable={titlesSale}
-            showDeleteButton={true}
-            showToggleButton={false}
-            showStatusColumn={true}
-            showPdfButton={false}
-            FormPage={() => (
-              <RegisterSale
-                refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
-                saleToEdit={editingSale}
-                onCancelEdit={handleCloseModal}
-                closeModal={handleCloseModal}
-                showAlert={showAlert}
-              />
-            )}
-            onDelete={handleDelete}
-            onUpdate={handleUpdate}
-            endpoint="/api/Sale/DeleteSale"
-            isModalOpen={isModalOpen}
-            setIsModalOpen={setIsModalOpen}
-            refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
-          />
-        </>
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <RegisterSale
+                  refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
+                  saleToEdit={editingSale}
+                  onCancelEdit={handleCloseModal}
+                  closeModal={handleCloseModal}
+                  showAlert={showAlert}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}
