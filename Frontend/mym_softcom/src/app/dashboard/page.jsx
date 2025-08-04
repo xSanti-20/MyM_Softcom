@@ -27,7 +27,7 @@ import axiosInstance from "@/lib/axiosInstance"
 import { useRouter } from "next/navigation"
 
 // Componente de tabla de datos resumida
-const DataTable = ({ columns, data, title, maxRows = 5 }) => {
+const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => {
   const [showAll, setShowAll] = useState(false)
   const displayData = showAll ? data : data.slice(0, maxRows)
 
@@ -75,6 +75,23 @@ const DataTable = ({ columns, data, title, maxRows = 5 }) => {
                 </tr>
               )}
             </tbody>
+            {/* Nuevo: Pie de tabla para la fila de totales */}
+            {footerData && (
+              <tfoot className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                <tr>
+                  {columns.map((column, i) => (
+                    <td
+                      key={i}
+                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${
+                        i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
+                      }`}
+                    >
+                      {column.cell ? column.cell(footerData) : footerData[column.accessor]}
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
         {data.length > maxRows && (
@@ -117,7 +134,7 @@ const StatCard = ({ icon: Icon, title, value, description, color = "blue", onCli
       icon: "bg-green-100 text-green-600",
       trend: "text-green-600",
       border: "border-green-100 hover:border-green-200",
-      shadow: "shadow-green-100/50",
+      shadow: "shadow-blue-100/50",
     },
     purple: {
       light: "bg-purple-50 text-purple-700 border-purple-100",
@@ -164,6 +181,7 @@ const StatCard = ({ icon: Icon, title, value, description, color = "blue", onCli
       onClick={onClick}
     >
       <CardHeader className="pb-2">
+        {/* CORRECCIÓN: Se restauró el div original que envuelve el icono */}
         <div className="flex justify-between items-start">
           <div className={`p-2.5 rounded-lg ${scheme.icon}`}>
             <Icon className="h-5 w-5" />
@@ -250,8 +268,8 @@ const ActivityItem = ({ action, details, time, icon: Icon = Activity, color = "b
 }
 
 export default function Dashboard() {
-  // Estados para almacenar datos de pagos
-  const [payments, setPayments] = useState([])
+  // Estados para almacenar datos
+  const [payments, setPayments] = useState([]) // Mantener por si se necesita en el futuro, aunque la tabla se quita
   const [clients, setClients] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [stats, setStats] = useState({
@@ -259,13 +277,16 @@ export default function Dashboard() {
     overdueClients: 0,
     totalOwed: 0,
     cancellations: 0,
-    totalSales: 0,
-    monthlyRevenue: 0,
-    // Nuevos campos para proyectos
+    monthlyRevenue: 0, // Recaudo de pagos del mes actual
+    // Nuevos campos para proyectos del mes actual
     luxuryMonthly: 0,
     reservasMonthly: 0,
     malibuMonthly: 0,
+    totalCurrentMonthProjectRevenue: 0, // Total de recaudo de proyectos del mes actual
   })
+  const [historicalProjectRevenue, setHistoricalProjectRevenue] = useState([])
+  const [historicalProjectColumns, setHistoricalProjectColumns] = useState([])
+  const [historicalProjectTotals, setHistoricalProjectTotals] = useState(null) // Nuevo estado para los totales
 
   // Estados para controlar la carga y errores
   const [dataLoading, setDataLoading] = useState(true)
@@ -326,84 +347,142 @@ export default function Dashboard() {
     }
   }
 
-  // Función para cargar todos los datos de pagos
+  // Función para obtener el nombre del mes
+  const getMonthName = (monthNumber) => {
+    const date = new Date(2000, monthNumber - 1, 1) // Usar un año y día arbitrario
+    return date.toLocaleString("es-ES", { month: "long" })
+  }
+
+  // Función para cargar todos los datos del dashboard
   const loadAllData = async () => {
     setDataLoading(true)
     const newErrors = {}
 
     try {
-      // Cargar datos de pagos
+      // Cargar estadísticas principales
       try {
-        const response = await axiosInstance.get("/api/payments/all")
-        console.log("Payment data:", response.data)
+        const response = await axiosInstance.get("/api/Dashboard/GetMainStats")
+        console.log("Main stats data:", response.data)
 
-        const formattedPayments = response.data.map((payment) => ({
-          id: payment.id_Payment,
-          cliente: payment.client_Name || "Cliente desconocido",
-          monto: payment.amount || 0,
-          fecha: payment.payment_Date ? new Date(payment.payment_Date).toLocaleDateString() : "Sin fecha",
-          estado: payment.status || "Pendiente",
-          metodo: payment.payment_Method || "No especificado",
-          vencimiento: payment.due_Date ? new Date(payment.due_Date).toLocaleDateString() : "Sin vencimiento",
-          original: payment,
+        setStats((prevStats) => ({
+          ...prevStats,
+          activeClients: response.data.activeClients || 0,
+          overdueClients: response.data.overdueClients || 0,
+          totalOwed: response.data.totalOwed || 0,
+          cancellations: response.data.withdrawalsThisMonth || 0,
+          monthlyRevenue: response.data.monthlyRevenue || 0, // Recaudo mensual de pagos (del mes actual)
         }))
-
-        setPayments(formattedPayments)
       } catch (error) {
-        console.error("Error fetching payments:", error)
-        newErrors.payments = `Error al cargar pagos: ${error.message || "Error desconocido"}`
-        // Datos de ejemplo para desarrollo
-        setPayments([
-          {
-            id: 1,
-            cliente: "Empresa ABC",
-            monto: 1500000,
-            fecha: "15/01/2024",
-            estado: "Pagado",
-            metodo: "Transferencia",
-            vencimiento: "15/01/2024",
-            proyecto: "Luxury",
-            original: { payment_Date: new Date(), status: "Pagado", amount: 1500000, project: "Luxury" },
-          },
-          {
-            id: 2,
-            cliente: "Corporación XYZ",
-            monto: 2300000,
-            fecha: "10/01/2024",
-            estado: "Vencido",
-            metodo: "Cheque",
-            vencimiento: "10/01/2024",
-            proyecto: "Reservas",
-            original: { payment_Date: new Date(), status: "Vencido", amount: 2300000, project: "Reservas" },
-          },
-          {
-            id: 3,
-            cliente: "Servicios DEF",
-            monto: 850000,
-            fecha: "20/01/2024",
-            estado: "Pendiente",
-            metodo: "Efectivo",
-            vencimiento: "25/01/2024",
-            proyecto: "Malibu",
-            original: { payment_Date: new Date(), status: "Pendiente", amount: 850000, project: "Malibu" },
-          },
-        ])
+        console.error("Error fetching main stats:", error)
+        newErrors.mainStats = `Error al cargar estadísticas principales: ${error.message || "Error desconocido"}`
       }
 
-      // Cargar datos de clientes
+      // Cargar recaudos por proyecto (del mes actual)
       try {
-        const response = await axiosInstance.get("/api/clients/all")
+        const response = await axiosInstance.get("/api/Dashboard/GetProjectRevenue")
+        console.log("Current month project revenue data:", response.data)
+
+        const projectRevenues = response.data.projects || []
+        const totalCurrentMonthProjectRevenue = response.data.totalCurrentMonthRevenue || 0 // Suma de todos los proyectos del mes actual
+
+        // Buscar proyectos por nombre exacto o más específico
+        const luxuryMalibuProject = projectRevenues.find((p) => p.projectName.toLowerCase() === "luxury malibu")
+        const reservasProject = projectRevenues.find((p) => p.projectName.toLowerCase() === "reservas del poblado")
+        const malibuProject = projectRevenues.find(
+          (p) => p.projectName.toLowerCase() === "malibu" && p.projectName.toLowerCase() !== "luxury malibu",
+        ) // Asegura que no sea "Luxury Malibu"
+
+        console.log("Luxury Malibu project found (current month):", luxuryMalibuProject)
+        console.log("Reservas project found (current month):", reservasProject)
+        console.log("Malibu project found (current month, distinct):", malibuProject)
+
+        setStats((prevStats) => ({
+          ...prevStats,
+          luxuryMonthly: luxuryMalibuProject?.monthlyRevenue || 0,
+          reservasMonthly: reservasProject?.monthlyRevenue || 0,
+          malibuMonthly: malibuProject?.monthlyRevenue || 0,
+          totalCurrentMonthProjectRevenue: totalCurrentMonthProjectRevenue, // Actualiza el total de proyectos del mes actual
+        }))
+      } catch (error) {
+        console.error("Error fetching current month project revenue:", error)
+        newErrors.projectRevenue = `Error al cargar recaudos por proyecto del mes actual: ${error.message || "Error desconocido"}`
+      }
+
+      // Cargar recaudos históricos por proyecto
+      try {
+        const response = await axiosInstance.get("/api/Dashboard/GetHistoricalProjectRevenue?months=8") // Obtener los últimos 6 meses
+        console.log("Historical project revenue data:", response.data)
+
+        const historicalData = response.data.historicalData || []
+        const projectNames = response.data.projectNames || []
+
+        // Preparar columnas dinámicas para la tabla histórica
+        const dynamicColumns = [
+          { header: "MES", accessor: "monthName" },
+          ...projectNames.map((name) => ({
+            header: name.toUpperCase(), // Nombre del proyecto como encabezado
+            accessor: name, // El nombre del proyecto será la clave en los datos de la fila
+            cell: (row) => formatCurrency(row[name]), // Formatear como moneda
+          })),
+        ]
+        setHistoricalProjectColumns(dynamicColumns)
+
+        // Formatear los datos históricos para la tabla
+        const formattedHistoricalData = historicalData.map((item) => {
+          const row = {
+            monthName: `${getMonthName(item.month)} ${item.year}`, // "Enero 2023"
+          }
+          projectNames.forEach((name) => {
+            row[name] = item[name] // Asignar el valor del proyecto
+          })
+          return row
+        })
+        setHistoricalProjectRevenue(formattedHistoricalData)
+
+        // Calcular los totales para la fila de pie de tabla
+        const totalsRow = { monthName: "TOTAL" }
+        projectNames.forEach((name) => {
+          totalsRow[name] = formattedHistoricalData.reduce((sum, row) => sum + (row[name] || 0), 0)
+        })
+        setHistoricalProjectTotals(totalsRow)
+      } catch (error) {
+        console.error("Error fetching historical project revenue:", error)
+        newErrors.historicalProjectRevenue = `Error al cargar recaudos históricos por proyecto: ${error.message || "Error desconocido"}`
+        setHistoricalProjectRevenue([])
+        setHistoricalProjectColumns([])
+        setHistoricalProjectTotals(null)
+      }
+
+      // Cargar actividad reciente
+      try {
+        const response = await axiosInstance.get("/api/Dashboard/GetRecentActivity?limit=8")
+        console.log("Recent activity data:", response.data)
+
+        const formattedActivity = response.data.map((activity) => ({
+          action: activity.action,
+          details: activity.details,
+          time: formatRelativeTime(activity.date),
+          date: new Date(activity.date),
+          icon: activity.type === "payment" ? CreditCard : XCircle,
+          color: activity.color,
+        }))
+
+        setRecentActivity(formattedActivity)
+      } catch (error) {
+        console.error("Error fetching recent activity:", error)
+        newErrors.activity = `Error al cargar actividad reciente: ${error.message || "Error desconocido"}`
+        setRecentActivity([])
+      }
+
+      // Cargar datos de clientes (para mantener compatibilidad)
+      try {
+        const response = await axiosInstance.get("/api/Client/GetAll")
         console.log("Client data:", response.data)
         setClients(response.data || [])
       } catch (error) {
         console.error("Error fetching clients:", error)
         newErrors.clients = `Error al cargar clientes: ${error.message || "Error desconocido"}`
-        // Datos de ejemplo para desarrollo
-        setClients([
-          { id: 1, name: "Empresa ABC", status: "Activo" },
-          { id: 2, name: "Corporación XYZ", status: "Moroso" },
-          { id: 3, name: "Servicios DEF", status: "Activo" },
-        ])
+        setClients([])
       }
 
       setErrors(newErrors)
@@ -411,142 +490,9 @@ export default function Dashboard() {
     } catch (error) {
       console.error("Error general al cargar datos:", error)
       newErrors.general = `Error general: ${error.message || "Error desconocido"}`
+      setErrors(newErrors)
     } finally {
       setDataLoading(false)
-    }
-  }
-
-  // Preparar datos de actividad reciente
-  const prepareRecentActivity = () => {
-    try {
-      const allActivities = []
-
-      // Añadir actividades recientes de pagos (los últimos 5 registrados)
-      payments.slice(0, 5).forEach((payment) => {
-        let activityColor = "blue"
-        let activityIcon = CreditCard
-        let activityAction = "Pago registrado"
-
-        if (payment.estado === "Pagado") {
-          activityColor = "green"
-          activityIcon = CreditCard
-          activityAction = "Pago completado"
-        } else if (payment.estado === "Vencido") {
-          activityColor = "red"
-          activityIcon = AlertCircle
-          activityAction = "Pago vencido"
-        } else if (payment.estado === "Cancelado") {
-          activityColor = "amber"
-          activityIcon = XCircle
-          activityAction = "Pago cancelado"
-        }
-
-        allActivities.push({
-          action: activityAction,
-          details: `${payment.cliente} - ${formatCurrency(payment.monto)}`,
-          time: payment.original?.payment_Date
-            ? formatRelativeTime(payment.original.payment_Date)
-            : "Fecha desconocida",
-          date: new Date(payment.original?.payment_Date || Date.now()),
-          icon: activityIcon,
-          color: activityColor,
-        })
-      })
-
-      // Ordenar por fecha más reciente y tomar los 8 primeros
-      setRecentActivity(allActivities.sort((a, b) => b.date - a.date).slice(0, 8))
-    } catch (err) {
-      console.error("Error preparing recent activity:", err)
-      setRecentActivity([])
-    }
-  }
-
-  // Calcular estadísticas de pagos
-  const calculateStats = () => {
-    try {
-      // Clientes activos (que no están en mora)
-      const activeClients = clients.filter((client) => client.status !== "Moroso").length
-
-      // Clientes en mora
-      const overdueClients = clients.filter((client) => client.status === "Moroso").length
-
-      // Total adeudado por clientes en mora
-      const totalOwed = payments
-        .filter((payment) => payment.estado === "Vencido")
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      // Pagos cancelados
-      const cancellations = payments.filter((payment) => payment.estado === "Cancelado").length
-
-      // Ventas totales (pagos completados)
-      const totalSales = payments
-        .filter((payment) => payment.estado === "Pagado")
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      // Dinero recaudado en el mes actual
-      const currentMonth = new Date().getMonth()
-      const currentYear = new Date().getFullYear()
-      const monthlyRevenue = payments
-        .filter((payment) => {
-          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
-            const paymentDate = new Date(payment.original.payment_Date)
-            return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
-          }
-          return false
-        })
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      // Recaudos mensuales por proyecto
-      const luxuryMonthly = payments
-        .filter((payment) => {
-          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
-            const paymentDate = new Date(payment.original.payment_Date)
-            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
-            // Asumiendo que el proyecto viene en payment.original.project o payment.proyecto
-            const project = payment.original?.project || payment.proyecto || ""
-            return isCurrentMonth && project.toLowerCase().includes("luxury")
-          }
-          return false
-        })
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      const reservasMonthly = payments
-        .filter((payment) => {
-          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
-            const paymentDate = new Date(payment.original.payment_Date)
-            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
-            const project = payment.original?.project || payment.proyecto || ""
-            return isCurrentMonth && project.toLowerCase().includes("reservas")
-          }
-          return false
-        })
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      const malibuMonthly = payments
-        .filter((payment) => {
-          if (payment.estado === "Pagado" && payment.original?.payment_Date) {
-            const paymentDate = new Date(payment.original.payment_Date)
-            const isCurrentMonth = paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
-            const project = payment.original?.project || payment.proyecto || ""
-            return isCurrentMonth && project.toLowerCase().includes("malibu")
-          }
-          return false
-        })
-        .reduce((sum, payment) => sum + (payment.monto || 0), 0)
-
-      setStats({
-        activeClients,
-        overdueClients,
-        totalOwed,
-        cancellations,
-        totalSales,
-        monthlyRevenue,
-        luxuryMonthly,
-        reservasMonthly,
-        malibuMonthly,
-      })
-    } catch (err) {
-      console.error("Error calculating stats:", err)
     }
   }
 
@@ -562,12 +508,6 @@ export default function Dashboard() {
     // Limpiar intervalo al desmontar
     return () => clearInterval(intervalId)
   }, [])
-
-  // Efecto para procesar los datos cuando se cargan
-  useEffect(() => {
-    prepareRecentActivity()
-    calculateStats()
-  }, [payments, clients])
 
   // Efecto para obtener el rol del usuario
   useEffect(() => {
@@ -588,33 +528,15 @@ export default function Dashboard() {
   if (isVerifying) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-white to-gray-100">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-          <p className="text-gray-600 animate-pulse">Cargando MySoftCom...</p>
+        <div className="flex flex-col items-center">
+          <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
+          <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
         </div>
       </div>
     )
   }
 
   const hasErrors = Object.keys(errors).length > 0
-
-  // Columnas para tabla de pagos
-  const paymentColumns = [
-    { header: "ID", accessor: "id" },
-    { header: "CLIENTE", accessor: "cliente" },
-    { header: "PROYECTO", accessor: "proyecto" }, // Nueva columna
-    { header: "MONTO", cell: (row) => formatCurrency(row.monto) },
-    { header: "FECHA", accessor: "fecha" },
-    {
-      header: "ESTADO",
-      cell: (row) => (
-        <Badge variant={row.estado === "Pagado" ? "default" : row.estado === "Vencido" ? "destructive" : "secondary"}>
-          {row.estado}
-        </Badge>
-      ),
-    },
-    { header: "MÉTODO", accessor: "metodo" },
-  ]
 
   return (
     <div className="flex min-h-screen">
@@ -628,7 +550,9 @@ export default function Dashboard() {
                   <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido a M&M SoftCom</h1>
 
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">Resumen y control de la Actividad financiera</p>
+                    <p className="text-gray-600 dark:text-gray-400 mt-1">
+                      Resumen y control de la Actividad financiera
+                    </p>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div
@@ -749,63 +673,59 @@ export default function Dashboard() {
                     />
                   </div>
 
-                  {/* Tarjeta de recaudo total */}
+                  {/* Tarjeta de recaudo total (suma de proyectos del mes actual) */}
                   <div className="grid grid-cols-1 mb-4">
                     <StatCard
                       icon={CreditCard}
-                      title="Recaudado Total en el Mes"
-                      value={formatCurrency(stats.monthlyRevenue)}
-                      description="Dinero total recaudado este mes"
+                      title="Recaudado Total (Proyectos del Mes)"
+                      value={formatCurrency(stats.totalCurrentMonthProjectRevenue)}
+                      description="Dinero total recaudado por proyectos en el mes actual"
                       color="teal"
                     />
                   </div>
 
-                  {/* Tarjetas de recaudos por proyecto */}
+                  {/* Tarjetas de recaudos por proyecto del mes actual */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <StatCard
                       icon={Building2}
-                      title="Luxury - Mes Actual"
+                      title="Luxury Malibu - Mes Actual"
                       value={formatCurrency(stats.luxuryMonthly)}
-                      description="Recaudo mensual proyecto Luxury"
+                      description="Recaudo total proyecto Luxury Malibu en el mes actual"
                       color="blue"
                     />
                     <StatCard
                       icon={Building2}
-                      title="Reservas - Mes Actual"
+                      title="Reservas del Poblado - Mes Actual"
                       value={formatCurrency(stats.reservasMonthly)}
-                      description="Recaudo mensual proyecto Reservas"
+                      description="Recaudo total proyecto Reservas del Poblado en el mes actual"
                       color="cyan"
                     />
                     <StatCard
                       icon={Building2}
                       title="Malibu - Mes Actual"
                       value={formatCurrency(stats.malibuMonthly)}
-                      description="Recaudo mensual proyecto Malibu"
+                      description="Recaudo total proyecto Malibu en el mes actual"
                       color="green"
                     />
                   </div>
 
                   {/* Contenido principal y actividades recientes */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Tabla de pagos recientes */}
+                    {/* Tabla de recaudos históricos por proyecto */}
                     <div className="lg:col-span-2 space-y-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle>Últimos Pagos Registrados</CardTitle>
+                          <CardTitle>Recaudos Históricos por Proyecto</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <DataTable columns={paymentColumns} data={payments} maxRows={5} />
+                          <DataTable
+                            columns={historicalProjectColumns}
+                            data={historicalProjectRevenue}
+                            maxRows={6}
+                            footerData={historicalProjectTotals} // Pasar los totales aquí
+                          />
                         </CardContent>
-                        <CardFooter className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs text-blue-600 gap-1 bg-transparent"
-                            onClick={() => navigateToPage("/dashboard/payments")}
-                          >
-                            Ver todos los pagos
-                          </Button>
-                        </CardFooter>
+                        {/* No hay botón "Ver todos" aquí, ya que la tabla ya muestra el historial configurado */}
                       </Card>
                     </div>
 
@@ -848,10 +768,10 @@ export default function Dashboard() {
                         icon={Info}
                         color="blue"
                         messages={[
-                          `${payments.length} pagos registrados`,
                           `${stats.activeClients} clientes activos`,
-                          `${formatCurrency(stats.monthlyRevenue)} recaudado este mes`,
+                          `${formatCurrency(stats.totalCurrentMonthProjectRevenue)} recaudado por proyectos este mes`, // Mensaje actualizado
                           `${formatCurrency(stats.totalOwed)} pendiente de cobro`,
+                          `${stats.cancellations} desistimientos este mes`,
                         ]}
                       />
                     </div>

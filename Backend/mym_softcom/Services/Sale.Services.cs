@@ -1,5 +1,5 @@
 ﻿using mym_softcom.Models;
-using mym_softcom; // Asumiendo que AppDbContext está en este namespace
+using mym_softcom;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -74,7 +74,6 @@ namespace mym_softcom.Services
 
                 // Obtener el plan para el número de cuotas
                 var plan = await _planServices.GetPlanById(sale.id_Plans);
-
                 decimal remainingValue = 0;
                 if (sale.total_value.HasValue && sale.initial_payment.HasValue)
                 {
@@ -95,7 +94,25 @@ namespace mym_softcom.Services
                 }
 
                 _context.Sales.Add(sale);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(); // Guardar la venta para obtener su ID
+
+                // ✅ INICIO DE LA CORRECCIÓN: Registrar la cuota inicial como un Payment
+                if (sale.initial_payment.HasValue && sale.initial_payment.Value > 0)
+                {
+                    var initialPayment = new Payment
+                    {
+                        id_Sales = sale.id_Sales, // Vincular el pago a la nueva venta
+                        amount = sale.initial_payment.Value,
+                        payment_date = sale.sale_date, // Usar la fecha de la venta como fecha del pago inicial
+                        payment_method = "Cuota Inicial", // Puedes ajustar esto según tus métodos de pago
+                        // id_Users NO SE INCLUYE AQUÍ, ya que no está directamente en el modelo Payment
+                    };
+
+                    _context.Payments.Add(initialPayment);
+                    await _context.SaveChangesAsync(); // Guardar el pago inicial
+                    Console.WriteLine($"[SaleServices] Pago inicial de ${initialPayment.amount} registrado para venta ID: {sale.id_Sales}");
+                }
+                // ✅ FIN DE LA CORRECCIÓN
 
                 // Actualizar el estado del lote a "Vendido"
                 await _lotServices.ChangeLotStatus(sale.id_Lots, "Vendido");
@@ -131,7 +148,6 @@ namespace mym_softcom.Services
                 {
                     // Marcar el lote anterior como "Libre" (o el estado que corresponda si se cancela la venta)
                     await _lotServices.ChangeLotStatus(existingSale.id_Lots, "Libre"); // Asumiendo que se libera
-
                     // Marcar el nuevo lote como "Vendido"
                     var newLot = await _lotServices.GetLotById(updatedSale.id_Lots);
                     if (newLot == null)
@@ -156,7 +172,6 @@ namespace mym_softcom.Services
                 {
                     paymentAmount = updatedSale.initial_payment.Value;
                 }
-
 
                 // Actualizar propiedades básicas
                 existingSale.sale_date = updatedSale.sale_date;
@@ -183,7 +198,6 @@ namespace mym_softcom.Services
                     existingSale.total_debt = existingSale.total_value - existingSale.initial_payment - paymentAmount;
                     if (existingSale.total_debt < 0) existingSale.total_debt = 0;
                 }
-
 
                 // Recalcular quota_value si los campos relevantes cambiaron
                 Plan? currentPlan = existingSale.plan;

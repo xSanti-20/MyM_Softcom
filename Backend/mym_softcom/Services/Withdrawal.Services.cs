@@ -28,8 +28,8 @@ namespace mym_softcom.Services
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.client)
                                  .Include(w => w.sale)
-                                 .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(s => s.lot) // Correcto: Sale -> Lot
+                                 .ThenInclude(l => l.project) // Correcto: Lot -> Project
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.plan)
                                  .Include(w => w.sale)
@@ -48,8 +48,8 @@ namespace mym_softcom.Services
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.client)
                                  .Include(w => w.sale)
-                                 .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(s => s.lot) // Correcto: Sale -> Lot
+                                 .ThenInclude(l => l.project) // Correcto: Lot -> Project
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.plan)
                                  .Include(w => w.sale)
@@ -67,8 +67,8 @@ namespace mym_softcom.Services
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.client)
                                  .Include(w => w.sale)
-                                 .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(s => s.lot) // Correcto: Sale -> Lot
+                                 .ThenInclude(l => l.project) // Correcto: Lot -> Project
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.plan)
                                  .Include(w => w.sale)
@@ -86,8 +86,8 @@ namespace mym_softcom.Services
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.client)
                                  .Include(w => w.sale)
-                                 .ThenInclude(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(s => s.lot) // *** CORRECCIÓN AQUÍ: Sale -> Lot
+                                 .ThenInclude(l => l.project) // *** Y AQUÍ: Lot -> Project
                                  .Include(w => w.sale)
                                  .ThenInclude(s => s.plan)
                                  .Include(w => w.sale)
@@ -110,13 +110,10 @@ namespace mym_softcom.Services
                 {
                     throw new InvalidOperationException("La venta asociada no existe.");
                 }
-
                 var totalRaised = sale.total_raised ?? 0;
                 var totalValue = sale.total_value ?? 0;
                 var penaltyPercentage = totalValue * 0.10m;
-
                 var penalty = totalRaised - penaltyPercentage;
-
                 // La penalización no puede ser negativa
                 return Math.Max(0, penalty);
             }
@@ -141,32 +138,31 @@ namespace mym_softcom.Services
             {
                 Console.WriteLine($"[WithdrawalServices] Iniciando CreateWithdrawal para venta ID: {withdrawal.id_Sales}");
                 Console.WriteLine($"[WithdrawalServices] Withdrawal object received: Date={withdrawal.withdrawal_date}, Reason={withdrawal.reason}, SaleID={withdrawal.id_Sales}");
-
                 if (withdrawal.withdrawal_date == default(DateTime))
                 {
                     withdrawal.withdrawal_date = DateTime.UtcNow;
                     Console.WriteLine($"[WithdrawalServices] withdrawal_date era default, ajustado a UTC: {withdrawal.withdrawal_date}");
                 }
-
                 var sale = await _context.Sales
                     .Include(s => s.client)
                     .Include(s => s.lot)
                     .FirstOrDefaultAsync(s => s.id_Sales == withdrawal.id_Sales);
-
                 if (sale == null)
                 {
                     throw new InvalidOperationException("La venta asociada no existe.");
                 }
-
                 // Verificar que la venta esté activa usando el valor 'Active' del ENUM
                 if (sale.status != "Active")
                 {
                     throw new InvalidOperationException("Solo se pueden procesar desistimientos de ventas activas.");
                 }
-
                 // Calcular la penalización automáticamente
                 withdrawal.penalty = await CalculatePenalty(withdrawal.id_Sales);
                 Console.WriteLine($"[WithdrawalServices] Penalización calculada: {withdrawal.penalty}");
+
+                // Actualizar el total_raised de la venta con el valor de la penalización
+                sale.total_raised = withdrawal.penalty;
+                Console.WriteLine($"[WithdrawalServices] total_raised de venta {sale.id_Sales} ajustado a la penalización: {sale.total_raised}");
 
                 // 1. Actualizar el estado de la venta a "Desistida"
                 sale.status = "Desistida"; // Usando el valor 'Desistida' del ENUM
@@ -181,9 +177,7 @@ namespace mym_softcom.Services
                                    s.id_Sales != sale.id_Sales &&
                                    s.status == "Active") // Usando 'Active' para otras ventas
                         .CountAsync();
-
                     Console.WriteLine($"[WithdrawalServices] Cliente {sale.client.id_Clients} tiene {otherActiveSales} ventas activas adicionales");
-
                     // Solo desactivar el cliente si NO tiene otras ventas activas
                     if (otherActiveSales == 0)
                     {
@@ -200,7 +194,6 @@ namespace mym_softcom.Services
                         Console.WriteLine($"[WithdrawalServices] Cliente {sale.client.id_Clients} mantiene estado activo - tiene {otherActiveSales} ventas activas restantes");
                     }
                 }
-
                 // 3. LIBERAR EL LOTE AUTOMÁTICAMENTE (cambiar estado a "Libre")
                 if (sale.lot != null)
                 {
@@ -212,12 +205,9 @@ namespace mym_softcom.Services
                         Console.WriteLine($"[WithdrawalServices] Lote {lot.id_Lots} liberado automáticamente por desistimiento");
                     }
                 }
-
                 _context.Withdrawals.Add(withdrawal);
                 _context.Sales.Update(sale);
-
                 await _context.SaveChangesAsync();
-
                 Console.WriteLine($"[WithdrawalServices] Desistimiento creado exitosamente. ID: {withdrawal.id_Withdrawals}, Penalización: {withdrawal.penalty}");
                 return true;
             }
@@ -243,41 +233,38 @@ namespace mym_softcom.Services
             {
                 Console.WriteLine($"[WithdrawalServices] Iniciando UpdateWithdrawal para ID: {id_Withdrawals}");
                 Console.WriteLine($"[WithdrawalServices] Updated Withdrawal object received: Date={updatedWithdrawal.withdrawal_date}, Reason={updatedWithdrawal.reason}, SaleID={updatedWithdrawal.id_Sales}, Penalty={updatedWithdrawal.penalty}");
-
                 var existingWithdrawal = await _context.Withdrawals.AsNoTracking().FirstOrDefaultAsync(w => w.id_Withdrawals == id_Withdrawals);
                 if (existingWithdrawal == null)
                 {
                     Console.WriteLine($"[WithdrawalServices] Desistimiento con ID {id_Withdrawals} no encontrado para actualizar.");
                     return false;
                 }
-
                 if (id_Withdrawals != updatedWithdrawal.id_Withdrawals)
                 {
                     Console.WriteLine($"[WithdrawalServices] Mismatch: URL ID {id_Withdrawals} vs Body ID {updatedWithdrawal.id_Withdrawals}");
                     throw new ArgumentException("El ID del desistimiento en la URL no coincide con el ID del desistimiento en el cuerpo de la solicitud.");
                 }
-
                 var sale = await _saleServices.GetSaleById(updatedWithdrawal.id_Sales);
                 if (sale == null)
                 {
                     throw new InvalidOperationException("La venta asociada al desistimiento no existe.");
                 }
-
                 // Guardar la penalización anterior para ajustar el recaudo del proyecto
                 var previousPenalty = existingWithdrawal.penalty ?? 0;
-
                 // Recalcular la penalización
                 updatedWithdrawal.penalty = await CalculatePenalty(updatedWithdrawal.id_Sales);
                 Console.WriteLine($"[WithdrawalServices] Penalización recalculada para actualización: {updatedWithdrawal.penalty}");
 
+                // Si también necesitas que el total_raised de la venta se actualice al editar un desistimiento,
+                // puedes añadir la siguiente línea aquí:
+                // sale.total_raised = updatedWithdrawal.penalty;
+                // _context.Sales.Update(sale); // Asegúrate de que la venta también se marque para actualización
+
                 // Asegurarse de que el ID del objeto actualizado coincida con el de la URL
                 updatedWithdrawal.id_Withdrawals = id_Withdrawals;
-
                 _context.Entry(existingWithdrawal).CurrentValues.SetValues(updatedWithdrawal);
                 _context.Entry(updatedWithdrawal).State = EntityState.Modified; // Asegurar que EF lo marque como modificado
-
                 await _context.SaveChangesAsync();
-
                 Console.WriteLine($"[WithdrawalServices] Desistimiento actualizado exitosamente. ID: {id_Withdrawals}");
                 return true;
             }
@@ -309,14 +296,18 @@ namespace mym_softcom.Services
                     .Include(w => w.sale)
                     .ThenInclude(s => s.lot)
                     .FirstOrDefaultAsync(w => w.id_Withdrawals == id_Withdrawals);
-
                 if (withdrawal == null)
                 {
                     Console.WriteLine($"[WithdrawalServices] Desistimiento con ID {id_Withdrawals} no encontrado para eliminar.");
                     return false;
                 }
 
-                var sale = await _saleServices.GetSaleById(withdrawal.id_Sales);
+                // Cargar la venta con su total_value para el cálculo de reversión
+                var sale = await _context.Sales
+                    .Include(s => s.client)
+                    .Include(s => s.lot)
+                    .FirstOrDefaultAsync(s => s.id_Sales == withdrawal.id_Sales);
+
                 if (sale == null)
                 {
                     throw new InvalidOperationException("La venta asociada al desistimiento no existe.");
@@ -325,6 +316,16 @@ namespace mym_softcom.Services
                 // 1. Reactivar la venta a 'Active'
                 sale.status = "Active"; // Usando el valor 'Active' del ENUM
                 Console.WriteLine($"[WithdrawalServices] Estado de venta {sale.id_Sales} cambiado a 'Active'.");
+
+                // *** INICIO DE LA CORRECCIÓN PARA REVERTIR total_raised ***
+                // Recalcular el total_raised de la venta a su valor original antes del desistimiento.
+                // Usamos la penalización del desistimiento y el 10% del valor total de la venta.
+                // total_raised_original = penalización_retenida + (valor_total_venta * 10%)
+                // Asumimos que withdrawal.penalty es la penalización que se retuvo.
+                var penaltyPercentageOfTotalValue = sale.total_value * 0.10m;
+                sale.total_raised = withdrawal.penalty + penaltyPercentageOfTotalValue;
+                Console.WriteLine($"[WithdrawalServices] total_raised de venta {sale.id_Sales} revertido a: {sale.total_raised} (Penalización: {withdrawal.penalty}, 10% Valor Total: {penaltyPercentageOfTotalValue})");
+                // *** FIN DE LA CORRECCIÓN ***
 
                 // 2. REACTIVAR EL CLIENTE SOLO SI ESTABA INACTIVO
                 if (withdrawal.sale.client != null)
@@ -341,7 +342,6 @@ namespace mym_softcom.Services
                         Console.WriteLine($"[WithdrawalServices] Cliente {client.id_Clients} ya estaba activo - no se modificó");
                     }
                 }
-
                 // 3. MARCAR EL LOTE COMO VENDIDO NUEVAMENTE
                 if (withdrawal.sale.lot != null)
                 {
@@ -353,12 +353,9 @@ namespace mym_softcom.Services
                         Console.WriteLine($"[WithdrawalServices] Lote {lot.id_Lots} marcado como vendido nuevamente");
                     }
                 }
-
                 _context.Withdrawals.Remove(withdrawal);
                 _context.Sales.Update(sale);
-
                 await _context.SaveChangesAsync();
-
                 Console.WriteLine($"[WithdrawalServices] Desistimiento eliminado exitosamente. ID: {id_Withdrawals}");
                 return true;
             }

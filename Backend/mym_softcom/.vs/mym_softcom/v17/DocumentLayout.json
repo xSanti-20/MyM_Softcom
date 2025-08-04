@@ -3,16 +3,28 @@
   "WorkspaceRootPath": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\dashboard.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\dashboard.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\withdrawal.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\withdrawal.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\withdrawal.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\withdrawal.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,7 +34,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -30,7 +42,46 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Payment.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
+              "RelativeToolTip": "Services\\Payment.Services.cs",
+              "ViewState": "AgIAAO0AAAAAAAAAAAAmwP8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T21:00:34.187Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Sale.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Sale.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
+              "RelativeToolTip": "Services\\Sale.Services.cs",
+              "ViewState": "AgIAAPgAAAAAAAAAAAAmwAwBAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T20:41:00.942Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Dashboard.Controller.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Dashboard.Controller.cs",
+              "RelativeDocumentMoniker": "Controllers\\Dashboard.Controller.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Dashboard.Controller.cs",
+              "RelativeToolTip": "Controllers\\Dashboard.Controller.cs",
+              "ViewState": "AgIAAK8AAAAAAAAAAAAowLwAAAA2AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T14:19:08.779Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "Withdrawal.Controller.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Withdrawal.Controller.cs",
               "RelativeDocumentMoniker": "Controllers\\Withdrawal.Controller.cs",
@@ -38,30 +89,30 @@
               "RelativeToolTip": "Controllers\\Withdrawal.Controller.cs",
               "ViewState": "AgIAAIoAAAAAAAAAAAAIwMgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-30T14:16:30.374Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-07-30T14:16:30.374Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "Withdrawal.Services.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Withdrawal.Services.cs",
               "RelativeDocumentMoniker": "Services\\Withdrawal.Services.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Withdrawal.Services.cs",
               "RelativeToolTip": "Services\\Withdrawal.Services.cs",
-              "ViewState": "AgIAAFoBAAAAAAAAAAAcwHUBAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAAFIBAAAAAAAAAAAmwGgBAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-30T14:09:29.241Z"
+              "WhenOpened": "2025-07-30T14:09:29.241Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "Withdrawal.Model.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Withdrawal.Model.cs",
               "RelativeDocumentMoniker": "Models\\Withdrawal.Model.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Withdrawal.Model.cs",
               "RelativeToolTip": "Models\\Withdrawal.Model.cs",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAqwAgAAAAvAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-25T15:28:47.37Z",
               "EditorCaption": ""

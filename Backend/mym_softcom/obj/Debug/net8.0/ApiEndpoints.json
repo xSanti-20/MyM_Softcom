@@ -211,6 +211,78 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetHistoricalProjectRevenue",
+    "RelativePath": "api/Dashboard/GetHistoricalProjectRevenue",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetMainStats",
+    "RelativePath": "api/Dashboard/GetMainStats",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetOverdueClients",
+    "RelativePath": "api/Dashboard/GetOverdueClients",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetProjectRevenue",
+    "RelativePath": "api/Dashboard/GetProjectRevenue",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetRecentActivity",
+    "RelativePath": "api/Dashboard/GetRecentActivity",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "limit",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "GetRecentPayments",
+    "RelativePath": "api/Dashboard/GetRecentPayments",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "limit",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.LotController",
     "Method": "ChangeLotStatus",
     "RelativePath": "api/Lot/ChangeLotStatus/{id}",
