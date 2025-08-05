@@ -45,6 +45,7 @@ builder.Services.AddScoped<PlanServices>();
 builder.Services.AddScoped<ProjectServices>();
 builder.Services.AddScoped<SaleServices>();
 builder.Services.AddScoped<WithdrawalServices>();
+builder.Services.AddScoped<DetailServices>();
 
 // 5. Configurar JWT
 var jwtKey = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:key"]);

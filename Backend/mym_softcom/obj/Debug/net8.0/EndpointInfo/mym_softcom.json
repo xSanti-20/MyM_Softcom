@@ -455,6 +455,318 @@
         }
       }
     },
+    "/api/Detail/GetAllDetails": {
+      "get": {
+        "tags": [
+          "Detail"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Detail/GetDetailID/{id}": {
+      "get": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Detail/GetDetailsByPaymentId/{paymentId}": {
+      "get": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Detail/GetDetailsBySaleId/{saleId}": {
+      "get": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Detail"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Detail/GetQuotaSummaryBySaleId/{saleId}": {
+      "get": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Detail/CreateDetail": {
+      "post": {
+        "tags": [
+          "Detail"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Detail/UpdateDetail/{id}": {
+      "put": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Detail"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Detail/DeleteDetail/{id}": {
+      "delete": {
+        "tags": [
+          "Detail"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Lot/GetAllLot": {
       "get": {
         "tags": [
@@ -2362,6 +2674,39 @@
           "status": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Detail": {
+        "type": "object",
+        "properties": {
+          "id_Details": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "number_quota": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "covered_amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "id_Payments": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "payment": {
+            "$ref": "#/components/schemas/Payment"
+          },
+          "id_Sales": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sale": {
+            "$ref": "#/components/schemas/Sale"
           }
         },
         "additionalProperties": false

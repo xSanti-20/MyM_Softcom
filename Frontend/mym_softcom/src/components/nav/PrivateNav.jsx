@@ -32,7 +32,8 @@ function NavPrivada({ children, title }) {
     { title: "Plan Financiacion", path: "/dashboard/planes", icon: "📊" }, 
     { title: "Proyectos", path: "/dashboard/projectos", icon: "🏗️" },    
     { title: "Lotes", path: "/dashboard/lotes", icon: "📦" },               
-    { title: "Desistimientos", path: "/dashboard/desistimientos", icon: "🚫" }    
+    { title: "Desistimientos", path: "/dashboard/desistimientos", icon: "🚫" },
+    { title: "Detalles", path: "/dashboard/detalles", icon: "ℹ️" }   
   ]
 
 

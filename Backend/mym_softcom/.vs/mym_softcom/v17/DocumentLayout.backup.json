@@ -7,24 +7,20 @@
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\detail.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\detail.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\dashboard.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\dashboard.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\dbcontext.models.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\dbcontext.models.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\withdrawal.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\detail.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\detail.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\withdrawal.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\withdrawal.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\withdrawal.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\withdrawal.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -34,12 +30,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
-            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
@@ -48,74 +40,59 @@
               "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
               "RelativeToolTip": "Services\\Payment.Services.cs",
-              "ViewState": "AgIAAO0AAAAAAAAAAAAmwP8AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAANMAAAAAAAAAAAAUwBYBAAA1AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-04T21:00:34.187Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "Sale.Services.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
-              "RelativeDocumentMoniker": "Services\\Sale.Services.cs",
-              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
-              "RelativeToolTip": "Services\\Sale.Services.cs",
-              "ViewState": "AgIAAPgAAAAAAAAAAAAmwAwBAAAJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-04T20:41:00.942Z",
+              "WhenOpened": "2025-08-05T20:43:01.719Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "Dashboard.Controller.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Dashboard.Controller.cs",
-              "RelativeDocumentMoniker": "Controllers\\Dashboard.Controller.cs",
-              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Dashboard.Controller.cs",
-              "RelativeToolTip": "Controllers\\Dashboard.Controller.cs",
-              "ViewState": "AgIAAK8AAAAAAAAAAAAowLwAAAA2AAAAAAAAAA==",
+              "Title": "DbContext.Models.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\DbContext.Models.cs",
+              "RelativeDocumentMoniker": "Models\\DbContext.Models.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\DbContext.Models.cs",
+              "RelativeToolTip": "Models\\DbContext.Models.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAowB0AAAAYAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-04T14:19:08.779Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-05T16:29:32.833Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Withdrawal.Controller.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Withdrawal.Controller.cs",
-              "RelativeDocumentMoniker": "Controllers\\Withdrawal.Controller.cs",
-              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Withdrawal.Controller.cs",
-              "RelativeToolTip": "Controllers\\Withdrawal.Controller.cs",
-              "ViewState": "AgIAAIoAAAAAAAAAAAAIwMgAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "Detail.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Detail.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Detail.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Detail.Services.cs",
+              "RelativeToolTip": "Services\\Detail.Services.cs",
+              "ViewState": "AgIAAAYBAAAAAAAAAAAAABABAAA3AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-30T14:16:30.374Z"
+              "WhenOpened": "2025-08-05T16:28:00.841Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "Withdrawal.Services.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Withdrawal.Services.cs",
-              "RelativeDocumentMoniker": "Services\\Withdrawal.Services.cs",
-              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Withdrawal.Services.cs",
-              "RelativeToolTip": "Services\\Withdrawal.Services.cs",
-              "ViewState": "AgIAAFIBAAAAAAAAAAAmwGgBAAANAAAAAAAAAA==",
+              "Title": "Detail.Controller.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Detail.Controller.cs",
+              "RelativeDocumentMoniker": "Controllers\\Detail.Controller.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Detail.Controller.cs",
+              "RelativeToolTip": "Controllers\\Detail.Controller.cs",
+              "ViewState": "AgIAACsAAAAAAAAAAAAwwL8AAAAcAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-30T14:09:29.241Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-05T16:22:59.002Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 4,
-              "Title": "Withdrawal.Model.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Withdrawal.Model.cs",
-              "RelativeDocumentMoniker": "Models\\Withdrawal.Model.cs",
-              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Withdrawal.Model.cs",
-              "RelativeToolTip": "Models\\Withdrawal.Model.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAAAA==",
+              "Title": "Detail.Model.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Detail.Model.cs",
+              "RelativeDocumentMoniker": "Models\\Detail.Model.cs",
+              "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Detail.Model.cs",
+              "RelativeToolTip": "Models\\Detail.Model.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-25T15:28:47.37Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-05T16:21:52.096Z"
             }
           ]
         }
