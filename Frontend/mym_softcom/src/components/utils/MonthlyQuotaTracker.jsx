@@ -1,7 +1,6 @@
-"use client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Calendar, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react'
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat("es-CO", {
@@ -32,6 +31,7 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
   const totalQuotas = sale.plan.number_quotas || 0
   const quotaValue = sale.quota_value || 0
   const saleDate = new Date(sale.sale_date)
+  const currentDate = new Date()
 
   // Agrupar montos cubiertos y fechas de pago por número de cuota
   const aggregatedQuotas = new Map() // Map<number_quota, { covered: decimal, paymentDates: Date[] }>
@@ -49,10 +49,12 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
   })
 
   const quotas = []
+  let totalOverdueAmount = 0
+  let overdueQuotasCount = 0
+
   for (let i = 1; i <= totalQuotas; i++) {
     const coveredInfo = aggregatedQuotas.get(i)
     const coveredAmount = coveredInfo?.covered || 0
-    // const paymentDate = coveredInfo?.paymentDates.length > 0 ? coveredInfo.paymentDates[0] : null; // Podrías usar la primera o la última fecha de pago
 
     // Calcular fecha de vencimiento para cada cuota
     const dueDate = new Date(saleDate)
@@ -62,21 +64,40 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
     let status = "Pendiente"
     let statusColor = "bg-gray-100 text-gray-800"
     let statusIcon = <Clock className="h-4 w-4" />
+    let isOverdue = false
 
     if (coveredAmount >= quotaValue) {
       status = "Pagada"
       statusColor = "bg-green-100 text-green-800"
       statusIcon = <CheckCircle className="h-4 w-4" />
     } else if (coveredAmount > 0) {
-      status = "Abonada"
-      statusColor = "bg-yellow-100 text-yellow-800"
-      statusIcon = <Clock className="h-4 w-4" /> // Sigue pendiente de pago completo
-    } else if (dueDate < new Date()) {
+      if (dueDate < currentDate) {
+        status = "Vencida (Abonada)"
+        statusColor = "bg-red-100 text-red-800"
+        statusIcon = <AlertTriangle className="h-4 w-4" />
+        isOverdue = true
+      } else {
+        status = "Abonada"
+        statusColor = "bg-yellow-100 text-yellow-800"
+        statusIcon = <Clock className="h-4 w-4" />
+      }
+    } else if (dueDate < currentDate) {
       // Si no hay pago y la fecha de vencimiento ya pasó
       status = "Vencida"
       statusColor = "bg-red-100 text-red-800"
       statusIcon = <XCircle className="h-4 w-4" />
+      isOverdue = true
     }
+
+    // Calcular monto en mora para esta cuota
+    if (isOverdue) {
+      const overdueAmount = quotaValue - coveredAmount
+      totalOverdueAmount += overdueAmount
+      overdueQuotasCount++
+    }
+
+    // Calcular días de atraso
+    const daysOverdue = isOverdue ? Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24)) : 0
 
     quotas.push({
       quotaNumber: i,
@@ -87,6 +108,8 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       status: status,
       statusColor: statusColor,
       statusIcon: statusIcon,
+      isOverdue: isOverdue,
+      daysOverdue: daysOverdue,
     })
   }
 
@@ -96,8 +119,20 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
           Control de Cuotas
+          {overdueQuotasCount > 0 && (
+            <Badge className="bg-red-100 text-red-800 ml-2">
+              {overdueQuotasCount} cuotas vencidas
+            </Badge>
+          )}
         </CardTitle>
-        <CardDescription>Detalle mensual de pagos y estado de cada cuota.</CardDescription>
+        <CardDescription>
+          Detalle mensual de pagos y estado de cada cuota.
+          {totalOverdueAmount > 0 && (
+            <span className="block mt-1 text-red-600 font-medium">
+              Monto total en mora: {formatCurrency(totalOverdueAmount)}
+            </span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {totalQuotas === 0 ? (
@@ -127,15 +162,23 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Días Atraso
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {quotas.map((quota) => (
-                  <tr key={quota.quotaNumber} className="hover:bg-gray-50">
+                  <tr 
+                    key={quota.quotaNumber} 
+                    className={`hover:bg-gray-50 ${quota.isOverdue ? 'bg-red-50' : ''}`}
+                  >
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                       {quota.quotaNumber}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{formatDate(quota.dueDate)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                      {formatDate(quota.dueDate)}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {formatCurrency(quota.expectedAmount)}
                     </td>
@@ -143,13 +186,24 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
                       {formatCurrency(quota.coveredAmount)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                      {formatCurrency(quota.remainingAmount)}
+                      <span className={quota.remainingAmount > 0 && quota.isOverdue ? 'text-red-600 font-medium' : ''}>
+                        {formatCurrency(quota.remainingAmount)}
+                      </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <Badge className={`flex items-center justify-center gap-1 ${quota.statusColor}`}>
                         {quota.statusIcon}
                         {quota.status}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      {quota.isOverdue ? (
+                        <span className="text-red-600 font-medium">
+                          {quota.daysOverdue} días
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

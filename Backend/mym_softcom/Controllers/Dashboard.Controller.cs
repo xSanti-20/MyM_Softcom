@@ -49,18 +49,70 @@ namespace mym_softcom.Controllers
                     .Where(c => c.status == "Activo")
                     .CountAsync();
 
-                // TODO: IMPLEMENTAR LÓGICA DE CLIENTES EN MORA
-                // Esta lógica debe implementarse cuando se defina cómo determinar si un cliente está en mora
-                // Posibles criterios:
-                // - Clientes con pagos vencidos según fechas de vencimiento
-                // - Clientes con cuotas atrasadas según el plan de pagos
-                // - Clientes con deuda pendiente por más de X días
-                var overdueClients = 0; // Temporalmente en 0 hasta implementar la lógica
+                // CLIENTES EN MORA - Implementación basada en fechas de vencimiento de cuotas
+                var currentDate = DateTime.Now.Date;
 
-                // Total adeudado (suma de todas las deudas pendientes)
-                var totalOwed = await _context.Sales
-                    .Where(s => s.total_debt > 0 && s.status == "Active")
-                    .SumAsync(s => s.total_debt ?? 0);
+                // Obtener todas las ventas activas con sus detalles de pago
+                var activeSalesWithDetails = await _context.Sales
+                    .Include(s => s.client)
+                    .Include(s => s.plan)
+                    .Where(s => s.status == "Active" && s.total_debt > 0)
+                    .ToListAsync();
+
+                var overdueClientIds = new HashSet<int>();
+                decimal totalOwedByOverdueClients = 0;
+
+                foreach (var sale in activeSalesWithDetails)
+                {
+                    if (sale.plan?.number_quotas > 0 && sale.quota_value > 0)
+                    {
+                        var saleDate = sale.sale_date.Date;
+                        var quotaValue = sale.quota_value.Value;
+                        var totalQuotas = sale.plan.number_quotas.Value;
+
+                        // Obtener detalles de pagos para esta venta
+                        var paymentDetails = await _context.Details
+                            .Where(pd => pd.id_Sales == sale.id_Sales)
+                            .ToListAsync();
+
+                        // Calcular montos cubiertos por cuota
+                        var coveredAmountsPerQuota = paymentDetails
+                            .GroupBy(pd => pd.number_quota)
+                            .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+
+                        // Verificar cada cuota para determinar si hay mora
+                        bool hasOverdueQuotas = false;
+                        decimal overdueAmountForThisSale = 0;
+
+                        for (int i = 1; i <= totalQuotas; i++)
+                        {
+                            // Calcular fecha de vencimiento de la cuota
+                            var dueDate = saleDate.AddMonths(i);
+                            var coveredAmount = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
+                            var remainingAmount = quotaValue - coveredAmount;
+
+                            // Si la cuota está vencida y no está completamente pagada
+                            if (dueDate < currentDate && remainingAmount > 0)
+                            {
+                                hasOverdueQuotas = true;
+                                overdueAmountForThisSale += remainingAmount;
+                            }
+                        }
+
+                        // Si esta venta tiene cuotas vencidas, agregar el cliente y el monto
+                        if (hasOverdueQuotas)
+                        {
+                            overdueClientIds.Add(sale.id_Clients);
+                            totalOwedByOverdueClients += overdueAmountForThisSale;
+                        }
+                    }
+                }
+
+                var overdueClients = overdueClientIds.Count;
+                var totalOwed = totalOwedByOverdueClients;
+
+                Console.WriteLine($"[DashboardController] Clientes en mora encontrados: {overdueClients}");
+                Console.WriteLine($"[DashboardController] Total adeudado por clientes en mora: ${totalOwed}");
 
                 // Desistimientos del mes actual
                 var withdrawalsThisMonth = await _context.Withdrawals
@@ -185,6 +237,7 @@ namespace mym_softcom.Controllers
             try
             {
                 // Simulación para pruebas: Descomenta la línea de abajo para probar con un año y mes específico
+                // Comenta las líneas de abajo para usar la fecha actual del sistema
                 var currentYear = DateTime.Now.Year;
                 var currentMonth = DateTime.Now.Month;
                 //var currentYear = 2026;
@@ -359,64 +412,104 @@ namespace mym_softcom.Controllers
         }
 
         /// <summary>
-        /// Obtiene clientes con deudas pendientes
-        /// TODO: IMPLEMENTAR LÓGICA DE CLIENTES EN MORA
+        /// Obtiene clientes con cuotas vencidas (en mora) basado en fechas de vencimiento
         /// </summary>
         [HttpGet("GetOverdueClients")]
         public async Task<ActionResult<object>> GetOverdueClients()
         {
             try
             {
-                // TODO: IMPLEMENTAR LÓGICA DE CLIENTES EN MORA
-                // Esta lógica debe implementarse cuando se defina cómo determinar si un cliente está en mora
-                // Posibles implementaciones:
+                var currentDate = DateTime.Now.Date;
+                var overdueClients = new List<object>();
 
-                /*
-                // OPCIÓN 1: Clientes con deuda pendiente
-                var overdueClients = await _context.Sales
+                // Obtener todas las ventas activas con deuda pendiente
+                var activeSalesWithDetails = await _context.Sales
                     .Include(s => s.client)
+                    .Include(s => s.plan)
                     .Include(s => s.lot)
                     .ThenInclude(l => l.project)
-                    .Where(s => s.total_debt > 0 && s.status == "Active")
-                    .GroupBy(s => new {
-                        ClientId = s.client.id_Clients,
-                        ClientName = $"{s.client.names} {s.client.surnames}"
-                    })
-                    .Select(g => new {
-                        clientId = g.Key.ClientId,
-                        clientName = g.Key.ClientName,
-                        totalDebt = g.Sum(s => s.total_debt ?? 0),
-                        salesCount = g.Count(),
-                        projects = g.Select(s => s.lot.project.name).Distinct().ToList()
-                    })
-                    .OrderByDescending(c => c.totalDebt)
+                    .Where(s => s.status == "Active" && s.total_debt > 0)
                     .ToListAsync();
-                */
 
-                /*
-                // OPCIÓN 2: Clientes con pagos vencidos según fechas
-                var overdueClients = await _context.Payments
-                    .Include(p => p.sale)
-                    .ThenInclude(s => s.client)
-                    .Where(p => p.due_date < DateTime.Now && p.status == "Pending") // Ejemplo
-                    .GroupBy(p => new {
-                        ClientId = p.sale.client.id_Clients,
-                        ClientName = $"{p.sale.client.names} {p.sale.client.surnames}"
-                    })
-                    .Select(g => new {
-                        clientId = g.Key.ClientId,
-                        clientName = g.Key.ClientName,
-                        overdueAmount = g.Sum(p => p.amount ?? 0),
-                        overduePayments = g.Count()
-                    })
-                    .ToListAsync();
-                */
+                foreach (var sale in activeSalesWithDetails)
+                {
+                    if (sale.plan?.number_quotas > 0 && sale.quota_value > 0)
+                    {
+                        var saleDate = sale.sale_date.Date;
+                        var quotaValue = sale.quota_value.Value;
+                        var totalQuotas = sale.plan.number_quotas.Value;
 
-                // Por ahora retornar lista vacía hasta implementar la lógica
-                return Ok(new List<object>());
+                        // Obtener detalles de pagos para esta venta
+                        var paymentDetails = await _context.Details
+                            .Where(pd => pd.id_Sales == sale.id_Sales)
+                            .ToListAsync();
+
+                        // Calcular montos cubiertos por cuota
+                        var coveredAmountsPerQuota = paymentDetails
+                            .GroupBy(pd => pd.number_quota)
+                            .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+
+                        // Verificar cuotas vencidas
+                        var overdueQuotas = new List<object>();
+                        decimal totalOverdueAmount = 0;
+
+                        for (int i = 1; i <= totalQuotas; i++)
+                        {
+                            var dueDate = saleDate.AddMonths(i);
+                            var coveredAmount = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
+                            var remainingAmount = quotaValue - coveredAmount;
+
+                            if (dueDate < currentDate && remainingAmount > 0)
+                            {
+                                overdueQuotas.Add(new
+                                {
+                                    quotaNumber = i,
+                                    dueDate = dueDate,
+                                    quotaValue = quotaValue,
+                                    coveredAmount = coveredAmount,
+                                    remainingAmount = remainingAmount,
+                                    daysOverdue = (currentDate - dueDate).Days
+                                });
+                                totalOverdueAmount += remainingAmount;
+                            }
+                        }
+
+                        // Si hay cuotas vencidas, agregar el cliente a la lista
+                        if (overdueQuotas.Count > 0)
+                        {
+                            overdueClients.Add(new
+                            {
+                                clientId = sale.client.id_Clients,
+                                clientName = $"{sale.client.names} {sale.client.surnames}",
+                                clientDocument = sale.client.document,
+                                clientPhone = sale.client.phone,
+                                saleId = sale.id_Sales,
+                                projectName = sale.lot?.project?.name ?? "Sin proyecto",
+                                lotInfo = $"{sale.lot?.block}-{sale.lot?.lot_number}",
+                                totalSaleValue = sale.total_value,
+                                totalRaised = sale.total_raised,
+                                totalDebt = sale.total_debt,
+                                overdueAmount = totalOverdueAmount,
+                                overdueQuotasCount = overdueQuotas.Count,
+                                overdueQuotas = overdueQuotas,
+                                saleDate = sale.sale_date
+                            });
+                        }
+                    }
+                }
+
+                // Ordenar por monto en mora (mayor a menor)
+                var sortedOverdueClients = overdueClients
+                    .OrderByDescending(c => ((dynamic)c).overdueAmount)
+                    .ToList();
+
+                Console.WriteLine($"[DashboardController] Clientes en mora detallados: {sortedOverdueClients.Count}");
+
+                return Ok(sortedOverdueClients);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[DashboardController] Error en GetOverdueClients: {ex.Message}");
                 return StatusCode(500, new { message = "Error al obtener clientes en mora", details = ex.Message });
             }
         }

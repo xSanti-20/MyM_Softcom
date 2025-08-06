@@ -1,22 +1,24 @@
 "use client"
 
 import { useState } from "react"
-import { Search, User, AlertCircle, Loader2, CreditCard, Building2 } from "lucide-react"
+import { Search, User, AlertCircle, Loader2, CreditCard, Building2, ChevronDown } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import NavPrivada from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
-import MonthlyQuotaTracker from "@/components/utils/MonthlyQuotaTracker" // Importar el nuevo componente
+import MonthlyQuotaTracker from "@/components/utils/MonthlyQuotaTracker"
 
 // Componente para mostrar información del cliente
 const ClientInfo = ({ client, sale }) => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "active":
+      case "activo":
         return "bg-green-100 text-green-800"
       case "escriturar":
         return "bg-blue-100 text-blue-800"
@@ -144,9 +146,31 @@ export default function DetailsPage() {
   const [searchDocument, setSearchDocument] = useState("")
   const [loading, setLoading] = useState(false)
   const [clientData, setClientData] = useState(null)
+  const [clientSales, setClientSales] = useState([])
+  const [selectedSaleId, setSelectedSaleId] = useState("")
   const [saleData, setSaleData] = useState(null)
   const [detailsData, setDetailsData] = useState([])
   const [error, setError] = useState("")
+
+  // Función para obtener el nombre del proyecto (igual que en pagos)
+  const getProjectName = (sale) => {
+    if (sale?.lot?.project?.name) return sale.lot.project.name
+    if (sale?.lot?.Project?.name) return sale.lot.Project.name
+    if (sale?.Lot?.project?.name) return sale.Lot.project.name
+    if (sale?.Lot?.Project?.name) return sale.Lot.Project.name
+    if (sale?.lot?.project_name) return sale.lot.project_name
+    const projectId = sale?.lot?.id_Projects || sale?.lot?.project?.id_Projects
+    if (projectId) return `Proyecto #${projectId}`
+    return "Sin proyecto"
+  }
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+    }).format(amount || 0)
+  }
 
   const handleSearch = async () => {
     if (!searchDocument.trim()) {
@@ -163,6 +187,8 @@ export default function DetailsPage() {
     setLoading(true)
     setError("")
     setClientData(null)
+    setClientSales([])
+    setSelectedSaleId("")
     setSaleData(null)
     setDetailsData([])
 
@@ -175,21 +201,21 @@ export default function DetailsPage() {
 
         const salesResponse = await axiosInstance.get("/api/Sale/GetAllSales")
         const sales = salesResponse.data
-        const clientSales = sales.filter((s) => s.id_Clients === client.id_Clients)
+        const clientSalesData = sales.filter((s) => s.id_Clients === client.id_Clients)
 
-        if (clientSales.length === 0) {
+        if (clientSalesData.length === 0) {
           setError("El cliente no tiene ventas registradas")
           return
         }
 
-        // Tomar la primera venta activa o la primera si no hay activas
-        const activeSale =
-          clientSales.find((sale) => sale.status === "Activo" || sale.status === "Active") || clientSales[0]
-        setSaleData(activeSale)
+        setClientSales(clientSalesData)
 
-        // Obtener detalles de pagos para la venta seleccionada
-        const detailsResponse = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${activeSale.id_Sales}`)
-        setDetailsData(detailsResponse.data)
+        // Si solo tiene una venta, seleccionarla automáticamente
+        if (clientSalesData.length === 1) {
+          const singleSale = clientSalesData[0]
+          setSelectedSaleId(singleSale.id_Sales.toString())
+          await loadSaleDetails(singleSale)
+        }
       } else {
         setError("Cliente no encontrado con ese documento")
       }
@@ -202,6 +228,27 @@ export default function DetailsPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadSaleDetails = async (sale) => {
+    try {
+      setSaleData(sale)
+      
+      // Obtener detalles de pagos para la venta seleccionada
+      const detailsResponse = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
+      setDetailsData(detailsResponse.data)
+    } catch (error) {
+      console.error("Error al cargar detalles de la venta:", error)
+      setError("Error al cargar los detalles de la venta seleccionada")
+    }
+  }
+
+  const handleSaleSelection = async (saleId) => {
+    setSelectedSaleId(saleId)
+    const selectedSale = clientSales.find((s) => s.id_Sales.toString() === saleId)
+    if (selectedSale) {
+      await loadSaleDetails(selectedSale)
     }
   }
 
@@ -242,7 +289,7 @@ export default function DetailsPage() {
                       <Label htmlFor="document">Número de Documento</Label>
                       <Input
                         id="document"
-                        type="number" // Cambiado a tipo number para mejor UX en móviles
+                        type="number"
                         placeholder="Ej: 12345678"
                         value={searchDocument}
                         onChange={(e) => setSearchDocument(e.target.value)}
@@ -273,6 +320,67 @@ export default function DetailsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Selector de ventas/lotes */}
+              {clientData && clientSales.length > 1 && (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Seleccionar Venta/Lote
+                    </CardTitle>
+                    <CardDescription>
+                      Este cliente tiene {clientSales.length} ventas registradas. Selecciona una para ver sus detalles.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="sale-select">Venta/Lote</Label>
+                        <Select value={selectedSaleId} onValueChange={handleSaleSelection}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecciona una venta para ver sus detalles">
+                              {saleData && (
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="font-medium">
+                                    Venta #{saleData.id_Sales} - {saleData.lot?.block}-{saleData.lot?.lot_number}
+                                  </span>
+                                  <span className="text-sm text-gray-600 ml-2">{getProjectName(saleData)}</span>
+                                </div>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clientSales.map((sale) => (
+                              <SelectItem key={sale.id_Sales} value={sale.id_Sales.toString()}>
+                                <div className="w-full">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">
+                                      Venta #{sale.id_Sales} - {sale.lot?.block}-{sale.lot?.lot_number}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2">{getProjectName(sale)}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    <span className="mr-4">
+                                      Total: {formatCurrency(sale.total_value)}
+                                    </span>
+                                    <span className="mr-4">
+                                      Pagado: {formatCurrency(sale.total_raised)}
+                                    </span>
+                                    <span className={`font-medium ${sale.total_debt > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      {sale.total_debt > 0 ? `Debe: ${formatCurrency(sale.total_debt)}` : 'Pagado completamente'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Resultados */}
               {clientData && saleData && (
