@@ -1,5 +1,7 @@
 using mym_softcom.Functions;
 using mym_softcom.Services;
+using mym_softcom.BackgroundServices;
+using mym_softcom.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,7 +24,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-
 // 2. Agregar controladores y Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -36,7 +37,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     )
 );
 
-// 4. Registrar servicios personalizados
+// 4. Registrar servicios personalizados existentes
 builder.Services.AddScoped<UserServices>();
 builder.Services.AddScoped<ClientServices>();
 builder.Services.AddScoped<LotServices>();
@@ -47,7 +48,46 @@ builder.Services.AddScoped<SaleServices>();
 builder.Services.AddScoped<WithdrawalServices>();
 builder.Services.AddScoped<DetailServices>();
 
-// 5. Configurar JWT
+// 5. ✅ CONFIGURACIÓN DE EMAIL USANDO TU SECCIÓN EXISTENTE
+builder.Services.AddSingleton<ConfigServer>(provider =>
+{
+    var config = new ConfigServer();
+    var configuration = provider.GetRequiredService<IConfiguration>();
+
+    // ✅ CAMBIO: Usar "ConfigServerEmail" en lugar de "EmailSettings"
+    configuration.GetSection("ConfigServerEmail").Bind(config);
+
+    // Log para debug
+    var logger = provider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Configuración de email cargada: Host={Host}, Port={Port}, Email={Email}, HasPassword={HasPassword}",
+        config.HostName, config.PortHost, config.Email, !string.IsNullOrEmpty(config.Password));
+
+    // Validar que la configuración se cargó correctamente
+    if (string.IsNullOrEmpty(config.Email))
+    {
+        logger.LogWarning("⚠️ Email no configurado en ConfigServerEmail");
+    }
+    if (string.IsNullOrEmpty(config.Password))
+    {
+        logger.LogWarning("⚠️ Password no configurado en ConfigServerEmail");
+    }
+    if (string.IsNullOrEmpty(config.HostName))
+    {
+        logger.LogWarning("⚠️ HostName no configurado en ConfigServerEmail");
+    }
+
+    return config;
+});
+
+// Servicios de notificaciones de mora
+builder.Services.AddScoped<IOverdueDetectionService, OverdueDetectionService>();
+builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
+builder.Services.AddScoped<IOverdueNotificationService, OverdueNotificationService>();
+
+// Background service para ejecución automática (opcional - puedes comentar si no quieres ejecución automática)
+builder.Services.AddHostedService<OverdueNotificationBackgroundService>();
+
+// 6. Configurar JWT (tu configuración existente)
 var jwtKey = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:key"]);
 
 builder.Services.AddAuthentication(options =>
@@ -109,7 +149,7 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-// 6. Middleware
+// 7. Middleware (tu configuración existente)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

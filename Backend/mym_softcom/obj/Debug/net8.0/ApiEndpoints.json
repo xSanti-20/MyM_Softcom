@@ -688,6 +688,58 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
+    "Method": "GetClientsWithOverdue",
+    "RelativePath": "api/OverdueNotification/clients-with-overdue",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
+    "Method": "GetInstallmentsBySale",
+    "RelativePath": "api/OverdueNotification/installments-by-sale/{saleId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "saleId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
+    "Method": "ProcessAllNotifications",
+    "RelativePath": "api/OverdueNotification/process-all",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
+    "Method": "SendNotificationToClient",
+    "RelativePath": "api/OverdueNotification/send-to-client/{clientId}",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "clientId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.PaymentController",
     "Method": "CreatePayment",
     "RelativePath": "api/Payment/CreatePayment",

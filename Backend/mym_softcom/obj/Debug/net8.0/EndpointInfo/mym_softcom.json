@@ -1176,6 +1176,76 @@
         }
       }
     },
+    "/api/OverdueNotification/process-all": {
+      "post": {
+        "tags": [
+          "OverdueNotification"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/OverdueNotification/send-to-client/{clientId}": {
+      "post": {
+        "tags": [
+          "OverdueNotification"
+        ],
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/OverdueNotification/clients-with-overdue": {
+      "get": {
+        "tags": [
+          "OverdueNotification"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/OverdueNotification/installments-by-sale/{saleId}": {
+      "get": {
+        "tags": [
+          "OverdueNotification"
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Payment/GetAllPayments": {
       "get": {
         "tags": [
