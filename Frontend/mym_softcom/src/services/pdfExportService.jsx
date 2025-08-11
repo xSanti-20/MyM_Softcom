@@ -476,4 +476,5 @@ class PDFExportService {
     }
 }
 
-export default new PDFExportService()
+const pdfExportService = new PDFExportService();
+export default pdfExportService;

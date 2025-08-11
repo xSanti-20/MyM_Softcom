@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from 'next/image';
 import axiosInstance from "@/lib/axiosInstance"
 import { Button } from "@/components/ui/button"
 import { User } from "lucide-react"
@@ -126,7 +127,6 @@ function RegisterClient({ refreshData, clientToEdit, onCancelEdit, closeModal, s
         <h2 className="text-2xl font-bold text-gray-800">
           {clientToEdit ? "Editar Cliente" : "Registrar Nuevo Cliente"}
         </h2>
-        <img src="/assets/img/mymsoftcom.png" alt="M&M" width={50} />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

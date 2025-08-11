@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
+import Image from 'next/image';
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterWithdrawal from "./formdesistimientos"
 import AlertModal from "@/components/AlertModal"
@@ -281,7 +282,13 @@ function WithdrawalsPage() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
+            <Image
+              src="/assets/img/mymsoftcom.png"
+              alt="Cargando..."
+              width={80}
+              height={80}
+              className="animate-spin"
+            />
             <p className="text-lg text-gray-700 font-semibold mt-2">Cargando desistimientos...</p>
           </div>
         </div>

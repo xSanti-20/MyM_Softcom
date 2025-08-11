@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import PublicNav from "@/components/nav/PublicNav";
+import Image from 'next/image';
 import axiosInstance from "@/lib/axiosInstance";
 import styles from "./Page.Module.css";
 
@@ -74,11 +75,16 @@ function LoginPage() {
       <div className="wrapper">
         {toast && (
           <Toast
-            className={`flex items-center gap-4 p-3 ${
-              toast.type === "error" ? "bg-red-500 text-black" : "bg-green-500 text-black"
-            }`}
+            className={`flex items-center gap-4 p-3 ${toast.type === "error" ? "bg-red-500 text-black" : "bg-green-500 text-black"
+              }`}
           >
-            <img src="/assets/img/mymsoftcom.png" alt="m&msoftcom" className="w-8 h-8" />
+            <Image
+              src="/assets/img/mymsoftcom.png"
+              alt="m&msoftcom"
+              width={32}
+              height={32}
+            />
+
             <div className="flex flex-col items-center text-center w-full">
               <ToastTitle className="text-sm font-semibold">{toast.title}</ToastTitle>
               <ToastDescription className="text-xs">{toast.description}</ToastDescription>
@@ -88,7 +94,7 @@ function LoginPage() {
 
         <div className="form_box">
           <form onSubmit={handlerSubmit}>
-            <img src="/assets/img/mymsoftcom.png" alt="M&M" width="65" height="60" />
+            <Image src="/assets/img/mymsoftcom.png" alt="M&M" width="65" height="60" />
             <h1 className="title">Iniciar Sesión</h1>
 
             {/* Campo correo */}

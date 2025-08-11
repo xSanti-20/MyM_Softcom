@@ -181,7 +181,6 @@ const StatCard = ({ icon: Icon, title, value, description, color = "blue", onCli
       onClick={onClick}
     >
       <CardHeader className="pb-2">
-        {/* CORRECCIÓN: Se restauró el div original que envuelve el icono */}
         <div className="flex justify-between items-start">
           <div className={`p-2.5 rounded-lg ${scheme.icon}`}>
             <Icon className="h-5 w-5" />
@@ -383,35 +382,62 @@ export default function Dashboard() {
         console.log("Current month project revenue data:", response.data)
 
         const projectRevenues = response.data.projects || []
-        const totalCurrentMonthProjectRevenue = response.data.totalCurrentMonthRevenue || 0 // Suma de todos los proyectos del mes actual
+        const totalCurrentMonthProjectRevenue = response.data.totalCurrentMonthRevenue || 0
 
-        // Buscar proyectos por nombre exacto o más específico
-        const luxuryMalibuProject = projectRevenues.find((p) => p.projectName.toLowerCase() === "luxury malibu")
-        const reservasProject = projectRevenues.find((p) => p.projectName.toLowerCase() === "reservas del poblado")
-        const malibuProject = projectRevenues.find(
-          (p) => p.projectName.toLowerCase() === "malibu" && p.projectName.toLowerCase() !== "luxury malibu",
-        ) // Asegura que no sea "Luxury Malibu"
+        console.log("=== DEBUGGING PROJECT NAMES ===")
+        console.log("Total projects returned:", projectRevenues.length)
+        projectRevenues.forEach((project, index) => {
+          console.log(`Project ${index + 1}:`, {
+            id: project.projectId,
+            name: project.projectName,
+            revenue: project.monthlyRevenue,
+            normalizedName: project.projectName.toLowerCase().trim().replace(/\s+/g, " "),
+          })
+        })
+        console.log("Total current month revenue:", totalCurrentMonthProjectRevenue)
+        console.log("=== END DEBUGGING ===")
 
-        console.log("Luxury Malibu project found (current month):", luxuryMalibuProject)
-        console.log("Reservas project found (current month):", reservasProject)
-        console.log("Malibu project found (current month, distinct):", malibuProject)
+        // Función helper para normalizar nombres (quitar espacios extra, convertir a minúsculas)
+        const normalizeProjectName = (name) => name.toLowerCase().trim().replace(/\s+/g, " ")
+
+        // Buscar proyectos con matching más flexible
+        const luxuryMalibuProject = projectRevenues.find((p) => {
+          const normalized = normalizeProjectName(p.projectName)
+          return normalized.includes("luxury") && normalized.includes("malibu")
+        })
+
+        const reservasProject = projectRevenues.find((p) => {
+          const normalized = normalizeProjectName(p.projectName)
+          return normalized.includes("reservas") && normalized.includes("poblado")
+        })
+
+        const malibuProject = projectRevenues.find((p) => {
+          const normalized = normalizeProjectName(p.projectName)
+          return normalized === "malibu" || (normalized.includes("malibu") && !normalized.includes("luxury"))
+        })
+
+        console.log("=== PROJECT MATCHING RESULTS ===")
+        console.log("Luxury Malibu project found:", luxuryMalibuProject)
+        console.log("Reservas project found:", reservasProject)
+        console.log("Malibu project found:", malibuProject)
+        console.log("=== END MATCHING RESULTS ===")
 
         setStats((prevStats) => ({
           ...prevStats,
           luxuryMonthly: luxuryMalibuProject?.monthlyRevenue || 0,
           reservasMonthly: reservasProject?.monthlyRevenue || 0,
           malibuMonthly: malibuProject?.monthlyRevenue || 0,
-          totalCurrentMonthProjectRevenue: totalCurrentMonthProjectRevenue, // Actualiza el total de proyectos del mes actual
+          totalCurrentMonthProjectRevenue: totalCurrentMonthProjectRevenue,
         }))
       } catch (error) {
         console.error("Error fetching current month project revenue:", error)
         newErrors.projectRevenue = `Error al cargar recaudos por proyecto del mes actual: ${error.message || "Error desconocido"}`
       }
 
-      // Cargar recaudos históricos por proyecto
+      // Cargar recaudos históricos por proyecto (AHORA SOLO PARA EL AÑO ACTUAL)
       try {
-        const response = await axiosInstance.get("/api/Dashboard/GetHistoricalProjectRevenue?months=8") // Obtener los últimos 6 meses
-        console.log("Historical project revenue data:", response.data)
+        const response = await axiosInstance.get("/api/Dashboard/GetHistoricalProjectRevenue") // Ya no se pasa 'months'
+        console.log("Historical project revenue data (current year):", response.data)
 
         const historicalData = response.data.historicalData || []
         const projectNames = response.data.projectNames || []
@@ -440,7 +466,7 @@ export default function Dashboard() {
         setHistoricalProjectRevenue(formattedHistoricalData)
 
         // Calcular los totales para la fila de pie de tabla
-        const totalsRow = { monthName: "TOTAL" }
+        const totalsRow = { monthName: `TOTAL AÑO ${new Date().getFullYear()}` } // Etiqueta para el total anual
         projectNames.forEach((name) => {
           totalsRow[name] = formattedHistoricalData.reduce((sum, row) => sum + (row[name] || 0), 0)
         })
@@ -715,13 +741,14 @@ export default function Dashboard() {
                     <div className="lg:col-span-2 space-y-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle>Recaudos Históricos por Proyecto</CardTitle>
+                          <CardTitle>Recaudos Históricos por Proyecto (Año Actual)</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <DataTable
                             columns={historicalProjectColumns}
                             data={historicalProjectRevenue}
-                            maxRows={6}
+                            maxRows={12} // Se puede ajustar para mostrar más meses si el año tiene más datos
+                            title="Historial Mensual de Proyectos"
                             footerData={historicalProjectTotals} // Pasar los totales aquí
                           />
                         </CardContent>

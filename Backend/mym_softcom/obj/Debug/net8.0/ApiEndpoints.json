@@ -1,5 +1,95 @@
 [
   {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "CreateBackup",
+    "RelativePath": "api/Backup/create",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "mym_softcom.Controllers.CreateBackupRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "DeleteBackup",
+    "RelativePath": "api/Backup/delete/{fileName}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "fileName",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "DownloadBackup",
+    "RelativePath": "api/Backup/download/{fileName}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "fileName",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "GetBackupList",
+    "RelativePath": "api/Backup/list",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "RestoreBackup",
+    "RelativePath": "api/Backup/restore",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "mym_softcom.Controllers.RestoreBackupRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.BackupController",
+    "Method": "UploadBackup",
+    "RelativePath": "api/Backup/upload",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "file",
+        "Type": "Microsoft.AspNetCore.Http.IFormFile",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.ClientController",
     "Method": "GetClient",
     "RelativePath": "api/Client/{id}",

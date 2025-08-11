@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from 'next/image'
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronDown, User, LogOut, Menu, X } from "lucide-react"
@@ -26,17 +27,16 @@ function NavPrivada({ children, title }) {
   const menuItems = [
     ...(role === "Administrador" ? [{ title: "Gestión de Usuarios", path: "/dashboard/Admi", icon: "👤" }] : []),
     { title: "Home", path: "/dashboard", icon: "📍" },
-    { title: "Clientes", path: "/dashboard/clientes", icon: "👥" },         
-    { title: "Ventas", path: "/dashboard/ventas", icon: "💰" },         
-    { title: "Pagos", path: "/dashboard/pagos", icon: "💳" },       
-    { title: "Plan Financiacion", path: "/dashboard/planes", icon: "📊" }, 
-    { title: "Proyectos", path: "/dashboard/projectos", icon: "🏗️" },    
-    { title: "Lotes", path: "/dashboard/lotes", icon: "📦" },               
+    { title: "Clientes", path: "/dashboard/clientes", icon: "👥" },
+    { title: "Ventas", path: "/dashboard/ventas", icon: "💰" },
+    { title: "Pagos", path: "/dashboard/pagos", icon: "💳" },
+    { title: "Plan Financiacion", path: "/dashboard/planes", icon: "📊" },
+    { title: "Proyectos", path: "/dashboard/projectos", icon: "🏗️" },
+    { title: "Lotes", path: "/dashboard/lotes", icon: "📦" },
     { title: "Desistimientos", path: "/dashboard/desistimientos", icon: "🚫" },
-    { title: "Detalles", path: "/dashboard/detalles", icon: "ℹ️" }   
+    { title: "Detalles", path: "/dashboard/detalles", icon: "ℹ️" },
+    { title: "Backups", path: "/dashboard/backups", icon: "💾" }
   ]
-
-
 
   useEffect(() => {
     const storedUsername = localStorage.getItem("username")
@@ -78,18 +78,15 @@ function NavPrivada({ children, title }) {
   const handleLogout = async () => {
     try {
       const response = await axiosInstance.post("api/User/logout", {}, { withCredentials: true })
-
       if (response.status === 200) {
         toast.success(response.data.message || "Sesión cerrada correctamente")
         localStorage.clear()
         router.push("/user/login")
       } else {
         toast.error("Error al cerrar sesión")
-        console.error("Error al cerrar sesión en el servidor")
       }
     } catch (error) {
       toast.error("Error al cerrar sesión")
-      console.error("Error en la petición logout:", error)
     }
   }
 
@@ -99,7 +96,13 @@ function NavPrivada({ children, title }) {
   if (checkingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
-        <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
+        <Image
+          src="/assets/img/mymsoftcom.png"
+          alt="Cargando..."
+          width={80}
+          height={80}
+          className="animate-spin"
+        />
       </div>
     )
   }
@@ -112,11 +115,12 @@ function NavPrivada({ children, title }) {
     <>
       <ToastContainer position="top-right" autoClose={10000} theme="colored" />
       <div className="flex h-screen overflow-hidden">
+        {/* Sidebar desktop */}
         {!isMobile && (
-          <div className={`nav-sidebar transition-all duration-300 relative ${isOpen ? "w-64" : "w-16"}`}>
-            <div className="h-full flex flex-col relative pt-4">
+          <div className={`nav-sidebar transition-all duration-300 relative ${isOpen ? "w-64" : "w-16"} h-full`}>
+            <div className="h-full flex flex-col relative pt-4 overflow-y-auto hide-scroll">
               <div className="flex justify-center items-center mb-8 pt-2">
-                <img
+                <Image
                   src="/assets/img/mymsoftcom.png"
                   alt="mymsoftcom"
                   width={isOpen ? "65" : "40"}
@@ -129,7 +133,7 @@ function NavPrivada({ children, title }) {
               >
                 {isOpen ? "◀" : "▶"}
               </button>
-              <div className="flex-1 flex-col justify-center overflow-y-auto">
+              <div className="flex-1 flex-col justify-center">
                 {menuItems.map((item, index) => (
                   <Link
                     key={index}
@@ -146,18 +150,19 @@ function NavPrivada({ children, title }) {
           </div>
         )}
 
+        {/* Sidebar móvil */}
         {isMobile && isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={closeMobileMenu} />
             <div className="fixed left-0 top-0 h-full w-64 nav-sidebar-mobile z-50 animate-slide-right">
-              <div className="h-full flex flex-col pt-4">
+              <div className="h-full flex flex-col pt-4 overflow-y-auto hide-scroll">
                 <div className="flex justify-between items-center px-4 mb-8">
-                  <img src="/assets/img/mymsoftcom.png" alt="mym" width="50" height="45" />
+                  <Image src="/assets/img/mymsoftcom.png" alt="mym" width="50" height="45" />
                   <Button variant="ghost" size="sm" onClick={closeMobileMenu} className="text-[#947c4c] hover:bg-white/10">
                     <X className="w-6 h-6" />
                   </Button>
                 </div>
-                <div className="flex-1 overflow-y-auto px-2">
+                <div className="flex-1 px-2">
                   {menuItems.map((item, index) => (
                     <Link
                       key={index}
@@ -176,6 +181,7 @@ function NavPrivada({ children, title }) {
           </>
         )}
 
+        {/* Contenido principal */}
         <div className="flex-col flex-1 overflow-hidden">
           <nav className="navbar bg-nav-private shadow-lg z-40 h-16 md:h-20 flex items-center">
             <div className="container mx-auto flex items-center justify-between px-4">
@@ -206,12 +212,12 @@ function NavPrivada({ children, title }) {
                   <ChevronDown size={isMobile ? 14 : 16} />
                 </button>
                 {isUserMenuOpen && (
-                  <div className={`absolute right-0 mt-2 bg-white rounded-lg shadow-lg py-2 z-50 ${isMobile ? "w-48" : "w-64"}`} style={{ position: "absolute", top: "calc(100% + 8px)" }}>
-                    <div className={`px-4 py-2 text-gray-700 font-semibold border-b ${isMobile ? "text-sm" : "text-sm"}`}>
+                  <div className={`absolute right-0 mt-2 bg-white rounded-lg shadow-lg py-2 z-50 ${isMobile ? "w-48" : "w-64"}`} style={{ top: "calc(100% + 8px)" }}>
+                    <div className="px-4 py-2 text-gray-700 font-semibold border-b text-sm">
                       {username || "Usuario"}
                       <span className="block text-xs text-gray-500">{email || "email@demo.com"}</span>
                     </div>
-                    <button onClick={handleLogout} className={`flex w-full items-center px-4 py-2 text-red-600 hover:bg-gray-100 transition-colors ${isMobile ? "text-sm" : "text-sm"}`}>
+                    <button onClick={handleLogout} className="flex w-full items-center px-4 py-2 text-red-600 hover:bg-gray-100 transition-colors text-sm">
                       <LogOut className="mr-2" size={16} />
                       Logout
                     </button>
@@ -223,23 +229,30 @@ function NavPrivada({ children, title }) {
 
           <div className="flex-1 overflow-hidden">
             {title && <div className={`px-2 md:px-4 pt-2 md:pt-4 ${isMobile ? "text-sm" : ""}`}>{title}</div>}
-            <ScrollArea className={`${isMobile ? "h-[calc(100vh-4rem)]" : "h-[calc(100vh-5rem)]"}`}>
+            <ScrollArea
+              className={`${isMobile ? "h-[calc(100vh-4rem)]" : "h-[calc(100vh-5rem)]"} overflow-y-scroll hide-scroll`}
+              style={{ scrollbarGutter: "stable" }}
+            >
               <main className={`${isMobile ? "p-2" : "p-4"}`}>{children}</main>
             </ScrollArea>
           </div>
         </div>
 
         <style jsx>{`
-          .nav-sidebar {
-            background: black !important;
-          }
-
-          .nav-sidebar-mobile {
+          .nav-sidebar, .nav-sidebar-mobile {
             background: black !important;
           }
 
           .navbar.bg-nav-private {
             background: black !important;
+          }
+
+          /* Ocultar scrollbar */
+          .hide-scroll {
+            scrollbar-width: none; /* Firefox */
+          }
+          .hide-scroll::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Edge */
           }
 
           @keyframes slide-right {

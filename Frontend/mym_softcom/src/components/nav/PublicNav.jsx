@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Image from 'next/image';
 import { useMobile } from "@/hooks/use-mobile"
 
 function PublicNav() {
@@ -31,7 +32,7 @@ function PublicNav() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/">
-              <img
+              <Image
                 src="/assets/img/mymsoftcom.png"
                 alt="M&M Softcom"
                 width={isMobile ? 40 : isTablet ? 50 : 65}
@@ -78,7 +79,7 @@ function PublicNav() {
               <div className="container mx-auto flex flex-col space-y-4">
                 <div className="flex justify-between items-center border-b border-[#947c4c]/20 pb-4">
                   <div className="flex items-center space-x-3">
-                    <img src="/assets/img/mymsoftcom.png" alt="M&M Softcom" width={40} height={35} />
+                    <Image src="/assets/img/mymsoftcom.png" alt="M&M Softcom" width={40} height={35} />
                     <span className="text-[#947c4c] font-bold text-lg">M&M Softcom</span>
                   </div>
                   <Button
