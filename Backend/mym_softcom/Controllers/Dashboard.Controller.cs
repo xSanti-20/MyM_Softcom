@@ -152,32 +152,41 @@ namespace mym_softcom.Controllers
         {
             try
             {
-                Console.WriteLine($"[DashboardController] Iniciando cálculo de recaudos por proyecto para el MES ACTUAL (basado en pagos del mes)");
+                Console.WriteLine($"[DashboardController] Iniciando cálculo de recaudos por proyecto para el MES ACTUAL (basado en total_raised actual de ventas con pagos del mes)");
 
                 var currentMonth = DateTime.Now.Month;
                 var currentYear = DateTime.Now.Year;
-                Console.WriteLine($"[DashboardController] Buscando pagos para: Mes {currentMonth}, Año {currentYear}");
+                Console.WriteLine($"[DashboardController] Buscando ventas con pagos para: Mes {currentMonth}, Año {currentYear}");
 
+                // This ensures that withdrawals (which update total_raised) are reflected in the dashboard
                 var projectRevenues = await (from payment in _context.Payments
                                              join sale in _context.Sales on payment.id_Sales equals sale.id_Sales
                                              join lot in _context.Lots on sale.id_Lots equals lot.id_Lots
                                              join project in _context.Projects on lot.id_Projects equals project.id_Projects
                                              where payment.payment_date.Month == currentMonth &&
                                                    payment.payment_date.Year == currentYear
-                                             group payment by new
+                                             group sale by new
                                              {
                                                  ProjectId = project.id_Projects,
-                                                 ProjectName = project.name
+                                                 ProjectName = project.name,
+                                                 SaleId = sale.id_Sales
                                              } into g
                                              select new
                                              {
-                                                 projectId = g.Key.ProjectId,
-                                                 projectName = g.Key.ProjectName,
-                                                 monthlyRevenue = g.Sum(p => p.amount)
+                                                 ProjectId = g.Key.ProjectId,
+                                                 ProjectName = g.Key.ProjectName,
+                                                 SaleId = g.Key.SaleId,
+                                                 TotalRaised = g.First().total_raised // Use current total_raised (reflects withdrawals)
                                              })
+                    .GroupBy(x => new { x.ProjectId, x.ProjectName })
+                    .Select(g => new {
+                        projectId = g.Key.ProjectId,
+                        projectName = g.Key.ProjectName,
+                        monthlyRevenue = g.Sum(x => x.TotalRaised)
+                    })
                     .ToListAsync();
 
-                Console.WriteLine($"[DashboardController] Recaudos por proyecto calculados para el mes actual:");
+                Console.WriteLine($"[DashboardController] Recaudos por proyecto calculados para el mes actual (considerando desistimientos):");
                 foreach (var revenue in projectRevenues)
                 {
                     Console.WriteLine($"[DashboardController] Proyecto: {revenue.projectName} (ID: {revenue.projectId}), Recaudo: ${revenue.monthlyRevenue}");
