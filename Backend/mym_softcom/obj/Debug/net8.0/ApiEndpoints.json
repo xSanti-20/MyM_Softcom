@@ -90,6 +90,68 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "mym_softcom.Controllers.CesionController",
+    "Method": "ProcesarCesion",
+    "RelativePath": "api/Cesion/CreateCesion",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "mym_softcom.Models.CesionRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "mym_softcom.Models.CesionResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.CesionController",
+    "Method": "GetCesiones",
+    "RelativePath": "api/Cesion/GetAll",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[mym_softcom.Models.CesionInfo, mym_softcom, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.CesionController",
+    "Method": "BuscarClientePorDocumento",
+    "RelativePath": "api/Cesion/GetClientByDocument/{documento}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "documento",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.ClientController",
     "Method": "GetClient",
     "RelativePath": "api/Client/{id}",

@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<Withdrawal> Withdrawals { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<Detail> Details { get; set; }
+    public DbSet<Cesion> Cesions { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

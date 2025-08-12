@@ -48,6 +48,7 @@ builder.Services.AddScoped<SaleServices>();
 builder.Services.AddScoped<WithdrawalServices>();
 builder.Services.AddScoped<DetailServices>();
 builder.Services.AddScoped<IBackupService, BackupService>();
+builder.Services.AddScoped<CesionServices>();
 
 // 5. ✅ CONFIGURACIÓN DE EMAIL USANDO TU SECCIÓN EXISTENTE
 builder.Services.AddSingleton<ConfigServer>(provider =>

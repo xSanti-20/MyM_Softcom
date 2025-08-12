@@ -155,6 +155,115 @@
         }
       }
     },
+    "/api/Cesion/CreateCesion": {
+      "post": {
+        "tags": [
+          "Cesion"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CesionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CesionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CesionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CesionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CesionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CesionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Cesion/GetAll": {
+      "get": {
+        "tags": [
+          "Cesion"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CesionInfo"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CesionInfo"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CesionInfo"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Cesion/GetClientByDocument/{documento}": {
+      "get": {
+        "tags": [
+          "Cesion"
+        ],
+        "parameters": [
+          {
+            "name": "documento",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Client/GetAll": {
       "get": {
         "tags": [
@@ -2857,6 +2966,216 @@
   },
   "components": {
     "schemas": {
+      "Cesion": {
+        "required": [
+          "cesion_date",
+          "cesion_reason",
+          "id_Client_Cedente",
+          "id_Client_Cesionario",
+          "id_Sales",
+          "id_Users"
+        ],
+        "type": "object",
+        "properties": {
+          "id_Cesiones": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cesion_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cesion_reason": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cesion_cost": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "id_Client_Cedente": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "client_cedente": {
+            "$ref": "#/components/schemas/Client"
+          },
+          "id_Client_Cesionario": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "client_cesionario": {
+            "$ref": "#/components/schemas/Client"
+          },
+          "id_Sales": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sale": {
+            "$ref": "#/components/schemas/Sale"
+          },
+          "id_Users": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "valor_pagado_antes_cesion": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "deuda_antes_cesion": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "observaciones": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CesionInfo": {
+        "type": "object",
+        "properties": {
+          "id_Cesiones": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "fecha_Cesion": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "motivo": {
+            "type": "string",
+            "nullable": true
+          },
+          "costo": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "cedente_Nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "cedente_Documento": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cesionario_Nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "cesionario_Documento": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id_Venta": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lote_Nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "proyecto_Nombre": {
+            "type": "string",
+            "nullable": true
+          },
+          "valor_Total_Venta": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "valor_Pagado_Antes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "deuda_Antes": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "observaciones": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CesionRequest": {
+        "required": [
+          "documentoCedente",
+          "idUsuario",
+          "motivoCesion",
+          "nuevoCliente"
+        ],
+        "type": "object",
+        "properties": {
+          "nuevoCliente": {
+            "$ref": "#/components/schemas/Client"
+          },
+          "documentoCedente": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "motivoCesion": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "costoCesion": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "observaciones": {
+            "type": "string",
+            "nullable": true
+          },
+          "idUsuario": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CesionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "cesion": {
+            "$ref": "#/components/schemas/Cesion"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "Client": {
         "required": [
           "document",
