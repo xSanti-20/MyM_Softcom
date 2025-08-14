@@ -1,5 +1,5 @@
 import HomePage from "@/components/nav/home";
-import PublicNav from "../components/nav/PublicNav";
+import PublicNav from "@/components/nav/PublicNav";
 function Home() {
   return (
       <>
