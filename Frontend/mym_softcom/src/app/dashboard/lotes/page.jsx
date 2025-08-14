@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
-import Image from 'next/image';
+import Image from "next/image"
 import RegisterLot from "./formlotes"
 import AlertModal from "@/components/AlertModal"
 import DataTable from "@/components/utils/DataTable"
@@ -31,14 +31,14 @@ function LotPage() {
 
   const titlesLot = ["ID", "Manzana", "Número de Lote", "Estado", "Proyecto"]
 
-  const showAlert = (type, message, onSuccessCallback = null) => {
+  const showAlert = useCallback((type, message, onSuccessCallback = null) => {
     setAlertInfo({
       isOpen: true,
       message,
       type,
       onSuccessCallback,
     })
-  }
+  }, [])
 
   const closeAlert = () => {
     const callback = alertInfo.onSuccessCallback
@@ -79,37 +79,40 @@ function LotPage() {
     )
   }
 
-  async function fetchLots(projectId = null) {
-    try {
-      setIsLoading(true)
-      let response
-      if (projectId && projectId !== "all") {
-        response = await axiosInstance.get(`/api/Lot/GetLotsByProject/${projectId}`)
-      } else {
-        response = await axiosInstance.get("/api/Lot/GetAllLot")
-      }
+  const fetchLots = useCallback(
+    async (projectId = null) => {
+      try {
+        setIsLoading(true)
+        let response
+        if (projectId && projectId !== "all") {
+          response = await axiosInstance.get(`/api/Lot/GetLotsByProject/${projectId}`)
+        } else {
+          response = await axiosInstance.get("/api/Lot/GetAllLot")
+        }
 
-      if (response.status === 200) {
-        const data = response.data.map((lot) => ({
-          id: lot.id_Lots,
-          block: lot.block,
-          lot_number: lot.lot_number,
-          status: createLotStatusBadge(lot.status || "Libre"),
-          project: lot.project?.name || "N/A",
-          original: lot,
-          searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""}`,
-        }))
-        setLotData(data)
+        if (response.status === 200) {
+          const data = response.data.map((lot) => ({
+            id: lot.id_Lots,
+            block: lot.block,
+            lot_number: lot.lot_number,
+            status: createLotStatusBadge(lot.status || "Libre"),
+            project: lot.project?.name || "N/A",
+            original: lot,
+            searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""}`,
+          }))
+          setLotData(data)
+        }
+      } catch (error) {
+        setError("No se pudieron cargar los datos de los lotes.")
+        showAlert("error", "No se pudieron cargar los datos de los lotes.")
+      } finally {
+        setIsLoading(false)
       }
-    } catch (error) {
-      setError("No se pudieron cargar los datos de los lotes.")
-      showAlert("error", "No se pudieron cargar los datos de los lotes.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+    [showAlert],
+  )
 
-  async function fetchProjectsForFilter() {
+  const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.status === 200) {
@@ -119,12 +122,12 @@ function LotPage() {
       console.error("Error al cargar proyectos para el filtro:", error)
       showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
     }
-  }
+  }, [showAlert])
 
   useEffect(() => {
     fetchProjectsForFilter()
     fetchLots()
-  }, [])
+  }, [fetchProjectsForFilter, fetchLots]) // Added function dependencies
 
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
@@ -195,13 +198,7 @@ function LotPage() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <Image
-              src="/assets/img/mymsoftcom.png"
-              alt="Cargando..."
-              width={80}
-              height={80}
-              className="animate-spin"
-            />
+            <Image src="/assets/img/mymsoftcom.png" alt="Cargando..." width={80} height={80} className="animate-spin" />
             <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
           </div>
         </div>

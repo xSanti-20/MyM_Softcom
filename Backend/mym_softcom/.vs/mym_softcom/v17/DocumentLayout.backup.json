@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\cesion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\cesion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\cesionmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\cesionmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -13,10 +17,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\controllers\\cesioncontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\cesioncontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\models\\cesion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\cesion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym softcom\\mym_softcom\\backend\\mym_softcom\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -38,7 +38,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -54,12 +54,11 @@
               "RelativeToolTip": "Program.cs",
               "ViewState": "AgIAAB4AAAAAAAAAAAAAADIAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-12T19:51:39.499Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-12T19:51:39.499Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "CesionServices.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Services\\CesionServices.cs",
               "RelativeDocumentMoniker": "Services\\CesionServices.cs",
@@ -67,12 +66,11 @@
               "RelativeToolTip": "Services\\CesionServices.cs",
               "ViewState": "AgIAAH4AAAAAAAAAAAAIwIoAAAApAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-12T19:49:14.43Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-12T19:49:14.43Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "CesionController.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\CesionController.cs",
               "RelativeDocumentMoniker": "Controllers\\CesionController.cs",
@@ -80,31 +78,30 @@
               "RelativeToolTip": "Controllers\\CesionController.cs",
               "ViewState": "AgIAACMAAAAAAAAAAAAkwFwAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-12T19:48:47.567Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-12T19:48:47.567Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "Cesion.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Cesion.cs",
               "RelativeDocumentMoniker": "Models\\Cesion.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Cesion.cs",
               "RelativeToolTip": "Models\\Cesion.cs",
-              "ViewState": "AgIAACMAAAAAAAAAAAAIwDEAAAA/AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-12T19:48:23.171Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "CesionModels.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\CesionModels.cs",
               "RelativeDocumentMoniker": "Models\\CesionModels.cs",
               "ToolTip": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\Models\\CesionModels.cs",
               "RelativeToolTip": "Models\\CesionModels.cs",
-              "ViewState": "AgIAACQAAAAAAAAAAAAiwAkAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADIAAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-12T19:47:51.427Z",
               "EditorCaption": ""
@@ -119,8 +116,7 @@
               "RelativeToolTip": "Models\\DbContext.Models.cs",
               "ViewState": "AgIAAA8AAAAAAAAAAAAowB4AAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-12T19:15:35.888Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-12T19:15:35.888Z"
             },
             {
               "$type": "Document",
@@ -132,8 +128,7 @@
               "RelativeToolTip": "Controllers\\Dashboard.Controller.cs",
               "ViewState": "AgIAAE8AAAAAAAAAAAASwGUAAABdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-11T20:38:04.584Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-11T20:38:04.584Z"
             }
           ]
         }

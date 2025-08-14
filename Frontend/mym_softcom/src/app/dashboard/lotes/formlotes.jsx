@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import axiosInstance from "@/lib/axiosInstance"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,15 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
   const [loading, setLoading] = useState(false)
   const isEditing = !!lotToEdit
 
+  const stableShowAlert = useCallback(
+    (type, message) => {
+      if (showAlert) {
+        showAlert(type, message)
+      }
+    },
+    [showAlert],
+  )
+
   // Cargar proyectos al iniciar el componente
   useEffect(() => {
     async function fetchProjectsForSelect() {
@@ -29,11 +38,11 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
         }
       } catch (error) {
         console.error("Error al cargar proyectos para el select:", error)
-        showAlert("error", "No se pudieron cargar los proyectos para el formulario.")
+        stableShowAlert("error", "No se pudieron cargar los proyectos para el formulario.")
       }
     }
     fetchProjectsForSelect()
-  }, [])
+  }, [stableShowAlert]) // Added stableShowAlert to dependencies
 
   // Rellenar formulario si estamos editando un lote
   useEffect(() => {
@@ -73,19 +82,22 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
     const { block, lot_number, id_Projects } = formData
 
     if (!block || !lot_number || !id_Projects) {
-      showAlert("error", "Todos los campos obligatorios (Manzana, Número de Lote, Proyecto) deben ser completados.")
+      stableShowAlert(
+        "error",
+        "Todos los campos obligatorios (Manzana, Número de Lote, Proyecto) deben ser completados.",
+      )
       return
     }
 
     const parsedLotNumber = Number.parseInt(lot_number, 10)
     if (isNaN(parsedLotNumber)) {
-      showAlert("error", "El número de lote debe ser un número válido.")
+      stableShowAlert("error", "El número de lote debe ser un número válido.")
       return
     }
 
     const parsedProjectId = Number.parseInt(id_Projects, 10)
     if (isNaN(parsedProjectId)) {
-      showAlert("error", "El proyecto seleccionado no es válido.")
+      stableShowAlert("error", "El proyecto seleccionado no es válido.")
       return
     }
 
@@ -117,7 +129,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
       const successMessage =
         response.data?.message || (isEditing ? "Lote actualizado con éxito." : "Lote registrado con éxito.")
 
-      showAlert("success", successMessage)
+      stableShowAlert("success", successMessage)
 
       // Limpiar formulario solo si es un registro nuevo o si se cierra el modal
       if (!isEditing || closeModal) {
@@ -130,7 +142,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
       console.error("Error completo:", error)
       const errorMessage = error.response?.data?.message || error.response?.data || "Error desconocido"
 
-      showAlert(
+      stableShowAlert(
         "error",
         `Ocurrió un error al ${isEditing ? "actualizar" : "registrar"} el lote: ` + JSON.stringify(errorMessage),
       )

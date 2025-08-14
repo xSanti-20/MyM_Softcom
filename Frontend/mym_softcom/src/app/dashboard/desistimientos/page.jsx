@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import Image from 'next/image';
 import axiosInstance from "@/lib/axiosInstance"
@@ -104,7 +104,7 @@ function WithdrawalsPage() {
     return "Sin proyecto"
   }
 
-  async function fetchProjectsForFilter() {
+  const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.data && Array.isArray(response.data)) {
@@ -119,9 +119,9 @@ function WithdrawalsPage() {
       console.error("Error al cargar proyectos para el filtro:", error)
       showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
     }
-  }
+  }, [])
 
-  async function fetchWithdrawals(projectId = null) {
+  const fetchWithdrawals = useCallback(async (projectId = null) => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Withdrawal/GetAllWithdrawals")
@@ -187,7 +187,7 @@ function WithdrawalsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
@@ -197,7 +197,7 @@ function WithdrawalsPage() {
   useEffect(() => {
     fetchProjectsForFilter()
     fetchWithdrawals()
-  }, [])
+  }, [fetchProjectsForFilter, fetchWithdrawals])
 
   const handleDelete = async (id) => {
     try {
@@ -270,7 +270,7 @@ function WithdrawalsPage() {
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4" />  
           <span>Agregar Desistimiento</span>
         </Button>
       </div>

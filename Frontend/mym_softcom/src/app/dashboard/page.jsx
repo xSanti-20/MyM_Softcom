@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import axiosInstance from "@/lib/axiosInstance"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 // Componente de tabla de datos resumida
@@ -82,9 +83,8 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
                   {columns.map((column, i) => (
                     <td
                       key={i}
-                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${
-                        i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
-                      }`}
+                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
+                        }`}
                     >
                       {column.cell ? column.cell(footerData) : footerData[column.accessor]}
                     </td>
@@ -555,7 +555,7 @@ export default function Dashboard() {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-white to-gray-100">
         <div className="flex flex-col items-center">
-          <img src="/assets/img/mymsoftcom.png" alt="Cargando..." className="w-20 h-20 animate-spin" />
+          <Image src="/assets/img/mymsoftcom.png" alt="Cargando..." width={80} height={80} className="animate-spin" />
           <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
         </div>
       </div>
@@ -582,14 +582,12 @@ export default function Dashboard() {
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div
-                      className={`${
-                        hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                      } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
+                      className={`${hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                        } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
                     >
                       <span
-                        className={`w-2 h-2 ${
-                          hasErrors ? "bg-amber-500" : "bg-blue-500"
-                        } rounded-full mr-1.5 animate-pulse`}
+                        className={`w-2 h-2 ${hasErrors ? "bg-amber-500" : "bg-blue-500"
+                          } rounded-full mr-1.5 animate-pulse`}
                       ></span>
                       {hasErrors ? "Datos parciales" : "Datos en tiempo real"}
                     </div>

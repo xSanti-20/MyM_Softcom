@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterClient from "./formclient"
 import AlertModal from "@/components/AlertModal"
-import Image from 'next/image';
+import Image from "next/image"
 import DataTable from "@/components/utils/DataTable"
 import { FaEye, FaEyeSlash } from "react-icons/fa"
 import { Button } from "@/components/ui/button"
@@ -27,8 +27,8 @@ function ClientPage() {
     redirectUrl: null,
   })
 
-  // Función de formato de moneda
-  const formatCurrency = (value) => {
+  // Moved formatCurrency function inside component
+  const formatCurrency = useCallback((value) => {
     if (value === null || value === undefined) return "N/A"
     const num = Number.parseFloat(value)
     if (isNaN(num)) return "N/A"
@@ -47,10 +47,10 @@ function ClientPage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
-  }
+  }, [])
 
-  // Función para crear badge de estado de clientes
-  const createClientStatusBadge = (status) => {
+  // Moved createClientStatusBadge function inside component
+  const createClientStatusBadge = useCallback((status) => {
     if (!status) status = "Activo" // Valor por defecto
 
     const statusLower = status.toLowerCase()
@@ -75,7 +75,7 @@ function ClientPage() {
         {displayText}
       </Badge>
     )
-  }
+  }, [])
 
   // Títulos incluyendo el estado
   const clientTitles = [
@@ -91,14 +91,14 @@ function ClientPage() {
     "Deuda Total",
   ]
 
-  const showAlert = (type, message, onSuccessCallback = null) => {
+  const showAlert = useCallback((type, message, onSuccessCallback = null) => {
     setAlertInfo({
       isOpen: true,
       message,
       type,
       onSuccessCallback,
     })
-  }
+  }, [])
 
   const closeAlert = () => {
     const callback = alertInfo.onSuccessCallback
@@ -111,7 +111,7 @@ function ClientPage() {
     if (callback) callback()
   }
 
-  async function fetchClients() {
+  const fetchClients = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Client/GetClientsWithSalesSummary")
@@ -145,11 +145,11 @@ function ClientPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [showInactiveRecords, showAlert, createClientStatusBadge, formatCurrency]) // Added all function dependencies
 
   useEffect(() => {
     fetchClients()
-  }, [showInactiveRecords])
+  }, [fetchClients]) // Added fetchClients dependency
 
   const handleToggleStatus = async (id, currentRow) => {
     try {
@@ -222,13 +222,7 @@ function ClientPage() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <Image
-              src="/assets/img/mymsoftcom.png"
-              alt="Cargando..."
-              width={80}
-              height={80}
-              className="animate-spin"
-            />
+            <Image src="/assets/img/mymsoftcom.png" alt="Cargando..." width={80} height={80} className="animate-spin" />
             <p className="text-lg text-gray-700 font-semibold mt-2">Cargando...</p>
           </div>
         </div>

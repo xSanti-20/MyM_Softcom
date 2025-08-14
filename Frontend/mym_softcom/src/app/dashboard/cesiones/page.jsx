@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import CesionForm from "./formcesion"
@@ -34,14 +34,14 @@ function CesionsPage() {
     "Motivo",
   ]
 
-  const showAlert = (type, message, onSuccessCallback = null) => {
+  const showAlert = useCallback((type, message, onSuccessCallback = null) => {
     setAlertInfo({
       isOpen: true,
       message,
       type,
       onSuccessCallback,
     })
-  }
+  }, [])
 
   const closeAlert = () => {
     const callback = alertInfo.onSuccessCallback
@@ -56,13 +56,16 @@ function CesionsPage() {
 
   const createStatusBadge = (status) => {
     return (
-      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-medium">
+      <Badge
+        variant="outline"
+        className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200 font-medium"
+      >
         Completada
       </Badge>
     )
   }
 
-  async function fetchCesions() {
+  const fetchCesions = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Cesion/GetAll")
@@ -70,7 +73,9 @@ function CesionsPage() {
       if (response.status === 200) {
         const data = response.data.map((cesion) => ({
           id: cesion.id_Cesiones,
-          cesion_date: cesion.fecha_Cesion ? new Date(cesion.fecha_Cesion).toLocaleDateString() : "N/A",
+          cesion_date: cesion.fecha_Cesion
+            ? new Date(cesion.fecha_Cesion).toLocaleDateString()
+            : "N/A",
           client_cedente: cesion.cedente_Nombre || "N/A",
           client_cesionario: cesion.cesionario_Nombre || "N/A",
           lot: cesion.lote_Nombre || "N/A",
@@ -89,11 +94,11 @@ function CesionsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [showAlert])
 
   useEffect(() => {
     fetchCesions()
-  }, [])
+  }, [fetchCesions])
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
@@ -117,8 +122,16 @@ function CesionsPage() {
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-50">
           <div className="flex flex-col items-center">
-            <Image src="/assets/img/mymsoftcom.png" alt="Cargando..." width={80} height={80} className="animate-spin" />
-            <p className="text-lg text-gray-700 font-semibold mt-2">Cargando cesiones...</p>
+            <Image
+              src="/assets/img/mymsoftcom.png"
+              alt="Cargando..."
+              width={80}
+              height={80}
+              className="animate-spin"
+            />
+            <p className="text-lg text-gray-700 font-semibold mt-2">
+              Cargando cesiones...
+            </p>
           </div>
         </div>
       )}
@@ -140,14 +153,20 @@ function CesionsPage() {
           {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <CesionForm refreshData={fetchCesions} closeModal={handleCloseModal} showAlert={showAlert} />
+                <CesionForm
+                  refreshData={fetchCesions}
+                  closeModal={handleCloseModal}
+                  showAlert={showAlert}
+                />
               </div>
             </div>
           )}
         </div>
       )}
 
-      {error && <div className="text-red-600 text-center mt-4">{error}</div>}
+      {error && (
+        <div className="text-red-600 text-center mt-4">{error}</div>
+      )}
 
       <AlertModal
         isOpen={alertInfo.isOpen}
