@@ -3121,6 +3121,7 @@
         "required": [
           "documentoCedente",
           "idUsuario",
+          "idVentaACeder",
           "motivoCesion",
           "nuevoCliente"
         ],
@@ -3130,6 +3131,10 @@
             "$ref": "#/components/schemas/Client"
           },
           "documentoCedente": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "idVentaACeder": {
             "type": "integer",
             "format": "int32"
           },

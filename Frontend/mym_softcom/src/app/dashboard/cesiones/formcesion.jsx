@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Search, User, Loader2, ArrowRight, UserPlus, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 function CesionForm({ refreshData, closeModal, showAlert }) {
   // Estados para búsqueda del cliente cedente
@@ -31,13 +32,13 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
   const [cesionData, setCesionData] = useState({
     reason: "",
     observations: "",
-    created_by: "Usuario", // Puedes obtener esto del contexto de usuario
+    created_by: "Usuario",
   })
 
-  const [step, setStep] = useState(1) // 1: Buscar cedente, 2: Crear cesionario, 3: Confirmar cesión
+  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
 
-  // Función para buscar cliente cedente por documento
+  // ✅ CORREGIDO: Función para buscar cliente cedente con camelCase correcto
   const handleSearchCedente = useCallback(async () => {
     if (!cedenteDocument) {
       setCedenteSearchError("Por favor, ingrese un número de documento.")
@@ -58,14 +59,20 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
     setCedenteSearchError(null)
     setFoundCedente(null)
     setCedenteSales([])
+    setSelectedSale(null)
 
     try {
       const response = await axiosInstance.get(`/api/Cesion/GetClientByDocument/${parsedDocument}`)
       if (response.status === 200 && response.data) {
-        // La API devuelve los datos del cliente directamente
+        console.log("Response data:", response.data) // Para debug
+
+        // ✅ CORREGIDO: Usar camelCase correcto según la respuesta del backend
         const clientData = {
-          names: response.data.nombre_Completo.split(" ")[0] || "",
-          surnames: response.data.nombre_Completo.split(" ").slice(1).join(" ") || "",
+          id_Clients: response.data.id_Cliente, // camelCase
+          names: response.data.nombre_Completo ? response.data.nombre_Completo.split(" ")[0] || "" : "",
+          surnames: response.data.nombre_Completo
+            ? response.data.nombre_Completo.split(" ").slice(1).join(" ") || ""
+            : "",
           document: response.data.documento,
           phone: response.data.telefono,
           email: response.data.email,
@@ -73,17 +80,23 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
         }
         setFoundCedente(clientData)
 
-        // Verificar si tiene venta activa
-        if (response.data.tiene_Venta_Activa && response.data.venta_Info) {
-          const saleData = {
-            id_Sales: response.data.venta_Info.id_Venta,
-            lotInfo: response.data.venta_Info.lote,
-            projectName: response.data.venta_Info.proyecto,
-            total_value: response.data.venta_Info.valor_Total,
-            total_debt: response.data.venta_Info.deuda_Pendiente,
+        // ✅ CORREGIDO: Usar camelCase correcto para las ventas
+        if (response.data.tiene_Ventas_Activas && response.data.ventas_Info && response.data.ventas_Info.length > 0) {
+          const salesData = response.data.ventas_Info.map((venta) => ({
+            id_Sales: venta.id_Venta,
+            lotInfo: venta.lote,
+            projectName: venta.proyecto,
+            total_value: venta.valor_Total,
+            total_raised: venta.valor_Pagado,
+            total_debt: venta.deuda_Pendiente,
+            fecha_venta: venta.fecha_Venta,
             status: "Activa",
+          }))
+          setCedenteSales(salesData)
+
+          if (salesData.length > 1) {
+            showAlert("info", `El cliente tiene ${salesData.length} ventas activas. Seleccione cuál desea ceder.`)
           }
-          setCedenteSales([saleData])
         } else {
           setCedenteSales([])
           showAlert("warning", "El cliente no tiene ventas activas para ceder.")
@@ -100,12 +113,6 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
       setCedenteSearchLoading(false)
     }
   }, [cedenteDocument, showAlert])
-
-  // Función para seleccionar una venta
-  const handleSelectSale = (sale) => {
-    setSelectedSale(sale)
-    setStep(2)
-  }
 
   // Función para manejar cambios en el formulario del cesionario
   const handleCesionarioChange = (e) => {
@@ -140,6 +147,12 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
       return
     }
 
+    // Validar que se haya seleccionado una venta
+    if (!selectedSale) {
+      showAlert("error", "Debe seleccionar una venta para ceder.")
+      return
+    }
+
     const cesionRequest = {
       nuevoCliente: {
         names: names.trim(),
@@ -149,6 +162,7 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
         email: email.trim() || null,
       },
       documentoCedente: foundCedente.document,
+      idVentaACeder: selectedSale.id_Sales,
       motivoCesion: cesionData.reason.trim(),
       costoCesion: 0,
       observaciones: cesionData.observations.trim() || null,
@@ -191,6 +205,28 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Función para formatear moneda
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined) return "N/A"
+    const num = Number.parseFloat(value)
+    if (isNaN(num)) return "N/A"
+
+    if (num % 1 === 0) {
+      return num.toLocaleString("es-CO", {
+        style: "currency",
+        currency: "COP",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+    }
+    return num.toLocaleString("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
   }
 
   return (
@@ -281,47 +317,92 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
             </div>
           )}
 
-          {/* Ventas del cliente */}
+          {/* ✅ MODIFICADO: Ventas del cliente en Select */}
           {cedenteSales.length > 0 && (
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-800 mb-4">Ventas Disponibles para Cesión:</h4>
-              <div className="space-y-3">
-                {cedenteSales.map((sale) => (
-                  <div
-                    key={sale.id_Sales}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => handleSelectSale(sale)}
+              <h4 className="font-semibold text-gray-800 mb-3">
+                Seleccionar Venta para Cesión ({cedenteSales.length} disponibles):
+              </h4>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="sale_select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Venta a Ceder *
+                  </Label>
+                  <Select
+                    name="sale_select"
+                    value={selectedSale?.id_Sales?.toString() || ""}
+                    onValueChange={(value) => {
+                      const sale = cedenteSales.find((s) => s.id_Sales.toString() === value)
+                      setSelectedSale(sale)
+                    }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                            {sale.lotInfo}
-                          </Badge>
-                          <Badge variant="outline" className="bg-green-100 text-green-800">
-                            {sale.projectName}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                          <p>
-                            <strong>Valor Total:</strong>{" "}
-                            {sale.total_value?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-                          </p>
-                          <p>
-                            <strong>Deuda:</strong>{" "}
-                            {sale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-                          </p>
-                          <p>
-                            <strong>Estado:</strong> {sale.status}
-                          </p>
-                        </div>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccione la venta que desea ceder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cedenteSales.map((sale) => (
+                        <SelectItem key={sale.id_Sales} value={sale.id_Sales.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              Venta #{sale.id_Sales} - {sale.lotInfo} ({sale.projectName})
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Valor: {formatCurrency(sale.total_value)} | Pagado: {formatCurrency(sale.total_raised)} |
+                              Deuda: {formatCurrency(sale.total_debt)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Detalles de la venta seleccionada */}
+                {selectedSale && (
+                  <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
+                    <h5 className="font-semibold text-blue-800 mb-2">Detalles de la Venta Seleccionada:</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="space-y-1">
+                        <p>
+                          <strong>ID Venta:</strong> #{selectedSale.id_Sales}
+                        </p>
+                        <p>
+                          <strong>Lote:</strong> {selectedSale.lotInfo}
+                        </p>
+                        <p>
+                          <strong>Proyecto:</strong> {selectedSale.projectName}
+                        </p>
                       </div>
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                        Seleccionar
-                      </Button>
+                      <div className="space-y-1">
+                        <p>
+                          <strong>Valor Total:</strong> {formatCurrency(selectedSale.total_value)}
+                        </p>
+                        <p>
+                          <strong>Valor Pagado:</strong> {formatCurrency(selectedSale.total_raised)}
+                        </p>
+                        <p>
+                          <strong>Deuda Pendiente:</strong> {formatCurrency(selectedSale.total_debt)}
+                        </p>
+                      </div>
+                      {selectedSale.fecha_venta && (
+                        <p className="col-span-full text-xs text-gray-600">
+                          <strong>Fecha de venta:</strong> {new Date(selectedSale.fecha_venta).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Botón para continuar */}
+                {selectedSale && (
+                  <div className="flex justify-end">
+                    <Button type="button" onClick={() => setStep(2)} className="bg-blue-600 hover:bg-blue-700">
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      Continuar con esta venta
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -340,16 +421,18 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
           {selectedSale && (
             <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
               <h4 className="font-semibold text-blue-800 mb-2">Lote a Transferir:</h4>
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-4 text-sm flex-wrap">
                 <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                  Venta #{selectedSale.id_Sales}
+                </Badge>
+                <Badge variant="outline" className="bg-purple-100 text-purple-800">
                   {selectedSale.lotInfo}
                 </Badge>
                 <Badge variant="outline" className="bg-green-100 text-green-800">
                   {selectedSale.projectName}
                 </Badge>
-                <span className="text-blue-700">
-                  Valor: {selectedSale.total_value?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-                </span>
+                <span className="text-blue-700">Valor: {formatCurrency(selectedSale.total_value)}</span>
+                <span className="text-blue-700">Deuda: {formatCurrency(selectedSale.total_debt)}</span>
               </div>
             </div>
           )}
@@ -529,7 +612,10 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
           {/* Detalles del Lote */}
           <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
             <h4 className="font-semibold text-blue-800 mb-3">Lote a Transferir</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <p>
+                <strong>Venta ID:</strong> #{selectedSale?.id_Sales}
+              </p>
               <p>
                 <strong>Lote:</strong> {selectedSale?.lotInfo}
               </p>
@@ -537,8 +623,15 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
                 <strong>Proyecto:</strong> {selectedSale?.projectName}
               </p>
               <p>
-                <strong>Valor:</strong>{" "}
-                {selectedSale?.total_value?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                <strong>Valor:</strong> {formatCurrency(selectedSale?.total_value)}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mt-2">
+              <p>
+                <strong>Valor Pagado:</strong> {formatCurrency(selectedSale?.total_raised)}
+              </p>
+              <p>
+                <strong>Deuda Pendiente:</strong> {formatCurrency(selectedSale?.total_debt)}
               </p>
             </div>
           </div>
@@ -554,10 +647,7 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
                 <p>
                   <strong>Observaciones:</strong> {cesionData.observations}
                 </p>
-              )}
-              <p>
-                <strong>Procesado por:</strong> {cesionData.created_by}
-              </p>
+              )}  
             </div>
           </div>
 

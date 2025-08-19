@@ -11,6 +11,9 @@ namespace mym_softcom.Models
         [Required(ErrorMessage = "El documento del cliente cedente es obligatorio")]
         public int DocumentoCedente { get; set; }
 
+        [Required(ErrorMessage = "El ID de la venta a ceder es obligatorio")]
+        public int IdVentaACeder { get; set; } // ✅ NUEVO: Campo para especificar qué venta ceder
+
         [Required(ErrorMessage = "El motivo de la cesión es obligatorio")]
         public string MotivoCesion { get; set; } = string.Empty;
 

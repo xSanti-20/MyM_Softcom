@@ -35,19 +35,21 @@ namespace mym_softcom.Services
                     };
                 }
 
-                // 2. Buscar venta activa del cliente cedente
+                // 2. Buscar venta específica del cliente cedente por ID de venta
                 var ventaCedente = await _context.Sales
                     .Include(s => s.lot)
                     .Include(s => s.plan)
-                    .FirstOrDefaultAsync(s => s.id_Clients == clienteCedente.id_Clients && s.status == "Active");
+                    .FirstOrDefaultAsync(s => s.id_Sales == request.IdVentaACeder &&
+                                            s.id_Clients == clienteCedente.id_Clients &&
+                                            s.status == "Active");
 
                 if (ventaCedente == null)
                 {
                     return new CesionResponse
                     {
                         Success = false,
-                        Message = "El cliente cedente no tiene ventas activas para ceder",
-                        Errors = { "No hay ventas activas" }
+                        Message = "No se encontró la venta especificada o no está activa",
+                        Errors = { "Venta no encontrada o inactiva" }
                     };
                 }
 
@@ -105,9 +107,18 @@ namespace mym_softcom.Services
                 ventaCedente.id_Clients = clienteCesionario.id_Clients;
                 _context.Sales.Update(ventaCedente);
 
-                // 8. Cambiar estado del cliente cedente a "Inactivo"
-                clienteCedente.status = "Inactivo";
-                _context.Clients.Update(clienteCedente);
+                // 8. Verificar si el cliente cedente tiene más ventas activas
+                var tieneOtrasVentasActivas = await _context.Sales
+                    .AnyAsync(s => s.id_Clients == clienteCedente.id_Clients &&
+                                  s.status == "Active" &&
+                                  s.id_Sales != ventaCedente.id_Sales);
+
+                // 9. Solo cambiar estado del cliente cedente a "Inactivo" si no tiene más ventas activas
+                if (!tieneOtrasVentasActivas)
+                {
+                    clienteCedente.status = "Inactivo";
+                    _context.Clients.Update(clienteCedente);
+                }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -166,14 +177,15 @@ namespace mym_softcom.Services
         }
 
         /// <summary>
-        /// Busca cliente por documento para validación
+        /// Busca cliente por documento para validación - CORREGIDO para mostrar todas las ventas
         /// </summary>
         public async Task<object?> BuscarClientePorDocumento(int documento)
         {
             var cliente = await _clientServices.GetClientByDocument(documento);
             if (cliente == null) return null;
 
-            var ventaActiva = await _context.Sales
+            // ✅ CORREGIDO: Cambiar FirstOrDefaultAsync() por ToListAsync() para obtener TODAS las ventas activas
+            var ventasActivas = await _context.Sales
                 .Join(_context.Lots, s => s.id_Lots, l => l.id_Lots, (s, l) => new { s, l })
                 .Join(_context.Projects, x => x.l.id_Projects, p => p.id_Projects, (x, p) => new { x.s, x.l, p })
                 .Where(x => x.s.id_Clients == cliente.id_Clients && x.s.status == "Active")
@@ -184,9 +196,11 @@ namespace mym_softcom.Services
                     Proyecto = x.p.name,
                     Valor_Total = x.s.total_value,
                     Valor_Pagado = x.s.total_raised,
-                    Deuda_Pendiente = x.s.total_debt
+                    Deuda_Pendiente = x.s.total_debt,
+                    Fecha_Venta = x.s.sale_date
                 })
-                .FirstOrDefaultAsync();
+                .OrderBy(x => x.Fecha_Venta) // Ordenar por fecha de venta
+                .ToListAsync(); // ✅ CAMBIO CLAVE: ToListAsync() en lugar de FirstOrDefaultAsync()
 
             return new
             {
@@ -196,8 +210,9 @@ namespace mym_softcom.Services
                 Telefono = cliente.phone,
                 Email = cliente.email,
                 Status = cliente.status,
-                Tiene_Venta_Activa = ventaActiva != null,
-                Venta_Info = ventaActiva
+                Tiene_Ventas_Activas = ventasActivas.Any(), // ✅ CORREGIDO: Cambiar a Any()
+                Total_Ventas_Activas = ventasActivas.Count, // ✅ NUEVO: Contar total de ventas
+                Ventas_Info = ventasActivas // ✅ CORREGIDO: Devolver lista completa de ventas
             };
         }
     }
