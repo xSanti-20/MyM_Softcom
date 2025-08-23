@@ -10,6 +10,7 @@ namespace mym_softcom.Models
         public int id_Lots { get; set; }
         public string block { get; set; }
         public int lot_number { get; set; }
+        public int lot_area { get; set; }
         public string status { get; set; } = "Libre";
 
         //foránea a la tabla Projects

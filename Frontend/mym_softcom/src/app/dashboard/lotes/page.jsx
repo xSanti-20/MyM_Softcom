@@ -29,7 +29,7 @@ function LotPage() {
     redirectUrl: null,
   })
 
-  const titlesLot = ["ID", "Manzana", "Número de Lote", "Estado", "Proyecto"]
+  const titlesLot = ["ID", "Manzana", "Número de Lote", "Área", "Estado", "Proyecto"]
 
   const showAlert = useCallback((type, message, onSuccessCallback = null) => {
     setAlertInfo({
@@ -95,6 +95,7 @@ function LotPage() {
             id: lot.id_Lots,
             block: lot.block,
             lot_number: lot.lot_number,
+            lot_area: `${lot.lot_area || 0} m²`,
             status: createLotStatusBadge(lot.status || "Libre"),
             project: lot.project?.name || "N/A",
             original: lot,

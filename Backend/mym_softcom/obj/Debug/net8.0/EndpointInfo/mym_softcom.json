@@ -3305,6 +3305,10 @@
             "type": "integer",
             "format": "int32"
           },
+          "lot_area": {
+            "type": "integer",
+            "format": "int32"
+          },
           "status": {
             "type": "string",
             "nullable": true
