@@ -26,7 +26,7 @@ function NavPrivada({ children, title }) {
 
   const menuItems = [
     ...(role === "Administrador" ? [{ title: "Gestión de Usuarios", path: "/dashboard/Admi", icon: "👤" }] : []),
-    { title: "Home", path: "/dashboard", icon: "📍" },
+    ...(role === "Administrador" ? [{ title: "Home", path: "/dashboard", icon: "📍" }] : []),
     { title: "Clientes", path: "/dashboard/clientes", icon: "👥" },
     { title: "Ventas", path: "/dashboard/ventas", icon: "💰" },
     { title: "Pagos", path: "/dashboard/pagos", icon: "💳" },

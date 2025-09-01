@@ -2,6 +2,7 @@
 using mym_softcom;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
@@ -37,18 +38,112 @@ namespace mym_softcom.Services
 
         /// <summary>
         /// Obtiene una venta específica por su ID, incluyendo sus relaciones.
+        /// Calcula dinámicamente OriginalQuotaValue y NewQuotaValue si hay redistribución y los guarda en la BD.
         /// </summary>
         public async Task<Sale?> GetSaleById(int id_Sales)
         {
             Console.WriteLine($"[SaleServices] Buscando venta con id_Sales: {id_Sales}");
-            return await _context.Sales
+            var sale = await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
                                  .ThenInclude(l => l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .FirstOrDefaultAsync(s => s.id_Sales == id_Sales);
+
+            if (sale != null)
+            {
+                bool needsUpdate = false;
+
+                // Set OriginalQuotaValue if not already set
+                if (sale.OriginalQuotaValue == null)
+                {
+                    sale.OriginalQuotaValue = sale.quota_value;
+                    needsUpdate = true;
+                }
+
+                Console.WriteLine($"[SaleServices] Initial values for sale {id_Sales}:");
+                Console.WriteLine($"  - quota_value: {sale.quota_value:C}");
+                Console.WriteLine($"  - OriginalQuotaValue: {sale.OriginalQuotaValue:C}");
+                Console.WriteLine($"  - RedistributedQuotaNumbers: {sale.RedistributedQuotaNumbers ?? "null"}");
+                Console.WriteLine($"  - RedistributionAmount: {sale.RedistributionAmount?.ToString("C") ?? "null"}");
+
+                if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
+                {
+                    try
+                    {
+                        var redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers);
+                        var totalOverdueAmount = sale.RedistributionAmount ?? 0;
+
+                        // Calculate NewQuotaValue for remaining quotas
+                        if (sale.plan?.number_quotas > 0 && redistributedQuotaNumbers?.Count > 0)
+                        {
+                            var totalQuotas = sale.plan.number_quotas.Value;
+                            var redistributedQuotasCount = redistributedQuotaNumbers.Count;
+                            var remainingQuotas = totalQuotas - redistributedQuotasCount;
+
+                            if (remainingQuotas > 0 && totalOverdueAmount > 0)
+                            {
+                                var redistributionPerQuota = totalOverdueAmount / remainingQuotas;
+                                var calculatedNewQuotaValue = sale.OriginalQuotaValue + redistributionPerQuota;
+
+                                if (sale.NewQuotaValue != calculatedNewQuotaValue)
+                                {
+                                    sale.NewQuotaValue = calculatedNewQuotaValue;
+                                    needsUpdate = true;
+                                }
+
+                                Console.WriteLine($"[SaleServices] Dynamic calculation for sale {id_Sales}:");
+                                Console.WriteLine($"  - OriginalQuotaValue: {sale.OriginalQuotaValue:C}");
+                                Console.WriteLine($"  - NewQuotaValue: {sale.NewQuotaValue:C}");
+                                Console.WriteLine($"  - RedistributionAmount: {totalOverdueAmount:C}");
+                                Console.WriteLine($"  - RemainingQuotas: {remainingQuotas}");
+                                Console.WriteLine($"  - RedistributedQuotaNumbers: [{string.Join(", ", redistributedQuotaNumbers)}]");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[SaleServices] Error calculating dynamic quota values: {ex.Message}");
+                        // If there's an error, at least set the original quota value
+                        if (sale.OriginalQuotaValue == null)
+                        {
+                            sale.OriginalQuotaValue = sale.quota_value;
+                            needsUpdate = true;
+                        }
+                        sale.NewQuotaValue = null;
+                    }
+                }
+                else
+                {
+                    if (sale.NewQuotaValue != null)
+                    {
+                        sale.NewQuotaValue = null;
+                        needsUpdate = true;
+                    }
+                }
+
+                if (needsUpdate)
+                {
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                        Console.WriteLine($"[SaleServices] Saved calculated quota values to database for sale {id_Sales}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[SaleServices] Error saving quota values to database: {ex.Message}");
+                    }
+                }
+
+                Console.WriteLine($"[SaleServices] Final values being returned for sale {id_Sales}:");
+                Console.WriteLine($"  - OriginalQuotaValue: {sale.OriginalQuotaValue?.ToString("C") ?? "null"}");
+                Console.WriteLine($"  - NewQuotaValue: {sale.NewQuotaValue?.ToString("C") ?? "null"}");
+            }
+
+            return sale;
         }
+
 
         /// <summary>
         /// Crea una nueva venta, calcula el valor de la cuota y establece el recaudo inicial.
@@ -267,6 +362,75 @@ namespace mym_softcom.Services
                 throw;
             }
         }
+
+        public async Task<ServiceResult<string>> RedistributeOverdueQuotas(int saleId, string redistributionType, List<OverdueQuotaInfo> overdueQuotas)
+        {
+            try
+            {
+                var sale = await _context.Sales
+                    .Include(s => s.plan)
+                    .FirstOrDefaultAsync(s => s.id_Sales == saleId);
+
+                if (sale == null)
+                    return new ServiceResult<string> { Success = false, Message = "Venta no encontrada" };
+
+                var totalOverdueAmount = overdueQuotas.Sum(q => q.RemainingAmount);
+                var overdueQuotaNumbers = overdueQuotas.Select(q => q.QuotaNumber).ToList();
+
+                if (!sale.OriginalQuotaValue.HasValue)
+                {
+                    sale.OriginalQuotaValue = sale.quota_value;
+                    Console.WriteLine($"[SaleServices] Preserving original quota value: {sale.OriginalQuotaValue:C}");
+                }
+
+                var originalQuotaValue = sale.OriginalQuotaValue ?? sale.quota_value ?? 0;
+
+                sale.RedistributionAmount = totalOverdueAmount;
+                sale.RedistributionType = redistributionType;
+                sale.RedistributedQuotaNumbers = JsonSerializer.Serialize(overdueQuotaNumbers);
+
+                if (sale.plan?.number_quotas > 0)
+                {
+                    // Calcular cuántas cuotas quedan sin redistribuir
+                    var totalQuotas = sale.plan.number_quotas.Value;
+                    var redistributedQuotasCount = overdueQuotas.Count;
+                    var remainingQuotas = totalQuotas - redistributedQuotasCount;
+
+                    if (remainingQuotas > 0)
+                    {
+                        var redistributionPerQuota = totalOverdueAmount / remainingQuotas;
+                        var newQuotaValue = originalQuotaValue + redistributionPerQuota;
+
+                        sale.NewQuotaValue = newQuotaValue;
+
+                        sale.quota_value = originalQuotaValue;
+
+                        Console.WriteLine($"[SaleServices] Redistribution completed:");
+                        Console.WriteLine($"  - Original quota value: {originalQuotaValue:C}");
+                        Console.WriteLine($"  - Total overdue amount: {totalOverdueAmount:C}");
+                        Console.WriteLine($"  - Remaining quotas: {remainingQuotas}");
+                        Console.WriteLine($"  - Redistribution per quota: {redistributionPerQuota:C}");
+                        Console.WriteLine($"  - New quota value for pending quotas: {newQuotaValue:C}");
+                        Console.WriteLine($"  - Redistributed quota numbers: [{string.Join(", ", overdueQuotaNumbers)}]");
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new ServiceResult<string>
+                {
+                    Success = true,
+                    Message = "Cuotas redistribuidas exitosamente",
+                    Data = $"Se redistribuyó {totalOverdueAmount:C} entre las cuotas restantes. Nuevo valor de cuota: {sale.NewQuotaValue:C}"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en RedistributeOverdueQuotas: {ex.Message}");
+                return new ServiceResult<string> { Success = false, Message = ex.Message };
+            }
+        }
+
 
         // ✅ ELIMINADO: La función RoundToNearestMultiple ya no es necesaria
         // private decimal RoundToNearestMultiple(decimal value, int multiple)

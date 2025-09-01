@@ -1246,6 +1246,27 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.SaleController",
+    "Method": "RedistributeQuotas",
+    "RelativePath": "api/Sale/{id}/redistribute-quotas",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      },
+      {
+        "Name": "request",
+        "Type": "mym_softcom.Models.RedistributeQuotasRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.SaleController",
     "Method": "CreateSale",
     "RelativePath": "api/Sale/CreateSale",
     "HttpMethod": "POST",

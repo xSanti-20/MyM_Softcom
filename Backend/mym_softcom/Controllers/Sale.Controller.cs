@@ -139,5 +139,15 @@ namespace mym_softcom.Controllers
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
+        [HttpPost("{id}/redistribute-quotas")]
+        public async Task<IActionResult> RedistributeQuotas(int id, [FromBody] RedistributeQuotasRequest request)
+        {
+            var result = await _saleServices.RedistributeOverdueQuotas(id, request.RedistributionType, request.OverdueQuotas);
+
+            if (result.Success)
+                return Ok(result);
+            else
+                return BadRequest(result);
+        }
     }
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, User, AlertCircle, Loader2, CreditCard, Building2, ChevronDown } from 'lucide-react'
+import { Search, User, AlertCircle, Loader2, CreditCard, Building2, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import NavPrivada from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import MonthlyQuotaTracker from "@/components/utils/MonthlyQuotaTracker"
+import QuotaRedistributionButton from "@/components/utils/QuotaRedistributionButton"
 
 // Componente para mostrar información del cliente
 const ClientInfo = ({ client, sale }) => {
@@ -145,6 +146,7 @@ const FinancialSummary = ({ sale }) => {
 export default function DetailsPage() {
   const [searchDocument, setSearchDocument] = useState("")
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [clientData, setClientData] = useState(null)
   const [clientSales, setClientSales] = useState([])
   const [selectedSaleId, setSelectedSaleId] = useState("")
@@ -234,7 +236,7 @@ export default function DetailsPage() {
   const loadSaleDetails = async (sale) => {
     try {
       setSaleData(sale)
-      
+
       // Obtener detalles de pagos para la venta seleccionada
       const detailsResponse = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
       setDetailsData(detailsResponse.data)
@@ -258,6 +260,41 @@ export default function DetailsPage() {
     }
   }
 
+  const handleRedistributionComplete = async () => {
+    if (saleData) {
+      await loadSaleDetails(saleData)
+    }
+  }
+
+  const refreshData = async () => {
+    if (!saleData) return
+
+    setRefreshing(true)
+    try {
+      // Refresh sale data
+      const salesResponse = await axiosInstance.get("/api/Sale/GetAllSales")
+      const sales = salesResponse.data
+      const updatedSale = sales.find((s) => s.id_Sales === saleData.id_Sales)
+
+      if (updatedSale) {
+        setSaleData(updatedSale)
+
+        // Update client sales list
+        const clientSalesData = sales.filter((s) => s.id_Clients === clientData.id_Clients)
+        setClientSales(clientSalesData)
+      }
+
+      // Refresh payment details
+      const detailsResponse = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${saleData.id_Sales}`)
+      setDetailsData(detailsResponse.data)
+    } catch (error) {
+      console.error("Error al actualizar datos:", error)
+      setError("Error al actualizar la información. Por favor intenta nuevamente.")
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <div className="flex min-h-screen">
       <div className="flex flex-col flex-1">
@@ -266,10 +303,27 @@ export default function DetailsPage() {
             <div className="max-w-7xl mx-auto">
               {/* Header */}
               <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Consulta de Detalles de Pago</h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Busca por documento para ver el detalle de cuotas y pagos del cliente
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+                      Consulta de Detalles de Pago
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Busca por documento para ver el detalle de cuotas y pagos del cliente
+                    </p>
+                  </div>
+                  {saleData && (
+                    <Button
+                      onClick={refreshData}
+                      disabled={refreshing}
+                      variant="outline"
+                      className="flex items-center gap-2 bg-transparent"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                      {refreshing ? "Actualizando..." : "Actualizar Información"}
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Formulario de búsqueda */}
@@ -361,14 +415,14 @@ export default function DetailsPage() {
                                     <span className="text-xs text-gray-500 ml-2">{getProjectName(sale)}</span>
                                   </div>
                                   <div className="text-sm text-gray-600 mt-1">
-                                    <span className="mr-4">
-                                      Total: {formatCurrency(sale.total_value)}
-                                    </span>
-                                    <span className="mr-4">
-                                      Pagado: {formatCurrency(sale.total_raised)}
-                                    </span>
-                                    <span className={`font-medium ${sale.total_debt > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                      {sale.total_debt > 0 ? `Debe: ${formatCurrency(sale.total_debt)}` : 'Pagado completamente'}
+                                    <span className="mr-4">Total: {formatCurrency(sale.total_value)}</span>
+                                    <span className="mr-4">Pagado: {formatCurrency(sale.total_raised)}</span>
+                                    <span
+                                      className={`font-medium ${sale.total_debt > 0 ? "text-red-600" : "text-green-600"}`}
+                                    >
+                                      {sale.total_debt > 0
+                                        ? `Debe: ${formatCurrency(sale.total_debt)}`
+                                        : "Pagado completamente"}
                                     </span>
                                   </div>
                                 </div>
@@ -385,11 +439,41 @@ export default function DetailsPage() {
               {/* Resultados */}
               {clientData && saleData && (
                 <div className="space-y-6">
+                  {refreshing && (
+                    <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
+                      <div className="bg-white p-4 rounded-lg shadow-lg flex items-center gap-3">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span>Actualizando información...</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Información del cliente */}
                   <ClientInfo client={clientData} sale={saleData} />
 
                   {/* Resumen financiero */}
                   <FinancialSummary sale={saleData} />
+
+                  {/* Gestión de Cuotas */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Gestión de Cuotas
+                      </CardTitle>
+                      <CardDescription>
+                        Herramientas para manejar cuotas vencidas y redistribución de pagos
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <QuotaRedistributionButton
+                        saleId={saleData.id_Sales}
+                        paymentDetails={detailsData}
+                        sale={saleData}
+                        onRedistributionComplete={handleRedistributionComplete}
+                      />
+                    </CardContent>
+                  </Card>
 
                   {/* Detalles de cuotas con el nuevo componente */}
                   <MonthlyQuotaTracker sale={saleData} paymentDetails={detailsData} />

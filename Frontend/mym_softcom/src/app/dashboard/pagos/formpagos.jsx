@@ -33,7 +33,8 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
   // Métodos de pago disponibles
   const paymentMethods = [
     { value: "EFECTIVO", label: "Efectivo", icon: <DollarSign className="w-4 h-4" /> },
-    { value: "BANCO", label: "Transferencia Bancaria", icon: <CreditCard className="w-4 h-4" /> },
+    { value: "BANCO CORRIENTE", label: "Transferencia Corriente", icon: <CreditCard className="w-4 h-4" /> },
+     { value: "BANCO AHORROS", label: "Transferencia Ahorro", icon: <CreditCard className="w-4 h-4" /> },
   ]
 
   // Función auxiliar para obtener el nombre del proyecto

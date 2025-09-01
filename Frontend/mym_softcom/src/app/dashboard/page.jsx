@@ -83,8 +83,9 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
                   {columns.map((column, i) => (
                     <td
                       key={i}
-                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
-                        }`}
+                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${
+                        i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
+                      }`}
                     >
                       {column.cell ? column.cell(footerData) : footerData[column.accessor]}
                     </td>
@@ -294,6 +295,7 @@ export default function Dashboard() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [role, setRole] = useState("")
+  const [isCheckingRole, setIsCheckingRole] = useState(true)
 
   // Hook del router
   const router = useRouter()
@@ -363,14 +365,16 @@ export default function Dashboard() {
         const response = await axiosInstance.get("/api/Dashboard/GetMainStats")
         console.log("Main stats data:", response.data)
 
-        setStats((prevStats) => ({
-          ...prevStats,
-          activeClients: response.data.activeClients || 0,
-          overdueClients: response.data.overdueClients || 0,
-          totalOwed: response.data.totalOwed || 0,
-          cancellations: response.data.withdrawalsThisMonth || 0,
-          monthlyRevenue: response.data.monthlyRevenue || 0, // Recaudo mensual de pagos (del mes actual)
-        }))
+        if (response.data && typeof response.data === "object") {
+          setStats((prevStats) => ({
+            ...prevStats,
+            activeClients: response.data.activeClients || 0,
+            overdueClients: response.data.overdueClients || 0,
+            totalOwed: response.data.totalOwed || 0,
+            cancellations: response.data.withdrawalsThisMonth || 0,
+            monthlyRevenue: response.data.monthlyRevenue || 0, // Recaudo mensual de pagos (del mes actual)
+          }))
+        }
       } catch (error) {
         console.error("Error fetching main stats:", error)
         newErrors.mainStats = `Error al cargar estadísticas principales: ${error.message || "Error desconocido"}`
@@ -381,8 +385,11 @@ export default function Dashboard() {
         const response = await axiosInstance.get("/api/Dashboard/GetProjectRevenue")
         console.log("Current month project revenue data:", response.data)
 
-        const projectRevenues = response.data.projects || []
-        const totalCurrentMonthProjectRevenue = response.data.totalCurrentMonthRevenue || 0
+        const projectRevenues = response.data && Array.isArray(response.data.projects) ? response.data.projects : []
+        const totalCurrentMonthProjectRevenue =
+          response.data && typeof response.data.totalCurrentMonthRevenue === "number"
+            ? response.data.totalCurrentMonthRevenue
+            : 0
 
         console.log("=== DEBUGGING PROJECT NAMES ===")
         console.log("Total projects returned:", projectRevenues.length)
@@ -391,14 +398,14 @@ export default function Dashboard() {
             id: project.projectId,
             name: project.projectName,
             revenue: project.monthlyRevenue,
-            normalizedName: project.projectName.toLowerCase().trim().replace(/\s+/g, " "),
+            normalizedName: project.projectName?.toLowerCase().trim().replace(/\s+/g, " "),
           })
         })
         console.log("Total current month revenue:", totalCurrentMonthProjectRevenue)
         console.log("=== END DEBUGGING ===")
 
         // Función helper para normalizar nombres (quitar espacios extra, convertir a minúsculas)
-        const normalizeProjectName = (name) => name.toLowerCase().trim().replace(/\s+/g, " ")
+        const normalizeProjectName = (name) => name?.toLowerCase().trim().replace(/\s+/g, " ") || ""
 
         // Buscar proyectos con matching más flexible
         const luxuryMalibuProject = projectRevenues.find((p) => {
@@ -439,8 +446,10 @@ export default function Dashboard() {
         const response = await axiosInstance.get("/api/Dashboard/GetHistoricalProjectRevenue") // Ya no se pasa 'months'
         console.log("Historical project revenue data (current year):", response.data)
 
-        const historicalData = response.data.historicalData || []
-        const projectNames = response.data.projectNames || []
+        const historicalData =
+          response.data && Array.isArray(response.data.historicalData) ? response.data.historicalData : []
+        const projectNames =
+          response.data && Array.isArray(response.data.projectNames) ? response.data.projectNames : []
 
         // Preparar columnas dinámicas para la tabla histórica
         const dynamicColumns = [
@@ -484,16 +493,21 @@ export default function Dashboard() {
         const response = await axiosInstance.get("/api/Dashboard/GetRecentActivity?limit=8")
         console.log("Recent activity data:", response.data)
 
-        const formattedActivity = response.data.map((activity) => ({
-          action: activity.action,
-          details: activity.details,
-          time: formatRelativeTime(activity.date),
-          date: new Date(activity.date),
-          icon: activity.type === "payment" ? CreditCard : XCircle,
-          color: activity.color,
-        }))
+        if (response.data && Array.isArray(response.data)) {
+          const formattedActivity = response.data.map((activity) => ({
+            action: activity.action || "Actividad desconocida",
+            details: activity.details || "Sin detalles",
+            time: formatRelativeTime(activity.date),
+            date: new Date(activity.date || Date.now()),
+            icon: activity.type === "payment" ? CreditCard : XCircle,
+            color: activity.color || "blue",
+          }))
 
-        setRecentActivity(formattedActivity)
+          setRecentActivity(formattedActivity)
+        } else {
+          console.warn("Recent activity API returned non-array data:", response.data)
+          setRecentActivity([])
+        }
       } catch (error) {
         console.error("Error fetching recent activity:", error)
         newErrors.activity = `Error al cargar actividad reciente: ${error.message || "Error desconocido"}`
@@ -504,7 +518,13 @@ export default function Dashboard() {
       try {
         const response = await axiosInstance.get("/api/Client/GetAll")
         console.log("Client data:", response.data)
-        setClients(response.data || [])
+
+        if (response.data && Array.isArray(response.data)) {
+          setClients(response.data)
+        } else {
+          console.warn("Client API returned non-array data:", response.data)
+          setClients([])
+        }
       } catch (error) {
         console.error("Error fetching clients:", error)
         newErrors.clients = `Error al cargar clientes: ${error.message || "Error desconocido"}`
@@ -539,15 +559,51 @@ export default function Dashboard() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedRole = localStorage.getItem("role")
-      if (storedRole) {
-        setRole(storedRole)
-      }
+      setRole(storedRole || "")
+      setIsCheckingRole(false)
     }
   }, [])
 
   // Función para navegar a otras páginas
   const navigateToPage = (page) => {
     router.push(page)
+  }
+
+  // Show loading while checking role
+  if (isCheckingRole) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-white to-gray-100">
+        <div className="flex flex-col items-center">
+          <Image src="/assets/img/mymsoftcom.png" alt="Cargando..." width={80} height={80} className="animate-spin" />
+          <p className="text-lg text-gray-700 font-semibold mt-2">Verificando permisos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show access denied if not administrator
+  if (role !== "Administrador") {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-white to-gray-100">
+        <div className="flex flex-col items-center text-center max-w-md mx-auto p-6">
+          <div className="bg-red-100 rounded-full p-4 mb-4">
+            <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Acceso Denegado</h1>
+          <p className="text-gray-600 mb-4">
+            No tienes permisos para ver esta página. Solo los administradores pueden acceder al dashboard.
+          </p>
+          <p className="text-sm text-gray-500">Tu rol actual: {role || "Sin rol asignado"}</p>
+        </div>
+      </div>
+    )
   }
 
   // Mientras se verifica o cargan datos iniciales, mostrar un loader
@@ -582,12 +638,14 @@ export default function Dashboard() {
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div
-                      className={`${hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                        } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
+                      className={`${
+                        hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                      } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
                     >
                       <span
-                        className={`w-2 h-2 ${hasErrors ? "bg-amber-500" : "bg-blue-500"
-                          } rounded-full mr-1.5 animate-pulse`}
+                        className={`w-2 h-2 ${
+                          hasErrors ? "bg-amber-500" : "bg-blue-500"
+                        } rounded-full mr-1.5 animate-pulse`}
                       ></span>
                       {hasErrors ? "Datos parciales" : "Datos en tiempo real"}
                     </div>

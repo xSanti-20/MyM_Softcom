@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using mym_softcom.Models;
+using System.Text.Json;
 
 namespace mym_softcom.Services
 {
@@ -73,7 +74,7 @@ namespace mym_softcom.Services
             var today = DateTime.Now.Date;
 
             return allInstallments
-                .Where(i => i.DueDate.Date < today && i.Status != "Pagado")
+                .Where(i => i.DueDate.Date < today && i.Status != "Pagado" && i.Status != "Distribuida")
                 .ToList();
         }
 
@@ -88,6 +89,20 @@ namespace mym_softcom.Services
 
             if (sale == null || sale.plan == null)
                 return new List<CalculatedInstallment>();
+
+            List<int> redistributedQuotaNumbers = new List<int>();
+            if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
+            {
+                try
+                {
+                    redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers) ?? new List<int>();
+                    _logger.LogDebug("Sale {SaleId} has redistributed quotas: {QuotaNumbers}", saleId, string.Join(", ", redistributedQuotaNumbers));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error deserializing redistributed quota numbers for sale {SaleId}", saleId);
+                }
+            }
 
             // Obtener todos los detalles de pagos para esta venta
             var paymentDetails = await _context.Details
@@ -112,7 +127,13 @@ namespace mym_softcom.Services
                 var today = DateTime.Now.Date;
 
                 string status;
-                if (balance <= 0)
+
+                if (redistributedQuotaNumbers.Contains(i))
+                {
+                    status = "Distribuida";
+                    _logger.LogDebug("Quota {QuotaNumber} for sale {SaleId} marked as Distribuida", i, saleId);
+                }
+                else if (balance <= 0)
                     status = "Pagado";
                 else if (dueDate.Date < today)
                     status = "Mora";
@@ -123,7 +144,7 @@ namespace mym_softcom.Services
 
                 // ✅ CORRECCIÓN: Cálculo más preciso de días de atraso
                 var daysOverdue = 0;
-                if (dueDate.Date < today)
+                if (dueDate.Date < today && status != "Distribuida")
                 {
                     daysOverdue = (int)(today - dueDate.Date).TotalDays;
 

@@ -2318,6 +2318,48 @@
         }
       }
     },
+    "/api/Sale/{id}/redistribute-quotas": {
+      "post": {
+        "tags": [
+          "Sale"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedistributeQuotasRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedistributeQuotasRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedistributeQuotasRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/User/status/{id}": {
       "put": {
         "tags": [
@@ -3323,6 +3365,20 @@
         },
         "additionalProperties": false
       },
+      "OverdueQuotaInfo": {
+        "type": "object",
+        "properties": {
+          "quotaNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remainingAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
       "Payment": {
         "type": "object",
         "properties": {
@@ -3387,6 +3443,23 @@
           "name": {
             "minLength": 1,
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RedistributeQuotasRequest": {
+        "type": "object",
+        "properties": {
+          "redistributionType": {
+            "type": "string",
+            "nullable": true
+          },
+          "overdueQuotas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverdueQuotaInfo"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -3483,6 +3556,29 @@
           },
           "status": {
             "type": "string",
+            "nullable": true
+          },
+          "redistributionAmount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "redistributionType": {
+            "type": "string",
+            "nullable": true
+          },
+          "redistributedQuotaNumbers": {
+            "type": "string",
+            "nullable": true
+          },
+          "newQuotaValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "originalQuotaValue": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           },
           "id_Clients": {

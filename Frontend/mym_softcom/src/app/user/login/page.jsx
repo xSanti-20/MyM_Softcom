@@ -63,7 +63,7 @@ function LoginPage() {
       localStorage.setItem("email", data.email);
       localStorage.setItem("role", data.role);
 
-      setTimeout(() => router.push("/dashboard"), 2000);
+      setTimeout(() => router.push("/dashboard/clientes"), 2000);
     } catch (error) {
       showToast("Error", error.message, "error");
     }
