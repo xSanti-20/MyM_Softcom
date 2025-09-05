@@ -19,6 +19,7 @@ namespace mym_softcom.Models
         public decimal? RedistributionAmount { get; set; }
         public string? RedistributionType { get; set; }
         public string? RedistributedQuotaNumbers { get; set; }
+        public decimal? LastQuotaValue { get; set; } // Added LastQuotaValue property for lastQuota redistribution type
 
 
         public decimal? NewQuotaValue { get; set; }

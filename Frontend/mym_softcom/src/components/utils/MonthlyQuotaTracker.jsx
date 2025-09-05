@@ -57,14 +57,16 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
   const totalQuotas = localSale.plan.number_quotas || 0
   const quotaValue = localSale.quota_value || 0
-  const originalQuotaValue = localSale.originalQuotaValue || localSale.OriginalQuotaValue || quotaValue
+  const originalQuotaValue = localSale.originalQuotaValue || quotaValue
   const newQuotaValue = localSale.newQuotaValue || localSale.NewQuotaValue || null
+  const lastQuotaValue = localSale.lastQuotaValue || localSale.LastQuotaValue || null
 
   console.log("[v0] DEBUGGING QUOTA VALUES:")
-  console.log("[v0] - quotaValue (from DB):", quotaValue)
-  console.log("[v0] - originalQuotaValue (calculated):", originalQuotaValue)
+  console.log("[v0] - quotaValue (current):", quotaValue)
+  console.log("[v0] - originalQuotaValue (preserved):", originalQuotaValue)
   console.log("[v0] - newQuotaValue (calculated):", newQuotaValue)
-  console.log("[v0] - redistributedQuotaNumbers:", JSON.stringify(localSale.redistributedQuotaNumbers))
+  console.log("[v0] - lastQuotaValue (for last quota):", lastQuotaValue)
+  console.log("[v0] - redistributedQuotaNumbers:", localSale.redistributedQuotaNumbers)
 
   const redistributionAmount = localSale.redistributionAmount || 0
   const redistributionType = localSale.redistributionType || null
@@ -102,19 +104,39 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
     const isOverdueRedistributed = redistributedQuotaNumbers.includes(i)
 
-    const adjustedQuotaValue = isOverdueRedistributed
-      ? originalQuotaValue
-      : redistributedQuotaNumbers.length > 0 && newQuotaValue !== null
-        ? newQuotaValue
-        : originalQuotaValue
+    let adjustedQuotaValue
 
-    console.log(`[v0] Quota ${i} FINAL VALUES:`, {
-      adjustedQuotaValue,
-      isOverdueRedistributed,
-      redistributedQuotaNumbers,
-      newQuotaValue,
-      originalQuotaValue,
-    })
+    if (isOverdueRedistributed) {
+      adjustedQuotaValue = originalQuotaValue
+      console.log(`[v0] Quota ${i} is REDISTRIBUTED - using originalQuotaValue: ${originalQuotaValue}`)
+    } else if (redistributedQuotaNumbers.length > 0 && newQuotaValue !== null) {
+      const pendingQuotas = []
+      for (let j = 1; j <= totalQuotas; j++) {
+        if (!redistributedQuotaNumbers.includes(j)) {
+          pendingQuotas.push(j)
+        }
+      }
+      const isLastPendingQuota = i === Math.max(...pendingQuotas)
+
+      if (redistributionType === "lastQuota" && isLastPendingQuota && lastQuotaValue !== null) {
+        adjustedQuotaValue = lastQuotaValue
+        console.log(
+          `[v0] Quota ${i} is LAST QUOTA with lastQuota redistribution - using lastQuotaValue: ${lastQuotaValue}`,
+        )
+      } else {
+        adjustedQuotaValue = newQuotaValue
+        console.log(`[v0] Quota ${i} is PENDING after redistribution - using newQuotaValue: ${newQuotaValue}`)
+      }
+    } else {
+      adjustedQuotaValue = originalQuotaValue
+      console.log(`[v0] Quota ${i} NO redistribution - using originalQuotaValue: ${originalQuotaValue}`)
+    }
+
+    if (isOverdueRedistributed && adjustedQuotaValue !== originalQuotaValue) {
+      console.error(
+        `[v0] ERROR: Redistributed quota ${i} should show ${originalQuotaValue} but showing ${adjustedQuotaValue}`,
+      )
+    }
 
     let status = "Pendiente"
     let statusColor = "bg-gray-100 text-gray-800"
@@ -168,13 +190,6 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       isOverdue: isOverdue && !isOverdueRedistributed,
       daysOverdue: daysOverdue,
       isRedistributed: isOverdueRedistributed, // Add flag for redistributed status
-    })
-
-    console.log(`[v0] QUOTA ${i} PUSHED TO ARRAY:`, {
-      quotaNumber: i,
-      expectedAmount: adjustedQuotaValue,
-      status: status,
-      isRedistributed: isOverdueRedistributed,
     })
   }
 

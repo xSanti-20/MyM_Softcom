@@ -104,7 +104,7 @@ export default function QuotaRedistributionModal({
 
           {/* Opciones de redistribución */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Opci��n 1: Distribución uniforme */}
+            {/* Opcion 1: Distribución uniforme */}
             <Card
               className={`cursor-pointer transition-all ${
                 selectedOption === "uniform" ? "ring-2 ring-blue-500 bg-blue-50" : "hover:bg-gray-50"

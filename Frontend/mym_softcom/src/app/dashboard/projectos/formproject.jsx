@@ -23,7 +23,7 @@ function RegisterProject({ refreshData, projectToEdit, onCancelEdit, closeModal,
         name: "",
       })
     }
-  }, [projectToEdit])
+  }, [projectToEdit, isEditing])
 
   const handleChange = (e) => {
     const { name, value } = e.target

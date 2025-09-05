@@ -30,7 +30,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
-                                 .ThenInclude(l => l.project)
+                                 .ThenInclude(l =>  l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .ToListAsync();
@@ -398,20 +398,35 @@ namespace mym_softcom.Services
 
                     if (remainingQuotas > 0)
                     {
-                        var redistributionPerQuota = totalOverdueAmount / remainingQuotas;
-                        var newQuotaValue = originalQuotaValue + redistributionPerQuota;
+                        if (redistributionType == "uniform")
+                        {
+                            // Para distribución uniforme, dividir entre todas las cuotas restantes
+                            var redistributionPerQuota = totalOverdueAmount / remainingQuotas;
+                            var newQuotaValue = originalQuotaValue + redistributionPerQuota;
 
-                        sale.NewQuotaValue = newQuotaValue;
+                            sale.NewQuotaValue = newQuotaValue;
+                            sale.quota_value = newQuotaValue; // Actualizar el valor en la tabla
 
-                        sale.quota_value = originalQuotaValue;
+                            Console.WriteLine($"[SaleServices] Uniform distribution:");
+                            Console.WriteLine($"  - Redistribution per quota: {redistributionPerQuota:C}");
+                            Console.WriteLine($"  - New quota value for all pending quotas: {newQuotaValue:C}");
+                        }
+                        else if (redistributionType == "lastQuota")
+                        {
+                            // Para suma a la última cuota, las cuotas normales mantienen su valor original
+                            // Solo la última cuota recibe todo el monto adicional
+                            sale.NewQuotaValue = originalQuotaValue; // Las cuotas normales no cambian
+                            sale.quota_value = originalQuotaValue; // Mantener el valor original en la tabla
 
-                        Console.WriteLine($"[SaleServices] Redistribution completed:");
-                        Console.WriteLine($"  - Original quota value: {originalQuotaValue:C}");
-                        Console.WriteLine($"  - Total overdue amount: {totalOverdueAmount:C}");
-                        Console.WriteLine($"  - Remaining quotas: {remainingQuotas}");
-                        Console.WriteLine($"  - Redistribution per quota: {redistributionPerQuota:C}");
-                        Console.WriteLine($"  - New quota value for pending quotas: {newQuotaValue:C}");
-                        Console.WriteLine($"  - Redistributed quota numbers: [{string.Join(", ", overdueQuotaNumbers)}]");
+                            // Calculate the value for the last quota specifically
+                            var lastQuotaValue = originalQuotaValue + totalOverdueAmount;
+                            sale.LastQuotaValue = lastQuotaValue; // New property for last quota specific value
+
+                            Console.WriteLine($"[SaleServices] Last quota distribution:");
+                            Console.WriteLine($"  - Normal quotas keep original value: {originalQuotaValue:C}");
+                            Console.WriteLine($"  - Last quota will have value: {lastQuotaValue:C}");
+                            Console.WriteLine($"  - Additional amount for last quota: {totalOverdueAmount:C}");
+                        }
                     }
                 }
 
@@ -430,6 +445,7 @@ namespace mym_softcom.Services
                 return new ServiceResult<string> { Success = false, Message = ex.Message };
             }
         }
+
 
 
         // ✅ ELIMINADO: La función RoundToNearestMultiple ya no es necesaria

@@ -474,7 +474,7 @@ export default function DetailsPage() {
                       />
                     </CardContent>
                   </Card>
-
+                  
                   {/* Detalles de cuotas con el nuevo componente */}
                   <MonthlyQuotaTracker sale={saleData} paymentDetails={detailsData} />
                 </div>

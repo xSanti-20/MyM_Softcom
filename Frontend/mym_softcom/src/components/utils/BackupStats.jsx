@@ -17,7 +17,7 @@ const BackupStats = ({ refreshTrigger }) => {
 
   useEffect(() => {
     loadStats()
-  }, [refreshTrigger])
+  }, [refreshTrigger, loadStats])
 
   const loadStats = async () => {
     const result = await getBackupList()
