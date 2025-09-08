@@ -28,13 +28,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useMobile } from "@/hooks/use-mobile"
 
-// Mock PDFExportService for demo
-const PDFExportService = {
-  exportSinglePiglet: async (id) => {
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    console.log(`Exporting PDF for piglet ${id}`)
-  },
-}
+import { salesPdfService } from "@/services/pdfExportService"
+import { BusinessSheetModal } from "@/app/dashboard/ventas/BusinessSheetModal"
 
 function DataTable({
   Data,
@@ -54,6 +49,8 @@ function DataTable({
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [exportingPDF, setExportingPDF] = useState(new Set())
+  const [showModal, setShowModal] = useState(false)
+  const [selectedSale, setSelectedSale] = useState(null)
   const { isMobile, isTablet } = useMobile()
   const [showAllDetails, setShowAllDetails] = useState(false)
 
@@ -111,28 +108,20 @@ function DataTable({
 
   const handleExportPDF = async (row) => {
     try {
-      const pigletId = row.original?.id_Piglet || row.id
+      const saleId = row.original?.id || row.id
 
-      if (!pigletId) {
-        console.error("No se pudo obtener el ID del lechón:", row)
-        alert("Error: No se pudo identificar el lechón para exportar")
+      if (!saleId) {
+        console.error("No se pudo obtener el ID de la venta:", row)
+        alert("Error: No se pudo identificar la venta para exportar")
         return
       }
 
-      setExportingPDF((prev) => new Set(prev).add(pigletId))
-      await PDFExportService.exportSinglePiglet(pigletId)
+      // Show modal to collect additional data
+      setSelectedSale({ id: saleId, row })
+      setShowModal(true)
     } catch (error) {
-      console.error("Error al exportar PDF:", error)
-      alert(`Error al generar el PDF: ${error.message}`)
-    } finally {
-      const pigletId = row.original?.id_Piglet || row.id
-      if (pigletId) {
-        setExportingPDF((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(pigletId)
-          return newSet
-        })
-      }
+      console.error("Error al preparar exportación PDF:", error)
+      alert(`Error al preparar el PDF: ${error.message}`)
     }
   }
 
@@ -140,6 +129,34 @@ function DataTable({
     if (onToggleStatus) {
       onToggleStatus(row.id, row)
     }
+  }
+
+  const handleModalConfirm = async (temporaryData) => {
+    if (!selectedSale) return
+
+    try {
+      const { id: saleId, row } = selectedSale
+
+      setExportingPDF((prev) => new Set(prev).add(saleId))
+      await salesPdfService.generateBusinessSheet(saleId, row, temporaryData)
+    } catch (error) {
+      console.error("Error al exportar PDF:", error)
+      alert(`Error al generar el PDF: ${error.message}`)
+    } finally {
+      if (selectedSale?.id) {
+        setExportingPDF((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(selectedSale.id)
+          return newSet
+        })
+      }
+      setSelectedSale(null)
+    }
+  }
+
+  const handleModalClose = () => {
+    setShowModal(false)
+    setSelectedSale(null)
   }
 
   const truncateText = (text, maxLength = 20) => {
@@ -179,8 +196,8 @@ function DataTable({
     return (
       <div className="space-y-4">
         {currentItems.map((row, rowIndex) => {
-          const pigletId = row.original?.id_Piglet || row.id
-          const isExporting = pigletId ? exportingPDF.has(pigletId) : false
+          const saleId = row.original?.id || row.id
+          const isExporting = saleId ? exportingPDF.has(saleId) : false
 
           const allFields = Object.keys(row)
             .filter((key) => key !== "original" && key !== "searchableIdentifier" && key !== "isActive")
@@ -288,7 +305,7 @@ function DataTable({
                           </DropdownMenuItem>
                         )}
 
-                        {showPdfButton && pigletId && (
+                        {showPdfButton && saleId && (
                           <DropdownMenuItem
                             onClick={() => handleExportPDF(row)}
                             disabled={isExporting}
@@ -360,8 +377,8 @@ function DataTable({
             </TableHeader>
             <TableBody>
               {currentItems.map((row, rowIndex) => {
-                const pigletId = row.original?.id_Piglet || row.id
-                const isExporting = pigletId ? exportingPDF.has(pigletId) : false
+                const saleId = row.original?.id || row.id
+                const isExporting = saleId ? exportingPDF.has(saleId) : false
 
                 return (
                   <TableRow
@@ -409,7 +426,7 @@ function DataTable({
                           </Button>
                         )}
 
-                        {showPdfButton && pigletId && (
+                        {showPdfButton && saleId && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -426,7 +443,7 @@ function DataTable({
                           </Button>
                         )}
 
-                        {(extraActions.length > 0 || (showDeleteButton && onDelete)) && (
+                        {extraActions.length > 0 && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -448,20 +465,20 @@ function DataTable({
                                   {action.label}
                                 </DropdownMenuItem>
                               ))}
-
-                              {extraActions.length > 0 && showDeleteButton && onDelete && <DropdownMenuSeparator />}
-
-                              {showDeleteButton && onDelete && (
-                                <DropdownMenuItem
-                                  onClick={() => onDelete(row.id)}
-                                  className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Eliminar
-                                </DropdownMenuItem>
-                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
+                        )}
+
+                        {showDeleteButton && onDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDelete(row.id)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         )}
                       </div>
                     </TableCell>
@@ -476,106 +493,115 @@ function DataTable({
   }
 
   return (
-    <Card className="w-full shadow-sm border-slate-200">
-      <CardHeader className="pb-4 border-b border-slate-100">
-        <div className="flex flex-col space-y-4">
-          {/* Fila superior: Título y botón de acción */}
-          {headerActions && (
+    <>
+      <Card className="w-full shadow-sm border-slate-200">
+        <CardHeader className="pb-4 border-b border-slate-100">
+          <div className="flex flex-col space-y-4">
+            {/* Fila superior: Título y botón de acción */}
+            {headerActions && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">{headerActions.title || "Datos"}</h2>
+                </div>
+                <div className="flex-shrink-0">{headerActions.button}</div>
+              </div>
+            )}
+
+            {/* Fila inferior: Búsqueda y filtros */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">{headerActions.title || "Datos"}</h2>
+              <div className="flex items-center space-x-2">
+                <div className="relative flex-1 sm:w-80">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Input
+                    type="text"
+                    placeholder="Buscar en todos los campos..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="pl-10 h-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
               </div>
-              <div className="flex-shrink-0">{headerActions.button}</div>
-            </div>
-          )}
 
-          {/* Fila inferior: Búsqueda y filtros */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-2 text-sm text-slate-600">
+                <Filter className="w-4 h-4" />
+                <span>
+                  {filteredData.length} de {safeData.length} registros
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          <div className={isMobile ? "p-4" : "p-6"}>{isMobile ? renderMobileCards() : renderTable()}</div>
+        </CardContent>
+
+        {totalPages > 1 && filteredData.length > 0 && (
+          <CardFooter className="flex flex-col items-center space-y-4 border-t border-slate-100 bg-slate-50/50">
             <div className="flex items-center space-x-2">
-              <div className="relative flex-1 sm:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <Input
-                  type="text"
-                  placeholder="Buscar en todos los campos..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pl-10 h-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
-                />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((page) => {
+                    if (!isMobile) return true
+                    return Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages
+                  })
+                  .map((page, index, array) => (
+                    <div key={page} className="flex items-center">
+                      {index > 0 && array[index - 1] !== page - 1 && (
+                        <span className="px-2 text-slate-400 text-sm">...</span>
+                      )}
+                      <Button
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(page)}
+                        className={`h-9 min-w-9 ${
+                          currentPage === page
+                            ? "bg-blue-600 hover:bg-blue-700 text-white"
+                            : "border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {page}
+                      </Button>
+                    </div>
+                  ))}
               </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
 
-            <div className="flex items-center space-x-2 text-sm text-slate-600">
-              <Filter className="w-4 h-4" />
-              <span>
-                {filteredData.length} de {safeData.length} registros
-              </span>
+            <div className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">
+              Página {currentPage} de {totalPages} • {indexOfFirstItem + 1}-
+              {Math.min(indexOfLastItem, filteredData.length)} de {filteredData.length} resultados
             </div>
-          </div>
-        </div>
-      </CardHeader>
+          </CardFooter>
+        )}
+      </Card>
 
-      <CardContent className="p-0">
-        <div className={isMobile ? "p-4" : "p-6"}>{isMobile ? renderMobileCards() : renderTable()}</div>
-      </CardContent>
-
-      {totalPages > 1 && filteredData.length > 0 && (
-        <CardFooter className="flex flex-col items-center space-y-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            <div className="flex items-center space-x-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((page) => {
-                  if (!isMobile) return true
-                  return Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages
-                })
-                .map((page, index, array) => (
-                  <div key={page} className="flex items-center">
-                    {index > 0 && array[index - 1] !== page - 1 && (
-                      <span className="px-2 text-slate-400 text-sm">...</span>
-                    )}
-                    <Button
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(page)}
-                      className={`h-9 min-w-9 ${
-                        currentPage === page
-                          ? "bg-blue-600 hover:bg-blue-700 text-white"
-                          : "border-slate-200 hover:bg-slate-50"
-                      }`}
-                    >
-                      {page}
-                    </Button>
-                  </div>
-                ))}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">
-            Página {currentPage} de {totalPages} • {indexOfFirstItem + 1}-
-            {Math.min(indexOfLastItem, filteredData.length)} de {filteredData.length} resultados
-          </div>
-        </CardFooter>
-      )}
-    </Card>
+      <BusinessSheetModal
+        isOpen={showModal}
+        onClose={handleModalClose}
+        onConfirm={handleModalConfirm}
+        saleData={selectedSale?.row}
+      />
+    </>
   )
 }
 

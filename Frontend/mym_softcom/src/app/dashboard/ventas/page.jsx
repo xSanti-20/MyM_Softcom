@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import ExportPDFButton from '@/components/ExportPDFButton'
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterSale from "./formventas"
@@ -289,7 +290,8 @@ function SalesPage() {
               onUpdate={handleUpdate}
               showDeleteButton={true}
               showToggleButton={false}
-              showPdfButton={false}
+              
+              showPdfButton={true}
               headerActions={headerActions}
             />
           </div>

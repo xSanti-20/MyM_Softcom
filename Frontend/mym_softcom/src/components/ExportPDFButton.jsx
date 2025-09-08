@@ -1,41 +1,34 @@
 "use client"
+
 import { useState } from "react"
-import { FaFilePdf, FaSpinner } from "react-icons/fa"
-import axiosInstance from "@/lib/axiosInstance"
-import PDFExportService from "@/services/pdfExportService"
+import { Button } from "@/components/ui/button"
+import { FileText } from "lucide-react"
+import BusinessSheetModal from "@/app/dashboard/ventas/BusinessSheetModal"
 
-function ExportPDFButton({ pigletData, className = "" }) {
-    const [isExporting, setIsExporting] = useState(false)
+export default function BusinessSheetButton({ saleData, onSuccess, className = "" }) {
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-    const handleExportSingle = async () => {
-        try {
-            setIsExporting(true)
+  const handleOpenModal = () => {
+    setIsModalOpen(true)
+  }
 
-            // Obtener pesajes del lechón
-            const weighingsResponse = await axiosInstance.get(`/api/Weighing/GetWeighingsByPigletId/${pigletData.id_Piglet}`)
-            const weighingsData = weighingsResponse.data || []
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+  }
 
-            // Exportar a PDF
-            await PDFExportService.exportSinglePiglet(pigletData, weighingsData)
-        } catch (error) {
-            console.error("Error al exportar PDF:", error)
-            alert("Error al generar el PDF. Por favor, intenta nuevamente.")
-        } finally {
-            setIsExporting(false)
-        }
-    }
+  return (
+    <>
+      <Button
+        onClick={handleOpenModal}
+        variant="outline"
+        size="sm"
+        className={`flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border-red-200 ${className}`}
+      >
+        <FileText className="h-4 w-4" />
+        Hoja de Negocio
+      </Button>
 
-    return (
-        <button
-            onClick={handleExportSingle}
-            disabled={isExporting}
-            className={`flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors ${className}`}
-            title="Exportar a PDF"
-        >
-            {isExporting ? <FaSpinner className="animate-spin" /> : <FaFilePdf />}
-            {isExporting ? "..." : "PDF"}
-        </button>
-    )
+      <BusinessSheetModal isOpen={isModalOpen} onClose={handleCloseModal} saleData={saleData} onSuccess={onSuccess} />
+    </>
+  )
 }
-
-export default ExportPDFButton
