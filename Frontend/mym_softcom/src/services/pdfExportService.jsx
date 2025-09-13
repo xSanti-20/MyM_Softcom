@@ -1,8 +1,3 @@
-/**
- * Convierte un número entero (o decimal) a palabras en español.
- * Devuelve algo como: "CINCUENTA MILLONES CUATROCIENTOS MIL PESOS M/CTE"
- * (maneja parte entera y opcionalmente los centavos).
- */
 function numeroALetras(amount) {
   if (amount == null) return ""
 
