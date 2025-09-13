@@ -22,6 +22,7 @@ function LotPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [projects, setProjects] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [lotStats, setLotStats] = useState([])
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -113,6 +114,29 @@ function LotPage() {
     [showAlert],
   )
 
+  const fetchLotStats = useCallback(
+    async (projectId = null) => {
+      try {
+        let response
+        if (projectId && projectId !== "all") {
+          response = await axiosInstance.get(`/api/Lot/GetLotStatsByProject/${projectId}`)
+          if (response.status === 200) {
+            setLotStats([response.data]) // 👈 convertir en array para mapear
+          }
+        } else {
+          response = await axiosInstance.get("/api/Lot/GetAllLotStats")
+          if (response.status === 200) {
+            setLotStats(response.data)
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar estadísticas de lotes:", error)
+        showAlert("error", "No se pudieron cargar las estadísticas de lotes.")
+      }
+    },
+    [showAlert],
+  )
+
   const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
@@ -128,11 +152,13 @@ function LotPage() {
   useEffect(() => {
     fetchProjectsForFilter()
     fetchLots()
-  }, [fetchProjectsForFilter, fetchLots]) // Added function dependencies
+    fetchLotStats("all")
+  }, [fetchProjectsForFilter, fetchLots, fetchLotStats])
 
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
     fetchLots(value === "all" ? null : Number.parseInt(value, 10))
+    fetchLotStats(value)
   }
 
   const handleDelete = async (id) => {
@@ -140,6 +166,7 @@ function LotPage() {
       const numericId = Number.parseInt(id, 10)
       await axiosInstance.delete(`/api/Lot/DeleteLot/${numericId}`)
       fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))
+      fetchLotStats(selectedProjectId)
       showAlert("success", "Lote eliminado correctamente")
     } catch (error) {
       console.error("Error detallado al eliminar:", error)
@@ -207,6 +234,36 @@ function LotPage() {
 
       {!isLoading && (
         <div className="container mx-auto p-4 sm:p-6">
+
+          {/* Panel de estadísticas dinámico */}
+          {lotStats.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              {lotStats.map((stat) => {
+                const project = projects.find((p) => p.id_Projects === stat.projectId)
+                return (
+                  <div
+                    key={stat.projectId}
+                    className="p-4 bg-white rounded-xl shadow-md border border-gray-200"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                      {project ? project.name : `Proyecto ${stat.projectId}`}
+                    </h3>
+                    <p className="text-gray-600">
+                      <span className="font-medium">Total:</span> {stat.total}
+                    </p>
+                    <p className="text-red-600">
+                      <span className="font-medium">Vendidos:</span> {stat.vendidos}
+                    </p>
+                    <p className="text-green-600">
+                      <span className="font-medium">Disponibles:</span> {stat.disponibles}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Tabla de lotes */}
           <DataTable
             Data={lotData}
             TitlesTable={titlesLot}
@@ -222,9 +279,10 @@ function LotPage() {
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 <RegisterLot
-                  refreshData={() =>
+                  refreshData={() => {
                     fetchLots(selectedProjectId === "all" ? null : Number.parseInt(selectedProjectId, 10))
-                  }
+                    fetchLotStats(selectedProjectId)
+                  }}
                   lotToEdit={editingLot}
                   onCancelEdit={handleCloseModal}
                   closeModal={handleCloseModal}

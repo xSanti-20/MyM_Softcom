@@ -173,5 +173,20 @@ namespace mym_softcom.Controllers
             var lots = await _lotServices.GetLotsForSelect(projectId);
             return Ok(lots);
         }
+
+        [HttpGet("GetLotStatsByProject/{projectId}")]
+        public async Task<ActionResult<object>> GetLotStatsByProject(int projectId)
+        {
+            var stats = await _lotServices.GetLotStatsByProject(projectId);
+            return Ok(stats);
+        }
+
+        [HttpGet("GetAllLotStats")]
+        public async Task<ActionResult<IEnumerable<object>>> GetAllLotStats()
+        {
+            var stats = await _lotServices.GetAllLotStats();
+            return Ok(stats);
+        }
+
     }
 }

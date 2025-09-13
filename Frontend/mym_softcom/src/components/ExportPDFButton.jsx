@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { FileText } from "lucide-react"
-import BusinessSheetModal from "@/app/dashboard/ventas/BusinessSheetModal"
+import {BusinessSheetModal} from "@/app/dashboard/ventas/BusinessSheetModal"
 
 export default function BusinessSheetButton({ saleData, onSuccess, className = "" }) {
   const [isModalOpen, setIsModalOpen] = useState(false)

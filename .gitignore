@@ -1,21 +1,88 @@
-# Ignora la carpeta de dependencias del proyecto principal y del frontend
+# ===============================
+#  FRONTEND (Next.js / Node.js)
+# ===============================
+
+# Dependencias
 node_modules/
 Frontend/node_modules/
 
-# Ignora los archivos generados por Next.js
+# Archivos generados por Next.js
 .next/
 Frontend/.next/
 
-# Ignora el archivo de entorno
+# Archivos de entorno
 .env
 Frontend/.env
 
-# Ignora logs
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Ignora directorios del sistema operativo
+# ===============================
+#  BACKEND (.NET / Visual Studio)
+# ===============================
+
+# Archivos temporales de usuario
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Configuración de Visual Studio
+.vs/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+
+# Archivos generados por .NET
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+*.diff
+*.sln.docstates
+
+# Archivos de pruebas y cobertura
+*.coverage
+*.coveragexml
+TestResults/
+
+# Paquetes NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+*.psmdcp
+packages/
+*.nuget.props
+*.nuget.targets
+
+# Archivos de publicación
+publish/
+out/
+
+# ===============================
+#  SISTEMA OPERATIVO
+# ===============================
+
+# macOS
 .DS_Store
-Thumbs.db
 
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Linux
+*~
+
+# ===============================
+#  OTROS
+# ===============================
+
+# Archivos de licencia de dependencias
+LICENSES/

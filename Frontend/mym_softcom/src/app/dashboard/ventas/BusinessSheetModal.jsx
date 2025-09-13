@@ -14,6 +14,91 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+function numeroALetras(num) {
+  const unidades = [
+    "",
+    "UN",
+    "DOS",
+    "TRES",
+    "CUATRO",
+    "CINCO",
+    "SEIS",
+    "SIETE",
+    "OCHO",
+    "NUEVE",
+    "DIEZ",
+    "ONCE",
+    "DOCE",
+    "TRECE",
+    "CATORCE",
+    "QUINCE",
+    "DIECISÉIS",
+    "DIECISIETE",
+    "DIECIOCHO",
+    "DIECINUEVE",
+    "VEINTE",
+  ]
+
+  const decenas = ["", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"]
+
+  const centenas = [
+    "",
+    "CIENTO",
+    "DOSCIENTOS",
+    "TRESCIENTOS",
+    "CUATROCIENTOS",
+    "QUINIENTOS",
+    "SEISCIENTOS",
+    "SETECIENTOS",
+    "OCHOCIENTOS",
+    "NOVECIENTOS",
+  ]
+
+  function seccion(num, divisor, strSingular, strPlural) {
+    const cientos = Math.floor(num / divisor)
+    const resto = num - cientos * divisor
+
+    let letras = ""
+
+    if (cientos > 0) {
+      if (cientos > 1) letras = numeroALetras(cientos) + " " + strPlural
+      else letras = strSingular
+    }
+
+    if (resto > 0) letras += " " + numeroALetras(resto)
+
+    return letras.trim()
+  }
+
+  function miles(num) {
+    return seccion(num, 1000, "MIL", "MIL")
+  }
+
+  function millones(num) {
+    return seccion(num, 1000000, "UN MILLÓN", "MILLONES")
+  }
+
+  function milesDeMillones(num) {
+    return seccion(num, 1000000000, "MIL MILLONES", "MIL MILLONES")
+  }
+
+  if (num === 0) return "CERO"
+  else if (num < 21) return unidades[num]
+  else if (num < 100) {
+    if (num % 10 === 0) return decenas[Math.floor(num / 10)]
+    return decenas[Math.floor(num / 10)] + " Y " + unidades[num % 10]
+  } else if (num < 1000) {
+    if (num === 100) return "CIEN"
+    return centenas[Math.floor(num / 100)] + (num % 100 !== 0 ? " " + numeroALetras(num % 100) : "")
+  } else if (num < 1000000) {
+    return miles(num)
+  } else if (num < 1000000000) {
+    return millones(num)
+  } else {
+    return milesDeMillones(num)
+  }
+}
+
 export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
   const [formData, setFormData] = useState({
     lugarExpedicion: "",
@@ -55,6 +140,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          {/* Proyecto */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="proyecto" className="text-right">
               Contrato de:
@@ -71,6 +157,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
             </Select>
           </div>
 
+          {/* Tipo de contrato */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="tipoContrato" className="text-right">
               Tipo:
@@ -90,6 +177,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
             </Select>
           </div>
 
+          {/* Lugar expedición */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="lugarExpedicion" className="text-right">
               Lugar Expedición
@@ -103,6 +191,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
             />
           </div>
 
+          {/* Dirección */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="direccion" className="text-right">
               Dirección
@@ -116,6 +205,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
             />
           </div>
 
+          {/* Ciudad */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="ciudad" className="text-right">
               Ciudad
@@ -134,7 +224,7 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
           <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={!formData.proyecto || !formData.tipoContrato}>
+          <Button onClick={() => handleConfirm()} disabled={!formData.proyecto || !formData.tipoContrato}>
             Generar PDF
           </Button>
         </DialogFooter>

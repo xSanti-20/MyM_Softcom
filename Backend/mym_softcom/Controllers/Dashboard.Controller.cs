@@ -144,169 +144,128 @@ namespace mym_softcom.Controllers
             }
         }
 
-        /// <summary>
-        /// Obtiene los recaudos totales por proyecto para el MES ACTUAL (basado en pagos del mes)
-        /// </summary>
         [HttpGet("GetProjectRevenue")]
-        public async Task<ActionResult<object>> GetProjectRevenue()
+        public IActionResult GetProjectRevenue()
         {
             try
             {
-                Console.WriteLine($"[DashboardController] Iniciando cálculo de recaudos por proyecto para el MES ACTUAL");
-
                 var currentMonth = DateTime.Now.Month;
                 var currentYear = DateTime.Now.Year;
-                Console.WriteLine($"[DashboardController] Buscando pagos para: Mes {currentMonth}, Año {currentYear}");
+                var projects = _context.Projects.ToList();
 
-                // Calcular recaudos basado en los PAGOS REALES del mes actual
-                var projectRevenues = await (from payment in _context.Payments
-                                             join sale in _context.Sales on payment.id_Sales equals sale.id_Sales
-                                             join lot in _context.Lots on sale.id_Lots equals lot.id_Lots
-                                             join project in _context.Projects on lot.id_Projects equals project.id_Projects
-                                             where payment.payment_date.Month == currentMonth &&
-                                                   payment.payment_date.Year == currentYear
-                                             group payment by new
-                                             {
-                                                 ProjectId = project.id_Projects,
-                                                 ProjectName = project.name
-                                             } into g
-                                             select new
-                                             {
-                                                 projectId = g.Key.ProjectId,
-                                                 projectName = g.Key.ProjectName,
-                                                 monthlyRevenue = g.Sum(p => p.amount ?? 0) // Sumar pagos reales del mes
-                                             })
-                    .ToListAsync();
-
-                Console.WriteLine($"[DashboardController] Recaudos por proyecto calculados para el mes actual:");
-                foreach (var revenue in projectRevenues)
+                var result = projects.Select(project =>
                 {
-                    Console.WriteLine($"[DashboardController] Proyecto: {revenue.projectName} (ID: {revenue.projectId}), Recaudo: ${revenue.monthlyRevenue}");
-                }
+                    // Pagos del mes
+                    var totalPayments = _context.Payments
+                        .Where(p => p.sale != null &&
+                                    p.sale.lot != null &&
+                                    p.sale.lot.id_Projects == project.id_Projects &&
+                                    p.payment_date.Month == currentMonth &&
+                                    p.payment_date.Year == currentYear)
+                        .Sum(p => (decimal?)p.amount) ?? 0;
 
-                // Asegurar que todos los proyectos aparezcan, incluso con 0
-                var allProjects = await _context.Projects.ToListAsync();
-                Console.WriteLine($"[DashboardController] Total proyectos en BD: {allProjects.Count}");
+                    // Devoluciones (monto a devolver al cliente) del mes
+                    var totalRefunds = _context.Withdrawals
+                        .Where(w => w.sale != null &&
+                                    w.sale.lot != null &&
+                                    w.sale.lot.id_Projects == project.id_Projects &&
+                                    w.withdrawal_date.Month == currentMonth &&
+                                    w.withdrawal_date.Year == currentYear)
+                        .Sum(w => (decimal?)(w.sale.total_value * 0.10m)) ?? 0;
 
-                var result = allProjects.Select(project => {
-                    var revenue = projectRevenues.FirstOrDefault(pr => pr.projectId == project.id_Projects);
-                    var monthlyRevenue = revenue?.monthlyRevenue ?? 0;
-
-                    Console.WriteLine($"[DashboardController] Proyecto {project.name} (ID: {project.id_Projects}): ${monthlyRevenue}");
+                    // ✅ Neto del mes = Pagos – Devoluciones
+                    decimal totalRevenue = totalPayments - totalRefunds;
 
                     return new
                     {
                         projectId = project.id_Projects,
                         projectName = project.name,
-                        monthlyRevenue = monthlyRevenue
+                        totalRevenue
                     };
                 }).ToList();
 
-                // Calcular el total como suma de todos los proyectos del mes actual
-                var totalCurrentMonthProjectRevenue = result.Sum(r => r.monthlyRevenue);
-                Console.WriteLine($"[DashboardController] Recaudo total de proyectos para el mes actual: ${totalCurrentMonthProjectRevenue}");
+                var totalGeneralRevenue = result.Sum(r => r.totalRevenue);
 
                 return Ok(new
                 {
                     projects = result,
-                    totalCurrentMonthRevenue = totalCurrentMonthProjectRevenue
+                    totalGeneralRevenue 
                 });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DashboardController] Error en GetProjectRevenue: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"[DashboardController] Inner Exception: {ex.InnerException.Message}");
-                }
-                return StatusCode(500, new { message = "Error al obtener recaudos por proyecto del mes actual", details = ex.Message });
+                return StatusCode(500, new { error = $"Error al obtener recaudo mensual: {ex.Message}" });
             }
         }
+
 
         /// <summary>
         /// Obtiene los recaudos históricos mensuales por proyecto para el AÑO ACTUAL.
         /// CORREGIDO: Ahora calcula los pagos reales de cada mes, no el total_raised actual.
         /// </summary>
         [HttpGet("GetHistoricalProjectRevenue")]
-        public async Task<ActionResult<object>> GetHistoricalProjectRevenue()
+        public IActionResult GetHistoricalProjectRevenue()
         {
             try
             {
                 var currentYear = DateTime.Now.Year;
-                var currentMonth = DateTime.Now.Month;
+                int currentMonth = DateTime.Now.Month;
 
-                Console.WriteLine($"[DashboardController] Iniciando cálculo de recaudos históricos por proyecto para el AÑO ACTUAL: {currentYear} (CORREGIDO - pagos reales por mes).");
+                var projects = _context.Projects.ToList();
 
-                // CORREGIDO: Calcular los pagos REALES de cada mes, no usar total_raised actual
-                var historicalData = await _context.Payments
-                    .Include(p => p.sale)
-                        .ThenInclude(s => s.lot)
-                            .ThenInclude(l => l.project)
-                    .Where(p => p.sale != null && p.sale.lot != null && p.sale.lot.project != null &&
-                        p.payment_date.Year == currentYear)
-                    .GroupBy(p => new {
-                        Year = p.payment_date.Year,
-                        Month = p.payment_date.Month,
-                        ProjectId = p.sale.lot.project.id_Projects,
-                        ProjectName = p.sale.lot.project.name
-                    })
-                    .Select(g => new {
-                        g.Key.Year,
-                        g.Key.Month,
-                        g.Key.ProjectId,
-                        g.Key.ProjectName,
-                        MonthlyRevenue = g.Sum(p => p.amount ?? 0) // CORREGIDO: Sumar pagos reales del mes
-                    })
-                    .OrderBy(g => g.Year)
-                    .ThenBy(g => g.Month)
-                    .ToListAsync(); // CORREGIDO: Mover ToListAsync() aquí
-
-                // Obtener todos los nombres de proyectos únicos para las columnas del frontend
-                var allProjectNames = await _context.Projects.Select(p => p.name).Distinct().ToListAsync();
-
-                // Preparar la estructura de datos para el frontend, incluyendo todos los meses del año hasta el actual
-                var result = new List<object>();
-
-                for (int month = 1; month <= currentMonth; month++)
+                var data = Enumerable.Range(1, currentMonth).Select(month =>
                 {
-                    var monthData = new Dictionary<string, object>
-                    {
-                        { "month", month },
-                        { "year", currentYear }
-                    };
+                    var row = new Dictionary<string, object>
+            {
+                { "month", month },
+                { "year", currentYear }
+            };
 
-                    foreach (var projectName in allProjectNames)
+                    foreach (var project in projects)
                     {
-                        var revenue = historicalData
-                            .FirstOrDefault(hd => hd.Year == currentYear && hd.Month == month && hd.ProjectName == projectName);
-                        monthData[projectName] = revenue?.MonthlyRevenue ?? 0;
+                        // Pagos en ese mes
+                        var totalPayments = _context.Payments
+                            .Where(p => p.sale != null &&
+                                        p.sale.lot != null &&
+                                        p.sale.lot.id_Projects == project.id_Projects &&
+                                        p.payment_date.Month == month &&
+                                        p.payment_date.Year == currentYear)
+                            .Sum(p => (decimal?)p.amount) ?? 0;
+
+                        // Devoluciones en ese mes (10% del valor total de la venta desistida)
+                        var totalRefunds = _context.Withdrawals
+                            .Where(w => w.sale != null &&
+                                        w.sale.lot != null &&
+                                        w.sale.lot.id_Projects == project.id_Projects &&
+                                        w.withdrawal_date.Month == month &&
+                                        w.withdrawal_date.Year == currentYear)
+                            .Sum(w => (decimal?)(w.sale.total_value * 0.10m)) ?? 0;
+
+                        // ✅ Neto del mes = Pagos – Devoluciones
+                        decimal totalRevenue = totalPayments - totalRefunds;
+
+                        row[project.name] = totalRevenue;
                     }
-                    result.Add(monthData);
-                }
 
-                // Ordenar de forma descendente por mes (más reciente primero)
-                result = result.OrderByDescending(d => ((IDictionary<string, object>)d)["year"])
-                       .ThenByDescending(d => ((IDictionary<string, object>)d)["month"])
-                       .ToList();
-
-                Console.WriteLine($"[DashboardController] Datos históricos por proyecto calculados CORRECTAMENTE para el año actual: {result.Count} meses.");
+                    return row;
+                })
+                // 👇 De más reciente a más antiguo
+                .OrderByDescending(r => (int)r["month"])
+                .ToList();
 
                 return Ok(new
                 {
-                    historicalData = result,
-                    projectNames = allProjectNames
+                    historicalData = data,
+                    projectNames = projects.Select(p => p.name).ToList()
                 });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[DashboardController] Error en GetHistoricalProjectRevenue: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"[DashboardController] Inner Exception: {ex.InnerException.Message}");
-                }
-                return StatusCode(500, new { message = "Error al obtener recaudos históricos por proyecto", details = ex.Message });
+                return StatusCode(500, new { error = $"Error al obtener recaudos históricos: {ex.Message}" });
             }
         }
+
+
 
         /// <summary>
         /// Obtiene los últimos pagos con información completa

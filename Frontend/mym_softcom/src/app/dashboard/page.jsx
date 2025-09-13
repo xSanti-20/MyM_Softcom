@@ -83,9 +83,8 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
                   {columns.map((column, i) => (
                     <td
                       key={i}
-                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${
-                        i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
-                      }`}
+                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
+                        }`}
                     >
                       {column.cell ? column.cell(footerData) : footerData[column.accessor]}
                     </td>
@@ -431,10 +430,11 @@ export default function Dashboard() {
 
         setStats((prevStats) => ({
           ...prevStats,
-          luxuryMonthly: luxuryMalibuProject?.monthlyRevenue || 0,
-          reservasMonthly: reservasProject?.monthlyRevenue || 0,
-          malibuMonthly: malibuProject?.monthlyRevenue || 0,
-          totalCurrentMonthProjectRevenue: totalCurrentMonthProjectRevenue,
+          luxuryMonthly: luxuryMalibuProject?.totalRevenue || 0,
+          reservasMonthly: reservasProject?.totalRevenue || 0,
+          malibuMonthly: malibuProject?.totalRevenue || 0,
+          totalCurrentMonthProjectRevenue: response.data?.totalGeneralRevenue || 0,
+
         }))
       } catch (error) {
         console.error("Error fetching current month project revenue:", error)
@@ -638,14 +638,12 @@ export default function Dashboard() {
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <div
-                      className={`${
-                        hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                      } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
+                      className={`${hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                        } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
                     >
                       <span
-                        className={`w-2 h-2 ${
-                          hasErrors ? "bg-amber-500" : "bg-blue-500"
-                        } rounded-full mr-1.5 animate-pulse`}
+                        className={`w-2 h-2 ${hasErrors ? "bg-amber-500" : "bg-blue-500"
+                          } rounded-full mr-1.5 animate-pulse`}
                       ></span>
                       {hasErrors ? "Datos parciales" : "Datos en tiempo real"}
                     </div>

@@ -88,6 +88,14 @@
               "target": "Package",
               "version": "[6.6.2, )"
             },
+            "Syncfusion.DocIO.Net.Core": {
+              "target": "Package",
+              "version": "[31.1.17, )"
+            },
+            "Syncfusion.DocIORenderer.Net.Core": {
+              "target": "Package",
+              "version": "[31.1.17, )"
+            },
             "System.Data.SqlClient": {
               "target": "Package",
               "version": "[4.8.6, )"

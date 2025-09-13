@@ -171,5 +171,41 @@ namespace mym_softcom.Services
                 })
                 .ToListAsync();
         }
+
+        // Contador de lotes por proyecto
+        public async Task<object> GetLotStatsByProject(int projectId)
+        {
+            var lots = await _context.Lots
+                                     .Where(l => l.id_Projects == projectId)
+                                     .ToListAsync();
+
+            int total = lots.Count;
+            int vendidos = lots.Count(l => l.status == "Vendido");
+            int disponibles = lots.Count(l => l.status == "Disponible" || l.status == "Libre");
+
+            return new
+            {
+                ProjectId = projectId,
+                Total = total,
+                Vendidos = vendidos,
+                Disponibles = disponibles
+            };
+        }
+
+        // Si quieres todos los proyectos con su resumen:
+        public async Task<IEnumerable<object>> GetAllLotStats()
+        {
+            return await _context.Lots
+                .GroupBy(l => l.id_Projects)
+                .Select(g => new
+                {
+                    ProjectId = g.Key,
+                    Total = g.Count(),
+                    Vendidos = g.Count(l => l.status == "Vendido"),
+                    Disponibles = g.Count(l => l.status == "Disponible" || l.status == "Libre")
+                })
+                .ToListAsync();
+        }
+
     }
 }

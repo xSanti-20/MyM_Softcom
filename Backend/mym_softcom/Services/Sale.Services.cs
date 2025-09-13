@@ -207,7 +207,6 @@ namespace mym_softcom.Services
                     await _context.SaveChangesAsync(); // Guardar el pago inicial
                     Console.WriteLine($"[SaleServices] Pago inicial de ${initialPayment.amount} registrado para venta ID: {sale.id_Sales}");
                 }
-                // ✅ FIN DE LA CORRECCIÓN
 
                 // Actualizar el estado del lote a "Vendido"
                 await _lotServices.ChangeLotStatus(sale.id_Lots, "Vendido");

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Arras - Malibu Lote</title>
+    <style>
+        @page {
+            margin: 15mm 15mm 15mm 15mm;
+            size: A4;
+
+            @top-center {
+                content: element(header);
+            }
+        }
+
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            margin: 0;
+            padding: 10mm 15mm;
+            text-align: justify;
+            color: #000;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            position: relative;
+            box-sizing: border-box;
+            min-height: 100vh;
+        }
+
+        /* Header that repeats on every page */
+        .header {
+            position: running(header);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            /* Changed from center to space-between for logo layout */
+            margin-bottom: 20px;
+            border-bottom: 1px solid #000;
+            padding: 10px 0;
+            height: 60px;
+            page-break-after: avoid;
+            background: white;
+        }
+
+        /* Adding styles for header logos */
+        .header-left,
+        .header-right {
+            flex: 0 0 auto;
+            width: 100px;
+            /* increased from 80px to 100px for larger logos */
+        }
+
+        .header-center {
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-center .subtitle {
+            font-size: 8pt;
+            font-weight: bold;
+            margin: 0;
+            color: #000;
+        }
+
+        .header-left img,
+        .header-right img {
+            height: 80px;
+            /* increased from 50px to 65px for larger images */
+            width: auto;
+            max-width: 100px;
+            /* increased from 80px to 100px */
+            object-fit: contain;
+        }
+
+        /* Increased signature table spacing */
+        .firmas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            border: 1px solid #000;
+            page-break-inside: avoid;
+        }
+
+        .firmas-table td {
+            border: 1px solid #000;
+            padding: 12px;
+            vertical-align: top;
+        }
+
+        .firma-header {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        .firma-space {
+            height: 80px;
+            text-align: left;
+        }
+
+        .firma-info {
+            text-align: left;
+            font-size: 11pt;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .underline {
+            text-decoration: underline;
+        }
+
+        .small-text {
+            font-size: 10pt;
+        }
+
+        .margin-top {
+            margin-top: 15px;
+        }
+
+        .no-margin {
+            margin: 0;
+        }
+
+        .indent {
+            margin-left: 20px;
+        }
+
+        p {
+            margin: 10px 0;
+            text-align: justify;
+            hyphens: auto;
+            orphans: 3;
+            widows: 3;
+            text-indent: 0;
+            word-spacing: 0.05em;
+            letter-spacing: 0.01em;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .no-break {
+            page-break-inside: avoid;
+        }
+
+        .space-after {
+            margin-bottom: 20px;
+        }
+
+        .content {
+            margin-top: 20px;
+        }
+
+        .clausula {
+            margin: 20px 0;
+            page-break-inside: avoid;
+            orphans: 3;
+            widows: 3;
+        }
+
+        .clausula-titulo {
+            font-weight: bold;
+            font-size: 12pt;
+            margin: 20px 0 12px 0;
+            page-break-after: avoid;
+            text-decoration: underline;
+        }
+
+        .plan-pagos-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+            page-break-inside: auto;
+        }
+
+        .plan-pagos-table th,
+        .plan-pagos-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .plan-pagos-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            page-break-after: avoid;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Simplified header with only "CONTRATO DE ARRAS" -->
+    <div class="header">
+        <!-- Adding logo images to header -->
+        <div class="header-left">
+            <!-- Replacing SVG with real M&M logo -->
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/mymsoftcom-gzwjvMQ2Uop5g5EttnPqsR09dJO1GY.png"
+                alt="Logo M&M" style="height: 65px; width: auto; max-width: 100px; object-fit: contain;"
+                onerror="this.style.display='none'"> <!-- updated inline styles to match CSS changes -->
+        </div>
+        <div class="header-center">
+            <div class="subtitle">CONTRATO DE ARRAS</div>
+        </div>
+        <div class="header-right">
+            <!-- Replacing SVG with real Malibu logo -->
+            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/malibu-IN9OrYrTlpOvTg36ZAC103AXbRkQKF.png"
+                alt="Logo Malibu" style="height: 65px; width: auto; max-width: 100px; object-fit: contain;"
+                onerror="this.style.display='none'"> <!-- updated inline styles to match CSS changes -->
+        </div>
+    </div>
+
+    <div class="content">
+        <p>
+            Entre los suscritos, a saber: <span class="bold">ANA SOFÍA ARCE PALMA</span>, domiciliada en la ciudad de
+            Ibagué,
+            identificada con Cédula de Ciudadanía Número 1.105.676.043 de Ibagué, Tolima, actuando a nombre y
+            representación de
+            <span class="bold">M&M MULTISERVICIOS E INGENIERÍA S.A.S</span>, persona jurídica identificada con NIT
+            900.692.181-8
+            y con domicilio social principal en la ciudad de Bogotá, quien para los efectos del presente contrato se
+            denominará
+            <span class="bold">EL PROMITENTE VENDEDOR</span>, de una parte; y de la otra,
+            <span class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</span>, identificado(a) con Cédula de Ciudadanía Número
+            <span class="bold">{{CLIENTE_CC_NUM}}</span> expedida en <span
+                class="bold">{{CLIENTE_CC_EXPEDIDA_EN}}</span>,
+            mayor de edad, domiciliado en <span class="bold">{{CLIENTE_DIRECCION}}</span>,
+            con número de contacto <span class="bold">{{CLIENTE_TELEFONO}}</span> y correo electrónico
+            <span class="bold">{{CLIENTE_EMAIL}}</span>, quien en adelante se denominará
+            <span class="bold">EL PROMITENTE COMPRADOR</span>, se ha celebrado el presente contrato de promesa de
+            compraventa
+            que se rige con las siguientes cláusulas:
+        </p>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Primera: OBJETO.</div>
+            <p>
+                <span class="bold">EL PROMITENTE VENDEDOR</span> se obliga a vender a los <span class="bold">PROMITENTE
+                    COMPRADOR</span>,
+                quien a su vez se obliga a comprar el bien inmueble que se describe a continuación: Bien inmueble
+                ubicado en la
+                {{MANZANA}} {{LOTE}} de la <span class="bold">URBANIZACIÓN {{PROYECTO}}</span> que se encuentra en
+                desarrollo en la
+                ciudad de El Espinal, el cual cuenta con área de <span class="bold">{{AREA_LOTE}} metros cuadrados
+                    ({{AREA_LOTE}} m²)</span>.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Segunda: OTRAS OBLIGACIONES.</div>
+            <p>
+                El <span class="bold">PROMITENTE VENDEDOR</span> se obliga a transferir el dominio del inmueble objeto
+                del presente
+                contrato libre de hipotecas, demandas civiles, embargos, condiciones resolutorias, pleito pendiente,
+                censos,
+                anticresis y en general, de todo gravamen o limitación del dominio y saldrá al saneamiento en los casos
+                de la ley.
+                También se obliga el <span class="bold">PROMITENTE VENDEDOR</span> al pago de paz y salvo de impuestos,
+                tasas y
+                contribuciones causadas hasta la fecha de la escritura pública de compraventa.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Tercera: PRECIO.</div>
+            <p>
+                El precio del inmueble prometido en venta es de <span class="bold">{{VALOR_TOTAL_LETRAS}}</span>
+                (<span class="bold">{{VALOR_TOTAL_NUM}}</span>), suma que el <span class="bold">PROMITENTE
+                    COMPRADOR</span>
+                pagará al <span class="bold">PROMITENTE VENDEDOR</span> de la siguiente manera:
+            </p>
+            <p class="indent">
+                a) <span class="bold">{{SEPARACION_LETRAS}}</span> (<span class="bold">{{SEPARACION_NUM}}</span>)
+                cancelados de la siguiente manera:
+                En transferencia el día {{FECHA_SEPARACION}} como valor de separado del presente contrato: dicha suma
+                será cancelada por medio de
+                transferencia electrónica a la cuenta de Ahorros número <span class="bold">411-187030-47</span> de
+                Bancolombia cuenta convenio
+                <span class="bold">6699</span> y a nombre de
+                <span class="bold">M&M MULTISERVICIOS E INGENIERIA S.A.S</span> o en efectivo en las instalaciones de la
+                oficina principal ubicada
+                en
+                <span class="bold">Mz A Casa 109 Villa del Prado - Sector 1</span>
+            </p>
+            <br>
+            <p class="indent">
+                b) El SALDO: El saldo de la venta pactada serán pagados en <span class="bold">{{NUM_CUOTAS}} cuotas
+                    mensuales</span>
+                después de la cuota inicial de separación.
+            </p>
+
+            <div class="clausula">
+                <div class="clausula-titulo">PLAN DE PAGOS</div>
+                {{PLAN_PAGOS_HTML}}
+            </div>
+
+            <p>
+                <span class="bold">PARÁGRAFO PRIMERO:</span> El deudor se compromete a pagar las cuotas acordadas en las
+                fechas establecidas. El incumplimiento
+                en el pago de cualquier cuota generará intereses de mora calculados a la tasa de interés moratorio legal
+                vigente para
+                obligaciones civiles y comerciales. (Código de Comercio, Artículo 884: límite de intereses y sanción por
+                exceso; si las
+                partes no han estipulado el interés moratorio será equivalente a una y media veces del interés bancario
+                corriente
+                Certificado por la SUPERINTENDENCIA FINANCIERA DE COLOMBIA)
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Cuarta: ARRAS.</div>
+            <p>
+                La terminación unilateral, retractación, el desistimiento o incumplimiento de los compromisos aquí
+                adquiridos,
+                genera que se le cobre a título de sanción la suma de <span class="bold">{{ARRAS_LETRAS}}</span>
+                (<span class="bold">{{ARRAS_NUM}}</span>) que corresponde al 10% del valor total del presente contrato,
+                que incluyen:
+                gastos administrativos, honorarios y demás; los cuales se retendrán de lo ya pagado por parte de los
+                <span class="bold">PROMITENTE COMPRADOR</span>. El reintegro de esté monto será en un plazo máximo de 30
+                días hábiles
+                contados desde la fecha de la notificación de desistimiento.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Quinta: PENAL.</div>
+            <p>
+                Los promitentes establecemos, para el caso de incumplimiento, una multa de valor igual a la entregada
+                como arras si el
+                incumplimiento es de parte de los <span class="bold">PROMITENTE COMPRADOR</span> quien entonces perderá
+                el valor dado
+                como ARRAS; y si el incumplimiento es por parte del <span class="bold">PROMITENTE VENDEDOR</span> éste
+                devolverá a los
+                <span class="bold">PROMITENTE COMPRADOR</span> los dineros recaudados por la venta del inmueble.
+            </p>
+            <p>
+                <span class="bold">PARÁGRAFO SEGUNDO:</span> Todo pago o abono al precio de la venta prometida
+                evidenciará con el comprobante de consignación o
+                transferencia electrónica a la cuenta de ahorros número 411- 187030-47 de Bancolombia cuenta convenio
+                6699 y a nombre de
+                M&M MULTISERVICIOS E INGENIERIA S.A.S, dicho pago debe ser enviado al número telefónico del departamento
+                de cartera
+                número 3165589223.
+            </p>
+            <p>
+                <span class="bold">PARÁGRAFO TERCERO:</span> LA CONSTRUCTORA realizará la suscripción de la promesa de
+                compraventa una vez se haya realizado el
+                pago del 50% del terreno, siendo esté el valor correspondiente a <span
+                    class="bold">{{VALOR_50_PORCIENTO_LETRAS}}</span>
+                (<span class="bold">{{VALOR_50_PORCIENTO_NUM}}</span>), la cual debe ser verificada por el área
+                comercial y área
+                administrativa de la constructora. Se le comunicará al <span class="bold">PROMITENTE COMPRADOR</span>
+                cuando se le
+                firmará promesa de compraventa y verificado los datos con esté para su realización.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Sexta: GASTOS.</div>
+            <p>
+                Los Gastos que ocasione la firma de este contrato, los que demande el otorgamiento de la escritura
+                pública de compraventa,
+                serán a cargo de las dos partes por mitades.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Séptima- INFORMACIÓN DEL PROYECTO "URBANIZACION {{PROYECTO}}"</div>
+            <p>
+                el promitente comprador declara que recibió toda la información correspondiente de las condiciones
+                totales del proyecto
+                donde se indica que la obra de urbanismo incluyen servicios públicos como: red de alcantarillado,
+                acueducto, gas domiciliario,
+                redes eléctricas y vías de acceso pavimentadas en concreto.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Octava: AUTORIZACIÓN PARA TRATAMIENTOS DE DATOS PERSONALES.</div>
+            <p>
+                Con la firma del presente contrato y en cumplimiento de la política de calidad definida previamente los
+                datos de carácter
+                personal de LAS PARTES, se suministren a través de este documento serán objeto de tratamiento de ley
+                1581 de 2012, quienes
+                se comprometen a implementar todas las medidas necesarias para garantizar un tratamiento idóneo de los
+                datos personales y a
+                cumplir con las disposiciones que se tienen en esta materia. Sus datos personales serán incorporados en
+                la base de datos de
+                cada una de ellas con la finalidad que se determinan a continuación: tramitar su actual inscripción como
+                cliente. Para ejercer
+                los derechos de actualización, rectificación, cancelación y oposición sobre sus datos personales podrá
+                dirigir su solicitud o
+                reclamo a la siguiente dirección: Manzana A casa 109 Villa del Prado etapa 1 Espinal-Tolima.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Novena: ENTREGA:</div>
+            <p>
+                <span class="bold">EL PROMITENTE VENDEDOR</span> tendrá un plazo para la entrega del presente inmueble
+                <span class="bold">{{LOTE}} {{MANZANA}}</span> será entregado el día <span
+                    class="bold">{{FECHA_ENTREGA}}</span>,
+                siempre y cuando los pagos se hayan causado con totalidad, tal y como se evidencia en el plan de pago.
+            </p>
+        </div>
+
+        <p class="margin-top">
+            Los contratantes, afirman haber leído el presente documento y dan su asentimiento expresamente a lo
+            estipulado y firman como aparece,
+            ante testigos que los suscriben, en la ciudad de <span class="bold">{{CIUDAD_FIRMA}}</span> a los
+            <span class="bold">{{FECHA_CONTRATO_LARGA}}</span> en dos ejemplares, uno para cada promitente.
+        </p>
+
+        <table class="firmas-table">
+            <tr>
+                <td class="firma-header">LA CONSTRUCTORA</td>
+                <td class="firma-header">EL INVERSIONISTA</td>
+            </tr>
+            <tr>
+                <td class="firma-space">
+                    <div class="bold">FIRMA Y HUELLA</div>
+                </td>
+                <td class="firma-space">
+                    <div class="bold">FIRMA Y HUELLA</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="firma-info">
+                    <div class="bold">ANA SOFÍA ARCE PALMA</div>
+                    <div class="bold">Representante Legal</div>
+                    <div class="bold">C.C.: 1.105.676.043 de Ibagué, Tolima</div>
+                </td>
+                <td class="firma-info">
+                    <div class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</div>
+                    <div class="bold">CC: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</div>
+                    <div class="bold">CELULAR: {{CLIENTE_TELEFONO}}</div>
+                    <div class="bold">CORREO: {{CLIENTE_EMAIL}}</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="firma-info">
+                    <div class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</div>
+                    <div class="bold">DIRECCIÓN: MZ A CASA 109 VILLA DEL PRADO</div>
+                    <div class="bold">CELULAR: 3115899706 - 3165589223</div>
+                    <div class="bold">CORREO: mymultiserciosingsas@gmail.com</div>
+                </td>
+                <td class="firma-info">
+                    <div class="bold">DIRECCIÓN: {{CLIENTE_DIRECCION}}</div>
+                    <div class="bold">CIUDAD: {{CLIENTE_CIUDAD}}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>

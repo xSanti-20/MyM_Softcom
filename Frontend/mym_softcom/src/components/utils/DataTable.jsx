@@ -28,7 +28,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useMobile } from "@/hooks/use-mobile"
 
-import { salesPdfService } from "@/services/pdfExportService"
+import salesPdfService, { buildPlanPagosHTML } from "@/services/pdfExportService"
 import { BusinessSheetModal } from "@/app/dashboard/ventas/BusinessSheetModal"
 
 function DataTable({
@@ -106,23 +106,13 @@ function DataTable({
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage)
 
-  const handleExportPDF = async (row) => {
-    try {
-      const saleId = row.original?.id || row.id
+  const handleExportPDF = (row) => {
+    const saleId = row.original?.id || row.id
+    if (!saleId) return
 
-      if (!saleId) {
-        console.error("No se pudo obtener el ID de la venta:", row)
-        alert("Error: No se pudo identificar la venta para exportar")
-        return
-      }
-
-      // Show modal to collect additional data
-      setSelectedSale({ id: saleId, row })
-      setShowModal(true)
-    } catch (error) {
-      console.error("Error al preparar exportación PDF:", error)
-      alert(`Error al preparar el PDF: ${error.message}`)
-    }
+    // 🚀 Guardamos toda la venta
+    setSelectedSale(row.original)
+    setShowModal(true)
   }
 
   const handleToggleStatus = (row) => {
@@ -133,23 +123,32 @@ function DataTable({
 
   const handleModalConfirm = async (temporaryData) => {
     if (!selectedSale) return
+    const saleId = selectedSale.id
 
     try {
-      const { id: saleId, row } = selectedSale
-
       setExportingPDF((prev) => new Set(prev).add(saleId))
-      await salesPdfService.generateBusinessSheet(saleId, row, temporaryData)
+
+      const saleDataWithQuotas = {
+        ...selectedSale,
+        paymentDetails: selectedSale.paymentDetails || [], // Include payment details for quotas
+      }
+
+      console.log("[v0] DataTable - saleDataWithQuotas:", saleDataWithQuotas)
+      console.log("[v0] DataTable - paymentDetails:", saleDataWithQuotas.paymentDetails)
+
+      const planPagosHTML = buildPlanPagosHTML(saleDataWithQuotas)
+
+      // 🔹 Pasar planPagosHTML dentro de temporaryData
+      await salesPdfService.generateContractPDF(saleId, saleDataWithQuotas, { ...temporaryData, planPagosHTML })
     } catch (error) {
       console.error("Error al exportar PDF:", error)
       alert(`Error al generar el PDF: ${error.message}`)
     } finally {
-      if (selectedSale?.id) {
-        setExportingPDF((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(selectedSale.id)
-          return newSet
-        })
-      }
+      setExportingPDF((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(saleId)
+        return newSet
+      })
       setSelectedSale(null)
     }
   }
@@ -599,7 +598,7 @@ function DataTable({
         isOpen={showModal}
         onClose={handleModalClose}
         onConfirm={handleModalConfirm}
-        saleData={selectedSale?.row}
+        saleData={selectedSale?.data}
       />
     </>
   )
