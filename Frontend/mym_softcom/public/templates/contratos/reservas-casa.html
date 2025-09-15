@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato de Arras - Reservas del Poblado Casa</title>
+    <style>
+        /* Header fijo para Reservas del Poblado Casa que funciona con Puppeteer */
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            height: 50px;
+            padding: 5px 15px;
+            background: white;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        .header-logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .fixed-header .title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 11pt;
+            color: #000;
+            text-transform: uppercase;
+            flex-grow: 1;
+            margin: 0 10px;
+        }
+
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 11pt;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+            text-align: justify;
+            color: #000;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .firmas-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            border: 1px solid #000;
+            page-break-inside: avoid;
+        }
+
+        .firmas-table td {
+            border: 1px solid #000;
+            padding: 12px;
+            vertical-align: top;
+        }
+
+        .firma-header {
+            font-weight: bold;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        .firma-space {
+            height: 80px;
+            text-align: left;
+        }
+
+        .firma-info {
+            text-align: left;
+            font-size: 11pt;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .underline {
+            text-decoration: underline;
+        }
+
+        .small-text {
+            font-size: 10pt;
+        }
+
+        .margin-top {
+            margin-top: 15px;
+        }
+
+        .no-margin {
+            margin: 0;
+        }
+
+        .indent {
+            margin-left: 20px;
+        }
+
+        p {
+            margin: 10px 0;
+            text-align: justify;
+            hyphens: auto;
+            orphans: 3;
+            widows: 3;
+            text-indent: 0;
+            word-spacing: 0.05em;
+            letter-spacing: 0.01em;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .no-break {
+            page-break-inside: avoid;
+        }
+
+        .space-after {
+            margin-bottom: 20px;
+        }
+
+        .content {
+            margin-top: 10px;
+        }
+
+        .clausula {
+            margin: 20px 0;
+            page-break-inside: avoid;
+            orphans: 3;
+            widows: 3;
+        }
+
+        .clausula-titulo {
+            font-weight: bold;
+            font-size: 12pt;
+            margin: 20px 0 12px 0;
+            page-break-after: avoid;
+            text-decoration: underline;
+        }
+
+        .plan-pagos-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+            page-break-inside: auto;
+        }
+
+        .plan-pagos-table th,
+        .plan-pagos-table td {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            text-align: center;
+        }
+
+        .plan-pagos-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            page-break-after: avoid;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TEMPLATE: reservas-casa -->
+    <div class="content">
+        <p>
+            <!-- Aquí va el contenido específico para Reservas del Poblado Casa -->
+            Entre los suscritos, a saber: <span class="bold">ANA SOFÍA ARCE PALMA</span>, domiciliada en la ciudad de
+            Ibagué, identificada con Cédula de Ciudadanía Número 1.105.676.043 de Ibagué, Tolima...
+        </p>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Primera: OBJETO.</div>
+            <p>
+                <!-- Contenido específico para Reservas del Poblado - Casa -->
+            </p>
+        </div>
+
+        <!-- Agregar más cláusulas según sea necesario -->
+
+        <table class="firmas-table">
+            <tr>
+                <td class="firma-header">LA CONSTRUCTORA</td>
+                <td class="firma-header">EL INVERSIONISTA</td>
+            </tr>
+            <tr>
+                <td class="firma-space">
+                    <div class="bold">FIRMA Y HUELLA</div>
+                </td>
+                <td class="firma-space">
+                    <div class="bold">FIRMA Y HUELLA</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="firma-info">
+                    <div class="bold">ANA SOFÍA ARCE PALMA</div>
+                    <div class="bold">Representante Legal</div>
+                    <div class="bold">C.C.: 1.105.676.043 de Ibagué, Tolima</div>
+                </td>
+                <td class="firma-info">
+                    <div class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</div>
+                    <div class="bold">CC: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</div>
+                    <div class="bold">CELULAR: {{CLIENTE_TELEFONO}}</div>
+                    <div class="bold">CORREO: {{CLIENTE_EMAIL}}</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="firma-info">
+                    <div class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</div>
+                    <div class="bold">DIRECCIÓN: MZ A CASA 109 VILLA DEL PRADO</div>
+                    <div class="bold">CELULAR: 3115899706 - 3165589223</div>
+                    <div class="bold">CORREO: mymultiserciosingsas@gmail.com</div>
+                </td>
+                <td class="firma-info">
+                    <div class="bold">DIRECCIÓN: {{CLIENTE_DIRECCION}}</div>
+                    <div class="bold">CIUDAD: {{CLIENTE_CIUDAD}}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+
+</html>

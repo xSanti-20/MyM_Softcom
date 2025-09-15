@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer"
 import { NextResponse } from "next/server"
 import path from "path"
+import fs from "fs"
 
 export async function POST(request) {
   let browser = null
@@ -14,6 +15,40 @@ export async function POST(request) {
     }
 
     console.log("[v0] Starting PDF generation with Puppeteer")
+
+    const convertImagesToBase64 = (htmlContent) => {
+      try {
+        const imgPath1 = path.join(process.cwd(), "public", "assets", "img", "mymsoftcom.png")
+        const imgPath2 = path.join(process.cwd(), "public", "assets", "img", "malibu.png")
+
+        let processedHtml = htmlContent
+
+        // Convert M&M logo to base64 if exists
+        if (fs.existsSync(imgPath1)) {
+          const imgBuffer1 = fs.readFileSync(imgPath1)
+          const imgBase64_1 = `data:image/png;base64,${imgBuffer1.toString("base64")}`
+          processedHtml = processedHtml.replace(/src="\/assets\/img\/mymsoftcom\.png"/g, `src="${imgBase64_1}"`)
+          console.log("[v0] Converted mymsoftcom.png to base64")
+        } else {
+          console.log("[v0] mymsoftcom.png not found, keeping original src")
+        }
+
+        // Convert Malibu logo to base64 if exists
+        if (fs.existsSync(imgPath2)) {
+          const imgBuffer2 = fs.readFileSync(imgPath2)
+          const imgBase64_2 = `data:image/png;base64,${imgBuffer2.toString("base64")}`
+          processedHtml = processedHtml.replace(/src="\/assets\/img\/malibu\.png"/g, `src="${imgBase64_2}"`)
+          console.log("[v0] Converted malibu.png to base64")
+        } else {
+          console.log("[v0] malibu.png not found, keeping original src")
+        }
+
+        return processedHtml
+      } catch (error) {
+        console.log("[v0] Error converting images to base64:", error.message)
+        return htmlContent
+      }
+    }
 
     browser = await puppeteer.launch({
       headless: true,
@@ -38,35 +73,12 @@ export async function POST(request) {
     await page.setDefaultTimeout(60000)
     await page.setDefaultNavigationTimeout(60000)
 
-    await page.setRequestInterception(true)
-
-    page.on("request", (request) => {
-      const url = request.url()
-
-      // Handle local asset requests
-      if (url.includes("/assets/img/")) {
-        // Convert to absolute file path
-        const imagePath = url.replace(/.*\/assets\/img\//, "")
-        const fullPath = path.join(process.cwd(), "public", "assets", "img", imagePath)
-
-        console.log(`[v0] Intercepting image request: ${url} -> ${fullPath}`)
-
-        // Continue with the original request
-        request.continue()
-      } else {
-        request.continue()
-      }
-    })
-
     // Set viewport for consistent rendering
     await page.setViewport({ width: 1200, height: 1600 })
 
-    const processedHtml = html.replace(
-      /src="\/assets\/img\//g,
-      `src="file://${path.join(process.cwd(), "public", "assets", "img").replace(/\\/g, "/")}/`,
-    )
+    const processedHtml = convertImagesToBase64(html)
 
-    console.log("[v0] Loading HTML content with processed image paths")
+    console.log("[v0] Loading HTML content with base64 images")
 
     await page.setContent(processedHtml, {
       waitUntil: ["networkidle0", "domcontentloaded"],
@@ -77,24 +89,24 @@ export async function POST(request) {
       return Promise.all(
         Array.from(document.images, (img) => {
           if (img.complete) {
-            console.log(`[v0] Image already loaded: ${img.src}`)
+            console.log(`[v0] Image already loaded: ${img.src.substring(0, 50)}...`)
             return Promise.resolve()
           }
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve) => {
             const timeout = setTimeout(() => {
-              console.log(`[v0] Image timeout: ${img.src}`)
-              resolve() // Don't reject, just resolve to continue
-            }, 15000) // 15 second timeout per image
+              console.log(`[v0] Image timeout: ${img.src.substring(0, 50)}...`)
+              resolve()
+            }, 5000) // Reduced timeout since base64 images should load quickly
 
             img.addEventListener("load", () => {
-              console.log(`[v0] Image loaded successfully: ${img.src}`)
+              console.log(`[v0] Image loaded successfully: ${img.src.substring(0, 50)}...`)
               clearTimeout(timeout)
               resolve()
             })
             img.addEventListener("error", (e) => {
-              console.log(`[v0] Image failed to load: ${img.src}`, e)
+              console.log(`[v0] Image failed to load: ${img.src.substring(0, 50)}...`, e)
               clearTimeout(timeout)
-              resolve() // Don't reject, just resolve to continue
+              resolve()
             })
           })
         }),
@@ -103,20 +115,55 @@ export async function POST(request) {
 
     console.log("[v0] HTML content loaded, generating PDF")
 
-    const pdfBuffer = await page.pdf({
+    // Detectar si es cualquier plantilla de contrato para usar header específico
+    const isContractTemplate = processedHtml.includes("TEMPLATE:") || processedHtml.includes("CONTRATO DE ARRAS")
+    
+    console.log("[v0] Contract template detection:", isContractTemplate)
+    
+    let pdfOptions = {
       format: "A4",
       margin: {
-        top: "2.5cm",
-        right: "2cm",
-        bottom: "2.5cm",
-        left: "2cm",
+        top: isContractTemplate ? "100px" : "1cm",
+        right: "1.5cm",
+        bottom: "2cm",
+        left: "1.5cm",
       },
       printBackground: true,
       preferCSSPageSize: true,
-      displayHeaderFooter: false,
+      displayHeaderFooter: isContractTemplate,
       scale: 1,
-      timeout: 30000, // 30 seconds for PDF generation
-    })
+      timeout: 30000,
+      pageRanges: "",
+    }
+
+    // Agregar header específico para contratos
+    if (isContractTemplate) {
+      const imgPath1 = path.join(process.cwd(), "public", "assets", "img", "mymsoftcom.png")
+      const imgPath2 = path.join(process.cwd(), "public", "assets", "img", "malibu.png")
+      
+      // Detectar el proyecto específico para usar el logo correcto
+      let projectLogo = "malibu.png" // default
+      if (processedHtml.includes("TEMPLATE: luxury")) {
+        projectLogo = "luxury.png"
+      } else if (processedHtml.includes("TEMPLATE: reservas")) {
+        projectLogo = "reservas.png"
+      } else if (processedHtml.includes("TEMPLATE: malibu")) {
+        projectLogo = "malibu.png"
+      }
+      
+      const projectLogoPath = path.join(process.cwd(), "public", "assets", "img", projectLogo)
+      
+      pdfOptions.headerTemplate = `
+        <div style="width:100%;display:flex;justify-content:space-between;align-items:center;font-size:11pt;padding:5px 40px;margin:0;background:white;box-sizing:border-box;">
+          <img src="data:image/png;base64,${fs.readFileSync(imgPath1).toString("base64")}" style="height:60px;">
+          <span style="font-weight:bold;flex-grow:1;text-align:center;margin:0 20px;font-size:5pt;">CONTRATO DE ARRAS</span>
+          <img src="data:image/png;base64,${fs.readFileSync(projectLogoPath).toString("base64")}" style="height:60px;">
+        </div>
+      `
+      pdfOptions.footerTemplate = `<div></div>`
+    }
+
+    const pdfBuffer = await page.pdf(pdfOptions)
 
     console.log("[v0] PDF generated successfully")
 

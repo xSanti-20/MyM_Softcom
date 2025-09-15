@@ -116,6 +116,102 @@ function numeroALetras(amount) {
   return resultado
 }
 
+function numeroALetrasSinMoneda(amount) {
+  if (amount == null) return ""
+
+  // Asegurar número
+  const numero = Number(amount) || 0
+  const entero = Math.floor(Math.abs(numero))
+
+  // funciones internas para convertir grupos (reutilizando las mismas de numeroALetras)
+  const unidades = ["", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"]
+  const especiales = {
+    10: "diez",
+    11: "once",
+    12: "doce",
+    13: "trece",
+    14: "catorce",
+    15: "quince",
+    16: "dieciseis",
+    17: "diecisiete",
+    18: "dieciocho",
+    19: "diecinueve",
+    20: "veinte",
+  }
+  const decenas = ["", "", "veinte", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"]
+  const centenas = [
+    "",
+    "ciento",
+    "doscientos",
+    "trescientos",
+    "cuatrocientos",
+    "quinientos",
+    "seiscientos",
+    "setecientos",
+    "ochocientos",
+    "novecientos",
+  ]
+
+  function tresCifras(n) {
+    let str = ""
+    n = Number(n)
+    if (n === 0) return ""
+    if (n === 100) return "cien"
+    const c = Math.floor(n / 100)
+    const r = n % 100
+    if (c > 0) str += centenas[c]
+
+    if (r > 0) {
+      if (str) str += " "
+      if (r < 10) {
+        str += unidades[r]
+      } else if (r < 21) {
+        str += especiales[r] || ""
+      } else {
+        const d = Math.floor(r / 10)
+        const u = r % 10
+        if (d === 2 && u !== 0) {
+          // veintiuno, veintidos...
+          str += "veinti" + unidades[u]
+        } else {
+          str += decenas[d]
+          if (u !== 0) str += " y " + unidades[u]
+        }
+      }
+    }
+    return str
+  }
+
+  function convertir(num) {
+    num = Number(num)
+    if (num < 1000) return tresCifras(num)
+    if (num < 1000000) {
+      const miles = Math.floor(num / 1000)
+      const resto = num % 1000
+      const milesStr = miles === 1 ? "mil" : `${convertir(miles)} mil`
+      return resto > 0 ? `${milesStr} ${tresCifras(resto)}` : milesStr
+    }
+    if (num < 1000000000000) {
+      // millones
+      const millones = Math.floor(num / 1000000)
+      const resto = num % 1000000
+      const millonesStr = millones === 1 ? "un millon" : `${convertir(millones)} millones`
+      return resto > 0 ? `${millonesStr} ${convertir(resto)}` : millonesStr
+    }
+    return String(num)
+  }
+
+  // construir la cadena final sin moneda
+  let palabras = convertir(entero)
+
+  // Ajustes comunes
+  palabras = palabras.replace(/\buno mil\b/gi, "mil") // "uno mil" -> "mil"
+  palabras = palabras.replace(/\bun millón\b/gi, "un millon")
+
+  // Solo uppercase, sin moneda
+  return palabras ? palabras.toUpperCase() : "CERO"
+}
+
 function buildPlanPagosHTML(saleData) {
   console.log("[v0] buildPlanPagosHTML called with saleData:", saleData)
 
@@ -205,6 +301,13 @@ function buildPlanPagosHTML(saleData) {
 
 class SalesPDFService {
   /**
+   * Convierte números a letras sin moneda
+   */
+  numeroALetrasSinMoneda(amount) {
+    return numeroALetrasSinMoneda(amount)
+  }
+
+  /**
    * Genera el PDF del contrato según el tipo de venta (lote o casa) usando Puppeteer
    * @param {number|string} saleId - ID de la venta
    * @param {object} saleData - Datos de la venta (puede ser plano o con estructura completa)
@@ -285,11 +388,11 @@ class SalesPDFService {
 
       case "reservas-del-poblado":
         // Reservas del Poblado has both lote and casa templates
-        return normalizedType === "casa" ? "reservas-del-poblado-casa" : "reservas-del-poblado-lote"
+        return normalizedType === "casa" ? "reservas-casa" : "reservas-lote"
 
       case "luxury-malibu":
         // Luxury Malibu only has lote template
-        return "luxury-malibu-lote"
+        return "luxury-lote"
 
       default:
         // Default fallback to malibu lote
@@ -405,6 +508,7 @@ class SalesPDFService {
         LOTE: lote.toUpperCase(),
         MANZANA: manzana.toUpperCase(),
         AREA_LOTE: areaLote.toString().toUpperCase(),
+        AREA_LOTE_LETRAS: this.numeroALetrasSinMoneda(areaLote),
 
         // Precios y valores - already uppercase from numeroALetras function
         VALOR_TOTAL_LETRAS: numeroALetras(saleData.total_value || 0),
