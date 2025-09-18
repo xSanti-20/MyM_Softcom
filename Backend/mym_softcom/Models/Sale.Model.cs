@@ -15,15 +15,22 @@ namespace mym_softcom.Models
         public decimal? total_raised { get; set; }
         public decimal? quota_value { get; set; }
         public decimal? total_debt { get; set; } // Valor total pendiente
-        public string status { get; set; } = "Active";
+
+        [Column(TypeName = "enum('Active','Desistida','Escriturar')")]
+        public string? status { get; set; } = "Active";
+
         public decimal? RedistributionAmount { get; set; }
         public string? RedistributionType { get; set; }
         public string? RedistributedQuotaNumbers { get; set; }
         public decimal? LastQuotaValue { get; set; } // Added LastQuotaValue property for lastQuota redistribution type
 
-
         public decimal? NewQuotaValue { get; set; }
         public decimal? OriginalQuotaValue { get; set; }
+
+        public string? PaymentPlanType { get; set; } = "Automatic"; // "Automatic", "Custom", "House"
+        public string? CustomQuotasJson { get; set; } // JSON array for custom quotas: [{"quotaNumber": 1, "amount": 1000000}, ...]
+        public decimal? HouseInitialPercentage { get; set; } = 30; // For house type, default 30%
+        public decimal? HouseInitialAmount { get; set; } // Calculated amount for house initial payment
 
         //foránea a la tabla Clients
         public int id_Clients { get; set; }
@@ -48,6 +55,12 @@ namespace mym_softcom.Models
 
         [ForeignKey("id_Plans")]
         public Plan? plan { get; set; }
+    }
+
+    public class CustomQuota
+    {
+        public int QuotaNumber { get; set; }
+        public decimal Amount { get; set; }
     }
 
     public class RedistributeQuotasRequest

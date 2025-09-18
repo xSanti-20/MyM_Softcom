@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterPayment from "./formpagos"
@@ -61,7 +61,7 @@ function Payments() {
     return "Sin proyecto"
   }
 
-  async function fetchProjectsForFilter() {
+  const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.data && Array.isArray(response.data)) {
@@ -76,9 +76,9 @@ function Payments() {
       console.error("Error al cargar proyectos para el filtro:", error)
       showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
     }
-  }
+  }, [])
 
-  async function fetchPayments(projectId = null) {
+  const fetchPayments = useCallback(async (projectId = null) => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Payment/GetAllPayments")
@@ -130,7 +130,7 @@ function Payments() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
@@ -140,7 +140,7 @@ function Payments() {
   useEffect(() => {
     fetchProjectsForFilter()
     fetchPayments()
-  }, [])
+  }, [fetchProjectsForFilter, fetchPayments])
 
   const handleDelete = async (id) => {
     try {

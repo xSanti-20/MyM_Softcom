@@ -30,7 +30,7 @@ function LotPage() {
     redirectUrl: null,
   })
 
-  const titlesLot = ["ID", "Manzana", "Número de Lote", "Área", "Estado", "Proyecto"]
+  const titlesLot = ["ID", "Manzana", "Número de Lote", "Área", "Ubicación", "Estado", "Proyecto"]
 
   const showAlert = useCallback((type, message, onSuccessCallback = null) => {
     setAlertInfo({
@@ -97,10 +97,11 @@ function LotPage() {
             block: lot.block,
             lot_number: lot.lot_number,
             lot_area: `${lot.lot_area || 0} m²`,
+            location: lot.location || "N/A",
             status: createLotStatusBadge(lot.status || "Libre"),
             project: lot.project?.name || "N/A",
             original: lot,
-            searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""}`,
+            searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""} ${lot.location || ""}`,
           }))
           setLotData(data)
         }

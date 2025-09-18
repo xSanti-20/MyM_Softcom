@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Building, MapPin, Square } from "lucide-react"
+import { Building, MapPin, Square, Navigation } from "lucide-react"
 
 function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAlert }) {
   const [formData, setFormData] = useState({
     block: "",
     lot_number: "",
     lot_area: "",
+    location: "",
     id_Projects: "", // ID del proyecto seleccionado
   })
   const [projects, setProjects] = useState([]) // Para la lista de proyectos
@@ -52,6 +53,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
         block: lotToEdit.block || "",
         lot_number: lotToEdit.lot_number?.toString() || "",
         lot_area: lotToEdit.lot_area?.toString() || "",
+        location: lotToEdit.location || "",
         id_Projects: lotToEdit.id_Projects?.toString() || "", // Asegurarse de que sea string para el select
       })
     } else {
@@ -59,6 +61,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
         block: "",
         lot_number: "",
         lot_area: "",
+        location: "",
         id_Projects: "",
       })
     }
@@ -82,12 +85,12 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const { block, lot_number, lot_area, id_Projects } = formData
+    const { block, lot_number, lot_area, location, id_Projects } = formData
 
-    if (!block || !lot_number || !lot_area || !id_Projects) {
+    if (!block || !lot_number || !lot_area || !location || !id_Projects) {
       stableShowAlert(
         "error",
-        "Todos los campos obligatorios (Manzana, Número de Lote, Área, Proyecto) deben ser completados.",
+        "Todos los campos obligatorios (Manzana, Número de Lote, Área, Ubicación, Proyecto) deben ser completados.",
       )
       return
     }
@@ -114,6 +117,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
       block,
       lot_number: parsedLotNumber,
       lot_area: parsedLotArea,
+      location,
       id_Projects: parsedProjectId,
     }
 
@@ -143,7 +147,7 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
 
       // Limpiar formulario solo si es un registro nuevo o si se cierra el modal
       if (!isEditing || closeModal) {
-        setFormData({ block: "", lot_number: "", lot_area: "", id_Projects: "" })
+        setFormData({ block: "", lot_number: "", lot_area: "", location: "", id_Projects: "" })
       }
 
       if (closeModal) closeModal()
@@ -223,6 +227,25 @@ function RegisterLot({ refreshData, lotToEdit, onCancelEdit, closeModal, showAle
               className="w-full pr-10"
             />
             <Square className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+            Ubicación *
+          </Label>
+          <div className="relative">
+            <Input
+              type="text"
+              id="location"
+              name="location"
+              placeholder="Ej: Esquina, Central, Frente al parque"
+              value={formData.location}
+              onChange={handleChange}
+              required
+              className="w-full pr-10"
+            />
+            <Navigation className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           </div>
         </div>
 

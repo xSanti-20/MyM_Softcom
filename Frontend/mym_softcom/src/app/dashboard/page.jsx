@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import NavPrivada from "@/components/nav/PrivateNav"
 import {
   Loader2,
@@ -326,7 +326,7 @@ export default function Dashboard() {
   }
 
   // Función para formatear fecha relativa
-  const formatRelativeTime = (dateString) => {
+  const formatRelativeTime = useCallback((dateString) => {
     try {
       const date = new Date(dateString)
       const now = new Date()
@@ -345,7 +345,7 @@ export default function Dashboard() {
     } catch (error) {
       return "Fecha desconocida"
     }
-  }
+  }, [])
 
   // Función para obtener el nombre del mes
   const getMonthName = (monthNumber) => {
@@ -354,7 +354,7 @@ export default function Dashboard() {
   }
 
   // Función para cargar todos los datos del dashboard
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     setDataLoading(true)
     const newErrors = {}
 
@@ -540,7 +540,7 @@ export default function Dashboard() {
     } finally {
       setDataLoading(false)
     }
-  }
+  }, [formatRelativeTime])
 
   // Efecto para cargar datos iniciales
   useEffect(() => {
@@ -553,7 +553,7 @@ export default function Dashboard() {
 
     // Limpiar intervalo al desmontar
     return () => clearInterval(intervalId)
-  }, [])
+  }, [loadAllData])
 
   // Efecto para obtener el rol del usuario
   useEffect(() => {

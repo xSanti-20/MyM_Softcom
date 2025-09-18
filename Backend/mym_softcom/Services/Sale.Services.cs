@@ -30,7 +30,7 @@ namespace mym_softcom.Services
             return await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
-                                 .ThenInclude(l =>  l.project)
+                                 .ThenInclude(l => l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .ToListAsync();
@@ -146,47 +146,50 @@ namespace mym_softcom.Services
 
 
         /// <summary>
-        /// Crea una nueva venta, calcula el valor de la cuota y establece el recaudo inicial.
+        /// Crea una nueva venta, calcula el valor de la cuota según el tipo de plan y establece el recaudo inicial.
         /// Además, cambia el estado del lote de "Libre" a "Vendido".
         /// </summary>
         public async Task<bool> CreateSale(Sale sale)
         {
             try
             {
+                Console.WriteLine($"[SaleServices] CreateSale called with data:");
+                Console.WriteLine($"  - id_Lots: {sale.id_Lots}");
+                Console.WriteLine($"  - id_Clients: {sale.id_Clients}");
+                Console.WriteLine($"  - id_Plans: {sale.id_Plans}");
+                Console.WriteLine($"  - id_Users: {sale.id_Users}");
+                Console.WriteLine($"  - total_value: {sale.total_value}");
+                Console.WriteLine($"  - initial_payment: {sale.initial_payment}");
+                Console.WriteLine($"  - sale_date: {sale.sale_date}");
+                Console.WriteLine($"  - PaymentPlanType: {sale.PaymentPlanType}");
+                Console.WriteLine($"  - CustomQuotasJson: {sale.CustomQuotasJson}");
+
                 // Validar que el lote esté "Libre" antes de la venta
+                Console.WriteLine($"[SaleServices] Buscando lote con ID: {sale.id_Lots}");
                 var lot = await _lotServices.GetLotById(sale.id_Lots);
                 if (lot == null)
                 {
+                    Console.WriteLine($"[SaleServices] ERROR: Lote con ID {sale.id_Lots} no encontrado");
                     throw new InvalidOperationException("El lote especificado no existe.");
                 }
+
+                Console.WriteLine($"[SaleServices] Lote encontrado: {lot.block}-{lot.lot_number}, Estado: {lot.status}");
                 if (lot.status != "Libre")
                 {
+                    Console.WriteLine($"[SaleServices] ERROR: Lote no disponible, estado actual: {lot.status}");
                     throw new InvalidOperationException($"El lote {lot.block}-{lot.lot_number} no está disponible para la venta. Su estado actual es: {lot.status}");
                 }
+
+                // Dejar que la base de datos use su valor por defecto
+                sale.status = null;
 
                 // ✅ ACTUALIZACIÓN: Inicializar total_raised con el valor de initial_payment
                 sale.total_raised = sale.initial_payment ?? 0;
 
                 // Obtener el plan para el número de cuotas
                 var plan = await _planServices.GetPlanById(sale.id_Plans);
-                decimal remainingValue = 0;
-                if (sale.total_value.HasValue && sale.initial_payment.HasValue)
-                {
-                    remainingValue = sale.total_value.Value - sale.initial_payment.Value;
-                }
 
-                // ✅ NUEVO: Inicializar total_debt
-                sale.total_debt = remainingValue;
-
-                if (plan?.number_quotas > 0)
-                {
-                    // ✅ ACTUALIZACIÓN: Quitar el redondeo, usar el valor exacto
-                    sale.quota_value = remainingValue / plan.number_quotas.Value;
-                }
-                else
-                {
-                    sale.quota_value = 0; // O manejar como error si el plan o los valores son inválidos
-                }
+                await CalculateQuotaValueByPlanType(sale, plan);
 
                 _context.Sales.Add(sale);
                 await _context.SaveChangesAsync(); // Guardar la venta para obtener su ID
@@ -277,6 +280,11 @@ namespace mym_softcom.Services
                 existingSale.id_Plans = updatedSale.id_Plans;
                 existingSale.status = updatedSale.status; // Permitir que el estado se actualice desde el frontend
 
+                existingSale.PaymentPlanType = updatedSale.PaymentPlanType;
+                existingSale.CustomQuotasJson = updatedSale.CustomQuotasJson;
+                existingSale.HouseInitialPercentage = updatedSale.HouseInitialPercentage;
+                existingSale.HouseInitialAmount = updatedSale.HouseInitialAmount;
+
                 // ✅ ACTUALIZACIÓN: Sumar el monto pagado a total_raised
                 existingSale.total_raised += paymentAmount;
 
@@ -301,21 +309,7 @@ namespace mym_softcom.Services
                     currentPlan = await _planServices.GetPlanById(updatedSale.id_Plans);
                 }
 
-                decimal newRemainingValue = 0;
-                if (existingSale.total_value.HasValue && existingSale.initial_payment.HasValue)
-                {
-                    newRemainingValue = existingSale.total_value.Value - existingSale.initial_payment.Value;
-                }
-
-                if (currentPlan?.number_quotas > 0)
-                {
-                    // ✅ ACTUALIZACIÓN: Quitar el redondeo, usar el valor exacto
-                    existingSale.quota_value = newRemainingValue / currentPlan.number_quotas.Value;
-                }
-                else
-                {
-                    existingSale.quota_value = 0;
-                }
+                await CalculateQuotaValueByPlanType(existingSale, currentPlan);
 
                 _context.Sales.Update(existingSale);
                 await _context.SaveChangesAsync();
@@ -445,13 +439,102 @@ namespace mym_softcom.Services
             }
         }
 
+        private async Task CalculateQuotaValueByPlanType(Sale sale, Plan? plan)
+        {
+            decimal remainingValue = 0;
 
+            switch (sale.PaymentPlanType?.ToLower())
+            {
+                case "house":
+                    // Para casas: calcular el 30% del valor total y usar ese como base
+                    if (sale.total_value.HasValue)
+                    {
+                        var housePercentage = sale.HouseInitialPercentage ?? 30;
+                        sale.HouseInitialAmount = sale.total_value.Value * (housePercentage / 100);
 
-        // ✅ ELIMINADO: La función RoundToNearestMultiple ya no es necesaria
-        // private decimal RoundToNearestMultiple(decimal value, int multiple)
-        // {
-        //     if (multiple == 0) return value;
-        //     return Math.Round(value / multiple, MidpointRounding.AwayFromZero) * multiple;
-        // }
+                        remainingValue = sale.HouseInitialAmount.Value - (sale.initial_payment ?? 0);
+                        sale.total_debt = remainingValue;
+
+                        if (plan?.number_quotas > 0)
+                        {
+                            sale.quota_value = remainingValue / plan.number_quotas.Value;
+                        }
+                        else
+                        {
+                            sale.quota_value = 0;
+                        }
+
+                        Console.WriteLine($"[SaleServices] House plan: {housePercentage}% of {sale.total_value:C} = {sale.HouseInitialAmount:C}, remaining: {remainingValue:C}");
+                    }
+                    break;
+
+                case "custom":
+                    if (!string.IsNullOrEmpty(sale.CustomQuotasJson))
+                    {
+                        try
+                        {
+                            var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(sale.CustomQuotasJson);
+                            if (customQuotas != null && customQuotas.Count > 0)
+                            {
+                                var totalCustomQuotas = customQuotas.Sum(q => q.Amount);
+
+                                // El total_debt es el total de cuotas personalizadas (ya que estas representan lo que falta por pagar)
+                                sale.total_debt = totalCustomQuotas;
+
+                                // Para cuotas personalizadas, quota_value será el promedio (solo para referencia)
+                                sale.quota_value = totalCustomQuotas / customQuotas.Count;
+
+                                Console.WriteLine($"[SaleServices] Custom plan: {customQuotas.Count} quotas totaling {totalCustomQuotas:C}, average quota: {sale.quota_value:C}");
+
+                                var expectedRemaining = (sale.total_value ?? 0) - (sale.initial_payment ?? 0);
+                                if (Math.Abs(totalCustomQuotas - expectedRemaining) > 1) // Permitir diferencia de $1 por redondeo
+                                {
+                                    Console.WriteLine($"[SaleServices] WARNING: Custom quotas total ({totalCustomQuotas:C}) doesn't match expected remaining ({expectedRemaining:C})");
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("[SaleServices] No custom quotas found, falling back to automatic");
+                                goto case "automatic";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[SaleServices] Error parsing custom quotas: {ex.Message}");
+                            // Fallback to automatic calculation
+                            goto case "automatic";
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[SaleServices] CustomQuotasJson is empty, falling back to automatic");
+                        // Fallback to automatic if no custom quotas defined
+                        goto case "automatic";
+                    }
+                    break;
+
+                case "automatic":
+                default:
+                    // Cálculo automático original
+                    if (sale.total_value.HasValue && sale.initial_payment.HasValue)
+                    {
+                        remainingValue = sale.total_value.Value - sale.initial_payment.Value;
+                    }
+
+                    sale.total_debt = remainingValue;
+
+                    if (plan?.number_quotas > 0)
+                    {
+                        sale.quota_value = remainingValue / plan.number_quotas.Value;
+                    }
+                    else
+                    {
+                        sale.quota_value = 0;
+                    }
+
+                    Console.WriteLine($"[SaleServices] Automatic plan: {remainingValue:C} / {plan?.number_quotas ?? 0} quotas = {sale.quota_value:C}");
+                    break;
+            }
+        }
     }
 }

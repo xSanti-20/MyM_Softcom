@@ -106,6 +106,8 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
     ciudad: "",
     proyecto: "",
     tipoContrato: "",
+    consecutivo: "",
+    areaConstruida: "",
   })
 
   const handleInputChange = (field, value) => {
@@ -127,6 +129,8 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
       ciudad: "",
       proyecto: "",
       tipoContrato: "",
+      consecutivo: "",
+      areaConstruida: "",
     })
     onClose()
   }
@@ -176,6 +180,38 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Consecutivo */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="consecutivo" className="text-right">
+              Consecutivo:
+            </Label>
+            <Input
+              id="consecutivo"
+              value={formData.consecutivo}
+              onChange={(e) => handleInputChange("consecutivo", e.target.value)}
+              className="col-span-3"
+              placeholder="Ej: 001-2024, ARR-001, etc."
+            />
+          </div>
+
+          {/* Área Construida - Solo para casas */}
+          {formData.tipoContrato === "casa" && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="areaConstruida" className="text-right">
+                Área Construida
+              </Label>
+              <Input
+                id="areaConstruida"
+                type="number"
+                value={formData.areaConstruida}
+                onChange={(e) => handleInputChange("areaConstruida", e.target.value)}
+                className="col-span-3"
+                placeholder="Ej: 91"
+                min="1"
+              />
+            </div>
+          )}
 
           {/* Lugar expedición */}
           <div className="grid grid-cols-4 items-center gap-4">

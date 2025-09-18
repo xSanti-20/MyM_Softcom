@@ -503,14 +503,25 @@ class SalesPDFService {
         CLIENTE_EMAIL: (saleData.client?.email || "N/A").toUpperCase(),
         CLIENTE_DIRECCION: (temporaryData.direccion || "N/A").toUpperCase(),
         CLIENTE_CIUDAD: (temporaryData.ciudad || "N/A").toUpperCase(),
+        
+        // Consecutivo del contrato
+        CONSECUTIVO: temporaryData.consecutivo ? temporaryData.consecutivo.toUpperCase() : "",
 
         PROYECTO: (temporaryData.proyecto || "N/A").toUpperCase(),
         LOTE: lote.toUpperCase(),
         MANZANA: manzana.toUpperCase(),
+        LOCATION: (saleData.lot?.location || "N/A").toUpperCase(),
         AREA_LOTE: areaLote.toString().toUpperCase(),
         AREA_LOTE_LETRAS: this.numeroALetrasSinMoneda(areaLote),
+        AREA_CONSTRUIDA: (temporaryData.areaConstruida || saleData.lot?.built_area || "N/A").toString().toUpperCase(),
+        AREA_CONSTRUIDA_LETRAS: this.numeroALetrasSinMoneda(temporaryData.areaConstruida || saleData.lot?.built_area || 0),
 
         // Precios y valores - already uppercase from numeroALetras function
+        PRECIO_LETRAS: numeroALetras(saleData.total_value || 0),
+        PRECIO: new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+        }).format(saleData.total_value || 0).replace(/[.,]/g, '.'),
+
         VALOR_TOTAL_LETRAS: numeroALetras(saleData.total_value || 0),
         VALOR_TOTAL_NUM: new Intl.NumberFormat("es-CO", {
           style: "currency",
@@ -524,6 +535,9 @@ class SalesPDFService {
           currency: "COP",
           minimumFractionDigits: 0,
         }).format(saleData.initial_payment || 0),
+        SEPARACION: new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+        }).format(saleData.initial_payment || 0).replace(/[.,]/g, '.'),
 
         VALOR_50_PORCIENTO_LETRAS: numeroALetras(valor50Porciento),
         VALOR_50_PORCIENTO_NUM: new Intl.NumberFormat("es-CO", {
@@ -531,6 +545,17 @@ class SalesPDFService {
           currency: "COP",
           minimumFractionDigits: 0,
         }).format(valor50Porciento),
+
+        // Saldos para casas (30% y 70%)
+        SALDO_30_LETRAS: numeroALetras((saleData.total_value || 0) * 0.30),
+        SALDO_30: new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+        }).format((saleData.total_value || 0) * 0.30).replace(/[.,]/g, '.'),
+
+        SALDO_70_LETRAS: numeroALetras((saleData.total_value || 0) * 0.70),
+        SALDO_70: new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+        }).format((saleData.total_value || 0) * 0.70).replace(/[.,]/g, '.'),
 
         NUM_CUOTAS: (saleData.plan?.number_quotas || 0).toString(),
         VALOR_CUOTA_LETRAS: numeroALetras(saleData.quota_value || 0),
@@ -547,6 +572,9 @@ class SalesPDFService {
           currency: "COP",
           minimumFractionDigits: 0,
         }).format((saleData.total_value || 0) * 0.1),
+        ARRAS: new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+        }).format((saleData.total_value || 0) * 0.1).replace(/[.,]/g, '.'),
 
         FECHA_ENTREGA: calculateDeliveryDate().toUpperCase(),
 
@@ -561,6 +589,14 @@ class SalesPDFService {
           })
           .toUpperCase(),
         CIUDAD_FIRMA: (temporaryData.ciudad || "N/A").toUpperCase(),
+        
+        // Fechas de firma individuales
+        FECHA_FIRMA_DIA: new Date().getDate().toString(),
+        FECHA_FIRMA_MES: new Date().toLocaleDateString("es-CO", { month: "long" }).toUpperCase(),
+        FECHA_FIRMA_ANO: new Date().getFullYear().toString(),
+        
+        // Número de cuotas
+        CUOTAS: (saleData.quotes || 0).toString(),
 
         // Plan de pagos
         PLAN_PAGOS_HTML: buildPlanPagosHTML(saleData),
@@ -573,6 +609,18 @@ class SalesPDFService {
         const regex = new RegExp(`{{${key}}}`, "g")
         htmlContent = htmlContent.replace(regex, value || "N/A")
       })
+
+      // Agregar comentario con consecutivo para el header del PDF
+      const consecutivo = temporaryData.consecutivo || ""
+      console.log("[v0] Consecutivo from temporaryData:", consecutivo);
+      console.log("[v0] Full temporaryData:", JSON.stringify(temporaryData, null, 2));
+      if (consecutivo) {
+        htmlContent = `<!--CONSECUTIVO:${consecutivo}-->\n${htmlContent}`
+        console.log("[v0] Added consecutivo comment to HTML");
+        console.log("[v0] HTML with comment starts with:", htmlContent.substring(0, 100));
+      } else {
+        console.log("[v0] No consecutivo provided in temporaryData");
+      }
 
       console.log("[v0] Template processed successfully")
       return htmlContent

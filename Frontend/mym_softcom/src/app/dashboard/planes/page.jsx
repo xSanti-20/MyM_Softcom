@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterPlan from "./formplanes"
@@ -46,7 +46,7 @@ function PlanPage() {
     if (callback) callback()
   }
 
-  async function fetchPlans() {
+  const fetchPlans = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Plan/GetAllPlans")
@@ -67,11 +67,11 @@ function PlanPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchPlans()
-  }, [])
+  }, [fetchPlans])
 
   const handleDelete = async (id) => {
     try {

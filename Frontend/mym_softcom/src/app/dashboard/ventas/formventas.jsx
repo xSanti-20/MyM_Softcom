@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, DollarSign, Search, User, MapPin, Loader2, X, Building } from "lucide-react"
+import { Calendar, DollarSign, Search, User, MapPin, Loader2, X, Building, Plus, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showAlert }) {
   const [formData, setFormData] = useState({
@@ -18,7 +20,12 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     id_Lots: "",
     id_Users: "",
     id_Plans: "",
+    paymentPlanType: "automatic",
+    houseInitialPercentage: "30",
+    customQuotas: [],
   })
+
+  const [customQuotaInput, setCustomQuotaInput] = useState({ quotaNumber: "", amount: "" })
 
   // Estados para búsqueda de cliente
   const [clientDocument, setClientDocument] = useState("")
@@ -41,9 +48,94 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   const [loading, setLoading] = useState(false)
   const isEditing = !!saleToEdit
 
+  // Función para calcular el valor de cuota correcto basado en el tipo de plan
+  function calculateDisplayQuotaValue(sale) {
+    if (!sale) return 0
+
+    // Si es plan personalizado y tiene cuotas personalizadas
+    if (sale.paymentPlanType === 'custom' && sale.customQuotasJson) {
+      try {
+        const customQuotas = JSON.parse(sale.customQuotasJson)
+        if (Array.isArray(customQuotas) && customQuotas.length > 0) {
+          // Calcular el promedio de las cuotas personalizadas
+          const total = customQuotas.reduce((sum, quota) => sum + (parseFloat(quota.Amount) || 0), 0)
+          return total / customQuotas.length
+        }
+      } catch (error) {
+        console.error('Error parsing customQuotasJson:', error)
+      }
+    }
+
+    // Para planes automáticos o sin datos personalizados, usar quota_value
+    return sale.quota_value || 0
+  }
+
   // Refs para debounce y manejo de clicks fuera
   const lotSearchDebounceRef = useRef(null)
   const lotSearchContainerRef = useRef(null)
+
+  const addCustomQuota = () => {
+    const quotaNumber = Number.parseInt(customQuotaInput.quotaNumber)
+    const amount = Number.parseFloat(customQuotaInput.amount)
+
+    if (!quotaNumber || !amount || quotaNumber <= 0 || amount <= 0) {
+      showAlert("error", "Por favor ingrese un número de cuota y monto válidos.")
+      return
+    }
+
+    // Check if quota number already exists
+    if (formData.customQuotas.some((q) => q.quotaNumber === quotaNumber)) {
+      showAlert("error", "Ya existe una cuota con ese número.")
+      return
+    }
+
+    const newQuotas = [...formData.customQuotas, { quotaNumber, amount }].sort((a, b) => a.quotaNumber - b.quotaNumber)
+
+    setFormData((prev) => ({ ...prev, customQuotas: newQuotas }))
+    setCustomQuotaInput({ quotaNumber: "", amount: "" })
+  }
+
+  const removeCustomQuota = (quotaNumber) => {
+    setFormData((prev) => ({
+      ...prev,
+      customQuotas: prev.customQuotas.filter((q) => q.quotaNumber !== quotaNumber),
+    }))
+  }
+
+  const calculateTotals = () => {
+    const totalValue = Number.parseFloat(formData.total_value) || 0
+    const initialPayment = Number.parseFloat(formData.initial_payment) || 0
+
+    switch (formData.paymentPlanType) {
+      case "house":
+        const housePercentage = Number.parseFloat(formData.houseInitialPercentage) || 30
+        const houseInitialAmount = totalValue * (housePercentage / 100)
+        const houseRemaining = houseInitialAmount - initialPayment
+        return {
+          baseAmount: houseInitialAmount,
+          remainingAmount: houseRemaining,
+          description: `${housePercentage}% del valor total`,
+          totalDebt: houseRemaining,
+        }
+      case "custom":
+        const customTotal = formData.customQuotas.reduce((sum, quota) => sum + quota.amount, 0)
+        return {
+          baseAmount: customTotal,
+          remainingAmount: customTotal,
+          description: `${formData.customQuotas.length} cuotas personalizadas`,
+          totalDebt: customTotal,
+        }
+      case "automatic":
+      default:
+        const automaticRemaining = totalValue - initialPayment
+        return {
+          baseAmount: totalValue,
+          remainingAmount: automaticRemaining,
+          description: "Valor total menos separado",
+          totalDebt: automaticRemaining,
+        }
+    }
+  }
 
   // Función para buscar cliente por documento
   const handleSearchClient = useCallback(async () => {
@@ -294,6 +386,19 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   // Poblar formulario para edición
   useEffect(() => {
     if (isEditing && saleToEdit) {
+      let customQuotas = []
+      if (saleToEdit.customQuotasJson) {
+        try {
+          const parsed = JSON.parse(saleToEdit.customQuotasJson)
+          customQuotas = parsed.map((q) => ({
+            quotaNumber: q.QuotaNumber || q.quotaNumber,
+            amount: q.Amount || q.amount,
+          }))
+        } catch (e) {
+          console.error("Error parsing custom quotas:", e)
+        }
+      }
+
       setFormData({
         sale_date: saleToEdit.sale_date ? new Date(saleToEdit.sale_date).toISOString().split("T")[0] : "",
         total_value: saleToEdit.total_value?.toString() || "",
@@ -302,6 +407,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         id_Lots: saleToEdit.id_Lots?.toString() || "",
         id_Users: saleToEdit.id_Users?.toString() || "",
         id_Plans: saleToEdit.id_Plans?.toString() || "",
+        paymentPlanType: saleToEdit.paymentPlanType?.toLowerCase() || "automatic",
+        houseInitialPercentage: saleToEdit.houseInitialPercentage?.toString() || "30",
+        customQuotas: customQuotas,
       })
 
       // Cargar cliente para edición
@@ -337,6 +445,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         id_Lots: "",
         id_Users: "",
         id_Plans: "",
+        paymentPlanType: "automatic",
+        houseInitialPercentage: "30",
+        customQuotas: [],
       })
       setClientDocument("")
       setFoundClient(null)
@@ -368,7 +479,8 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const { sale_date, total_value, initial_payment, id_Clients, id_Lots, id_Users, id_Plans } = formData
+    const { sale_date, total_value, initial_payment, id_Clients, id_Lots, id_Users, id_Plans, paymentPlanType } =
+      formData
 
     if (!sale_date || !total_value || !initial_payment || !id_Clients || !id_Lots || !id_Users || !id_Plans) {
       showAlert("error", "Todos los campos obligatorios deben ser completados.")
@@ -377,6 +489,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
     if (!selectedProject) {
       showAlert("error", "Debe seleccionar un proyecto.")
+      return
+    }
+
+    if (paymentPlanType === "custom" && formData.customQuotas.length === 0) {
+      showAlert("error", "Debe agregar al menos una cuota personalizada.")
       return
     }
 
@@ -404,9 +521,26 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       id_Lots: Number.parseInt(id_Lots, 10),
       id_Users: Number.parseInt(id_Users, 10),
       id_Plans: Number.parseInt(id_Plans, 10),
+      paymentPlanType: paymentPlanType,
+      customQuotasJson:
+        paymentPlanType === "custom"
+          ? JSON.stringify(
+            formData.customQuotas.map((q) => ({
+              QuotaNumber: q.quotaNumber,
+              Amount: q.amount,
+            })),
+          )
+          : null,
+      houseInitialPercentage: paymentPlanType === "house" ? Number.parseFloat(formData.houseInitialPercentage) : null,
+      houseInitialAmount:
+        paymentPlanType === "house"
+          ? parsedTotalValue * (Number.parseFloat(formData.houseInitialPercentage) / 100)
+          : null,
     }
 
-    if (isEditing) {
+    if (!isEditing) {
+      body.status = "Active" // Valor por defecto para ventas nuevas
+    } else {
       body.id_Sales = saleToEdit.id_Sales
       body.total_raised = saleToEdit.total_raised
       body.total_debt = saleToEdit.total_debt
@@ -422,6 +556,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         response = await axiosInstance.post("/api/Sale/CreateSale", body)
       }
 
+      console.log("[v0] Datos que se envían al backend:", body)
+      console.log("[v0] Respuesta del servidor:", response.data)
+
       const successMessage =
         response.data?.message || (isEditing ? "Venta actualizada con éxito." : "Venta registrada con éxito.")
 
@@ -436,6 +573,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           id_Lots: "",
           id_Users: "",
           id_Plans: "",
+          paymentPlanType: "automatic",
+          houseInitialPercentage: "30",
+          customQuotas: [],
         })
         setClientDocument("")
         setFoundClient(null)
@@ -463,376 +603,713 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     }
   }
 
+  const totals = calculateTotals()
+
+  const [batchQuotaInput, setBatchQuotaInput] = useState({
+    startQuota: "",
+    endQuota: "",
+    amount: "",
+  })
+  const [quotaInputMode, setQuotaInputMode] = useState("individual") // "individual" or "batch"
+
+  const addBatchQuotas = () => {
+    const startQuota = Number.parseInt(batchQuotaInput.startQuota)
+    const endQuota = Number.parseInt(batchQuotaInput.endQuota)
+    const amount = Number.parseFloat(batchQuotaInput.amount)
+
+    if (!startQuota || !endQuota || !amount || startQuota <= 0 || endQuota <= 0 || amount <= 0) {
+      showAlert("error", "Por favor ingrese valores válidos para el rango de cuotas y monto.")
+      return
+    }
+
+    if (startQuota > endQuota) {
+      showAlert("error", "El número de cuota inicial debe ser menor o igual al final.")
+      return
+    }
+
+    // Check for existing quotas in the range
+    const existingQuotas = formData.customQuotas.filter((q) => q.quotaNumber >= startQuota && q.quotaNumber <= endQuota)
+
+    if (existingQuotas.length > 0) {
+      showAlert("error", `Ya existen cuotas en el rango ${startQuota}-${endQuota}.`)
+      return
+    }
+
+    // Create batch quotas
+    const newQuotas = []
+    for (let i = startQuota; i <= endQuota; i++) {
+      newQuotas.push({ quotaNumber: i, amount })
+    }
+
+    const allQuotas = [...formData.customQuotas, ...newQuotas].sort((a, b) => a.quotaNumber - b.quotaNumber)
+
+    setFormData((prev) => ({ ...prev, customQuotas: allQuotas }))
+    setBatchQuotaInput({ startQuota: "", endQuota: "", amount: "" })
+
+    showAlert("success", `Se agregaron ${newQuotas.length} cuotas del ${startQuota} al ${endQuota}.`)
+  }
+
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
+    <div className="max-w-full mx-auto p-6 bg-white rounded-lg">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-800">{isEditing ? "Editar Venta" : "Registrar Nueva Venta"}</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Columna izquierda: Información de la Venta */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Detalles de la Venta</h3>
+        {/* Detalles de la Venta */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700">Detalles de la Venta</h3>
 
-            {/* Fecha de Venta */}
-            <div>
-              <Label htmlFor="sale_date" className="block text-sm font-medium text-gray-700 mb-1">
-                Fecha de Venta *
-              </Label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  id="sale_date"
-                  name="sale_date"
-                  value={formData.sale_date}
-                  onChange={handleChange}
-                  required
-                  className="w-full pr-10"
-                />
-                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              </div>
-            </div>
-
-            {/* Valor Total */}
-            <div>
-              <Label htmlFor="total_value" className="block text-sm font-medium text-gray-700 mb-1">
-                Valor Total *
-              </Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  id="total_value"
-                  name="total_value"
-                  placeholder="Ej: 44000000"
-                  value={formData.total_value}
-                  onChange={handleChange}
-                  step="0.01"
-                  required
-                  className="w-full pr-10"
-                />
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              </div>
-            </div>
-
-            {/* Cuota Inicial */}
-            <div>
-              <Label htmlFor="initial_payment" className="block text-sm font-medium text-gray-700 mb-1">
-                Cuota Inicial *
-              </Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  id="initial_payment"
-                  name="initial_payment"
-                  placeholder="Ej: 2000000"
-                  value={formData.initial_payment}
-                  onChange={handleChange}
-                  step="0.01"
-                  required
-                  className="w-full pr-10"
-                />
-                <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              </div>
+          {/* Fecha de Venta */}
+          <div>
+            <Label htmlFor="sale_date" className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha de Venta *
+            </Label>
+            <div className="relative">
+              <Input
+                type="date"
+                id="sale_date"
+                name="sale_date"
+                value={formData.sale_date}
+                onChange={handleChange}
+                required
+                className="w-full pr-10"
+              />
+              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             </div>
           </div>
 
-          {/* Columna derecha: Relaciones */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Asociaciones</h3>
-
-            {/* Cliente - Búsqueda por Documento */}
-            <div>
-              <Label htmlFor="client_document" className="block text-sm font-medium text-gray-700 mb-1">
-                Documento del Cliente *
-              </Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    type="number"
-                    id="client_document"
-                    name="client_document"
-                    placeholder="Documento del cliente"
-                    value={clientDocument}
-                    onChange={(e) => setClientDocument(e.target.value)}
-                    required
-                    className="w-full pr-10"
-                    disabled={clientSearchLoading}
-                  />
-                  <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                </div>
-                <Button
-                  type="button"
-                  onClick={handleSearchClient}
-                  disabled={clientSearchLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {clientSearchLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
-                  {clientSearchLoading ? "Buscando..." : "Buscar"}
-                </Button>
-              </div>
-              {clientSearchError && <p className="text-red-500 text-sm mt-1">{clientSearchError}</p>}
-              {foundClient && (
-                <div className="mt-2 p-3 border border-blue-200 bg-blue-50 rounded-md text-sm text-blue-800">
-                  <p className="font-semibold">Cliente Seleccionado:</p>
-                  <p>
-                    <strong>Nombre:</strong> {foundClient.names} {foundClient.surnames}
-                  </p>
-                  <p>
-                    <strong>Documento:</strong> {foundClient.document}
-                  </p>
-                  <p>
-                    <strong>Teléfono:</strong> {foundClient.phone || "N/A"}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {foundClient.email || "N/A"}
-                  </p>
-                </div>
-              )}
+          {/* Valor Total */}
+          <div>
+            <Label htmlFor="total_value" className="block text-sm font-medium text-gray-700 mb-1">
+              Valor Total *
+            </Label>
+            <div className="relative">
+              <Input
+                type="number"
+                id="total_value"
+                name="total_value"
+                placeholder="Ej: 44000000"
+                value={formData.total_value}
+                onChange={handleChange}
+                step="0.01"
+                required
+                className="w-full pr-10"
+              />
+              <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             </div>
+          </div>
 
-            {/* Selección de Proyecto */}
-            <div>
-              <Label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">
-                Proyecto *
-              </Label>
-              <div className="relative">
-                <Select name="project" value={selectedProject} onValueChange={handleProjectChange} required>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecciona un proyecto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Building
-                  className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                  size={16}
-                />
-              </div>
+          {/* Cuota Inicial */}
+          <div>
+            <Label htmlFor="initial_payment" className="block text-sm font-medium text-gray-700 mb-1">
+              Cuota Inicial *
+            </Label>
+            <div className="relative">
+              <Input
+                type="number"
+                id="initial_payment"
+                name="initial_payment"
+                placeholder="Ej: 2000000"
+                value={formData.initial_payment}
+                onChange={handleChange}
+                step="0.01"
+                required
+                className="w-full pr-10"
+              />
+              <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             </div>
+          </div>
 
-            {/* Búsqueda de Lotes Mejorada */}
-            <div ref={lotSearchContainerRef} className="relative">
-              <Label htmlFor="lot_search" className="block text-sm font-medium text-gray-700 mb-1">
-                Buscar Lote *
+          <div>
+            <Label className="block text-sm font-medium text-gray-700 mb-3">Tipo de Plan de Pago *</Label>
+            <RadioGroup
+              value={formData.paymentPlanType}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, paymentPlanType: value }))}
+              className="space-y-2"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="automatic" id="automatic" />
+                <Label htmlFor="automatic" className="text-sm">
+                  Automático (fórmula estándar)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="custom" id="custom" />
+                <Label htmlFor="custom" className="text-sm">
+                  Personalizado (cuotas definidas)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="house" id="house" />
+                <Label htmlFor="house" className="text-sm">
+                  Para casas (30% inicial)
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {formData.paymentPlanType === "house" && (
+            <div>
+              <Label htmlFor="houseInitialPercentage" className="block text-sm font-medium text-gray-700 mb-1">
+                Porcentaje Inicial para Casas (%)
               </Label>
-              <div className="text-xs text-gray-500 mb-2">Formatos válidos: A-28, A28, B-5, B5, etc.</div>
-              <div className="relative">
+              <Input
+                type="number"
+                id="houseInitialPercentage"
+                name="houseInitialPercentage"
+                value={formData.houseInitialPercentage}
+                onChange={handleChange}
+                min="1"
+                max="100"
+                step="0.1"
+                className="w-full"
+              />
+            </div>
+          )}
+
+        </div>
+
+        {/* Asociaciones */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-700">Asociaciones</h3>
+
+          {/* Cliente - Búsqueda por Documento */}
+          <div>
+            <Label htmlFor="client_document" className="block text-sm font-medium text-gray-700 mb-1">
+              Documento del Cliente *
+            </Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
                 <Input
-                  type="text"
-                  id="lot_search"
-                  name="lot_search"
-                  placeholder={selectedProject ? "Ej: A-28, A28, B-5..." : "Primero seleccione un proyecto"}
-                  value={lotSearchTerm}
-                  onChange={(e) => {
-                    setLotSearchTerm(e.target.value)
-                    if (!e.target.value.trim()) {
-                      handleClearLotSelection()
-                    }
-                  }}
-                  onFocus={() => {
-                    if (lotSearchResults.length > 0) {
-                      setShowLotResults(true)
-                    }
-                  }}
-                  className="w-full pr-20"
+                  type="number"
+                  id="client_document"
+                  name="client_document"
+                  placeholder="Documento del cliente"
+                  value={clientDocument}
+                  onChange={(e) => setClientDocument(e.target.value)}
                   required
-                  disabled={!selectedProject}
+                  className="w-full pr-10"
+                  disabled={clientSearchLoading}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                  {lotSearchLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
-                  {selectedLot && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearLotSelection}
-                      className="h-6 w-6 p-0 hover:bg-gray-100"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  )}
-                  <MapPin className="h-4 w-4 text-gray-400" />
-                </div>
+                <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
+              <Button
+                type="button"
+                onClick={handleSearchClient}
+                disabled={clientSearchLoading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {clientSearchLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="mr-2 h-4 w-4" />
+                )}
+                {clientSearchLoading ? "Buscando..." : "Buscar"}
+              </Button>
+            </div>
+            {clientSearchError && <p className="text-red-500 text-sm mt-1">{clientSearchError}</p>}
+            {foundClient && (
+              <div className="mt-2 p-3 border border-blue-200 bg-blue-50 rounded-md text-sm text-blue-800">
+                <p className="font-semibold">Cliente Seleccionado:</p>
+                <p>
+                  <strong>Nombre:</strong> {foundClient.names} {foundClient.surnames}
+                </p>
+                <p>
+                  <strong>Documento:</strong> {foundClient.document}
+                </p>
+                <p>
+                  <strong>Teléfono:</strong> {foundClient.phone || "N/A"}
+                </p>
+                <p>
+                  <strong>Email:</strong> {foundClient.email || "N/A"}
+                </p>
+              </div>
+            )}
+          </div>
 
-              {/* Resultados de búsqueda de lotes - UI mejorada */}
-              {showLotResults && lotSearchResults.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  <div className="sticky top-0 bg-gray-50 px-3 py-2 text-xs text-gray-600 border-b">
-                    {lotSearchResults.length} lote{lotSearchResults.length !== 1 ? "s" : ""} encontrado
-                    {lotSearchResults.length !== 1 ? "s" : ""}
-                  </div>
-                  {lotSearchResults.map((lot) => (
-                    <div
-                      key={lot.id_Lots}
-                      onClick={() => handleSelectLot(lot)}
-                      className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900">
-                            {lot.block || lot.manzana}-{lot.lot_number || lot.numero}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {lot.price?.toLocaleString("es-CO", {
-                              style: "currency",
-                              currency: "COP",
-                              minimumFractionDigits: 0,
-                            })}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={lot.status === "Libre" || lot.status === "Disponible" ? "default" : "secondary"}
-                          className="ml-2 shrink-0"
-                        >
-                          {lot.status}
-                        </Badge>
+          {/* Selección de Proyecto */}
+          <div>
+            <Label htmlFor="project" className="block text-sm font-medium text-gray-700 mb-1">
+              Proyecto *
+            </Label>
+            <div className="relative">
+              <Select name="project" value={selectedProject} onValueChange={handleProjectChange} required>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecciona un proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Building
+                className="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                size={16}
+              />
+            </div>
+          </div>
+
+          {/* Búsqueda de Lotes Mejorada */}
+          <div ref={lotSearchContainerRef} className="relative">
+            <Label htmlFor="lot_search" className="block text-sm font-medium text-gray-700 mb-1">
+              Buscar Lote *
+            </Label>
+            <div className="text-xs text-gray-500 mb-2">Formatos válidos: A-28, A28, B-5, B5, etc.</div>
+            <div className="relative">
+              <Input
+                type="text"
+                id="lot_search"
+                name="lot_search"
+                placeholder={selectedProject ? "Ej: A-28, A28, B-5..." : "Primero seleccione un proyecto"}
+                value={lotSearchTerm}
+                onChange={(e) => {
+                  setLotSearchTerm(e.target.value)
+                  if (!e.target.value.trim()) {
+                    handleClearLotSelection()
+                  }
+                }}
+                onFocus={() => {
+                  if (lotSearchResults.length > 0) {
+                    setShowLotResults(true)
+                  }
+                }}
+                className="w-full pr-20"
+                required
+                disabled={!selectedProject}
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {lotSearchLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+                {selectedLot && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearLotSelection}
+                    className="h-6 w-6 p-0 hover:bg-gray-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+                <MapPin className="h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Resultados de búsqueda de lotes - UI mejorada */}
+            {showLotResults && lotSearchResults.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                <div className="sticky top-0 bg-gray-50 px-3 py-2 text-xs text-gray-600 border-b">
+                  {lotSearchResults.length} lote{lotSearchResults.length !== 1 ? "s" : ""} encontrado
+                  {lotSearchResults.length !== 1 ? "s" : ""}
+                </div>
+                {lotSearchResults.map((lot) => (
+                  <div
+                    key={lot.id_Lots}
+                    onClick={() => handleSelectLot(lot)}
+                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">
+                          {lot.block || lot.manzana}-{lot.lot_number || lot.numero}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {lot.price?.toLocaleString("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                            minimumFractionDigits: 0,
+                          })}
+                        </p>
                       </div>
+                      <Badge
+                        variant={lot.status === "Libre" || lot.status === "Disponible" ? "default" : "secondary"}
+                        className="ml-2 shrink-0"
+                      >
+                        {lot.status}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
+            )}
 
-              {/* Error de búsqueda de lotes - Solo mostrar si no hay lote seleccionado */}
-              {lotSearchError && !selectedLot && <p className="text-red-500 text-sm mt-1">{lotSearchError}</p>}
+            {/* Error de búsqueda de lotes - Solo mostrar si no hay lote seleccionado */}
+            {lotSearchError && !selectedLot && <p className="text-red-500 text-sm mt-1">{lotSearchError}</p>}
 
-              {/* Lote seleccionado */}
-              {selectedLot && (
-                <div className="mt-2 p-3 border border-green-200 bg-green-50 rounded-md text-sm text-green-800">
-                  <p className="font-semibold">Lote Seleccionado:</p>
-                  <p>
-                    <strong>Lote:</strong> {selectedLot.block || selectedLot.manzana}-
-                    {selectedLot.lot_number || selectedLot.numero}
-                  </p>
-                  <p>
-                    <strong>Proyecto:</strong> {selectedLot.project?.name || "N/A"}
-                  </p>
-                </div>
-              )}
+            {/* Lote seleccionado */}
+            {selectedLot && (
+              <div className="mt-2 p-3 border border-green-200 bg-green-50 rounded-md text-sm text-green-800">
+                <p className="font-semibold">Lote Seleccionado:</p>
+                <p>
+                  <strong>Lote:</strong> {selectedLot.block || selectedLot.manzana}-
+                  {selectedLot.lot_number || selectedLot.numero}
+                </p>
+                <p>
+                  <strong>Proyecto:</strong> {selectedLot.project?.name || "N/A"}
+                </p>
+              </div>
+            )}
 
-              {/* Mensaje cuando no hay proyecto seleccionado */}
-              {!selectedProject && (
-                <p className="text-amber-600 text-sm mt-1">⚠️ Seleccione primero un proyecto para buscar lotes</p>
-              )}
-            </div>
+            {/* Mensaje cuando no hay proyecto seleccionado */}
+            {!selectedProject && (
+              <p className="text-amber-600 text-sm mt-1">⚠️ Seleccione primero un proyecto para buscar lotes</p>
+            )}
+          </div>
 
-            {/* Usuario */}
-            <div>
-              <Label htmlFor="id_Users" className="block text-sm font-medium text-gray-700 mb-1">
-                Usuario *
-              </Label>
-              <Select
-                name="id_Users"
-                value={formData.id_Users}
-                onValueChange={(value) => handleSelectChange("id_Users", value)}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona un usuario" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user) => (
-                    <SelectItem key={user.id_Users} value={user.id_Users.toString()}>
-                      {user.nom_Users}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Usuario */}
+          <div>
+            <Label htmlFor="id_Users" className="block text-sm font-medium text-gray-700 mb-1">
+              Usuario *
+            </Label>
+            <Select
+              name="id_Users"
+              value={formData.id_Users}
+              onValueChange={(value) => handleSelectChange("id_Users", value)}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecciona un usuario" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((user) => (
+                  <SelectItem key={user.id_Users} value={user.id_Users.toString()}>
+                    {user.nom_Users}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Plan */}
-            <div>
-              <Label htmlFor="id_Plans" className="block text-sm font-medium text-gray-700 mb-1">
-                Plan *
-              </Label>
-              <Select
-                name="id_Plans"
-                value={formData.id_Plans}
-                onValueChange={(value) => handleSelectChange("id_Plans", value)}
-                required
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona un plan" />
-                </SelectTrigger>
-                <SelectContent>
-                  {plans.map((plan) => (
-                    <SelectItem key={plan.id_Plans} value={plan.id_Plans.toString()}>
-                      {plan.name} ({plan.number_quotas} cuotas)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Plan */}
+          <div>
+            <Label htmlFor="id_Plans" className="block text-sm font-medium text-gray-700 mb-1">
+              Plan *
+            </Label>
+            <Select
+              name="id_Plans"
+              value={formData.id_Plans}
+              onValueChange={(value) => handleSelectChange("id_Plans", value)}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecciona un plan" />
+              </SelectTrigger>
+              <SelectContent>
+                {plans.map((plan) => (
+                  <SelectItem key={plan.id_Plans} value={plan.id_Plans.toString()}>
+                    {plan.name} ({plan.number_quotas} cuotas)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        {/* Campos de solo lectura para edición */}
-        {isEditing && saleToEdit && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t mt-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700">Estado Financiero</h3>
-              <div>
-                <Label className="block text-sm font-medium text-gray-700 mb-1">Recaudo Total</Label>
-                <Input
-                  type="text"
-                  value={
-                    saleToEdit.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
-                  }
-                  readOnly
-                  disabled
-                  className="w-full bg-gray-100 cursor-not-allowed"
-                />
+        {/* Resumen de Pago */}
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              Resumen de Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-100">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wide">Tipo de Plan</span>
+                    <div className="font-semibold text-blue-700">
+                      {formData.paymentPlanType === "automatic"
+                        ? "Automático"
+                        : formData.paymentPlanType === "custom"
+                          ? "Personalizado"
+                          : "Para Casas"}
+                    </div>
+                  </div>
+                  {formData.paymentPlanType === "custom" && (
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide">Cuotas</span>
+                      <div className="font-semibold text-blue-700">{formData.customQuotas.length}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <Label className="block text-sm font-medium text-gray-700 mb-1">Deuda Total</Label>
-                <Input
-                  type="text"
-                  value={
-                    saleToEdit.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
-                  }
-                  readOnly
-                  disabled
-                  className="w-full bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700">Detalles del Plan</h3>
-              <div>
-                <Label className="block text-sm font-medium text-gray-700 mb-1">Valor Cuota</Label>
-                <Input
-                  type="text"
-                  value={
-                    saleToEdit.quota_value?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
-                  }
-                  readOnly
-                  disabled
-                  className="w-full bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-              <div>
-                <Label className="block text-sm font-medium text-gray-700 mb-1">Estado de Venta</Label>
-                <Input
-                  type="text"
-                  value={saleToEdit.status || "N/A"}
-                  readOnly
-                  disabled
-                  className="w-full bg-gray-100 cursor-not-allowed"
-                />
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-gray-50 p-2 rounded">
+                  <span className="text-gray-600 text-xs block">Base</span>
+                  <span className="font-medium">{totals.description}</span>
+                </div>
+                <div className="bg-gray-50 p-2 rounded">
+                  <span className="text-gray-600 text-xs block">Monto Base</span>
+                  <span className="font-medium">${totals.baseAmount.toLocaleString('es-CO')}</span>
+                </div>
+                <div className="bg-gray-50 p-2 rounded">
+                  <span className="text-gray-600 text-xs block">Deuda Total</span>
+                  <span className="font-medium">${totals.totalDebt.toLocaleString('es-CO')}</span>
+                </div>
+                <div className="bg-green-50 p-2 rounded border border-green-200">
+                  <span className="text-green-600 text-xs block">Cuota Inicial</span>
+                  <span className="font-semibold text-green-700">${(Number.parseFloat(formData.initial_payment) || 0).toLocaleString('es-CO')}</span>
+                </div>
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        {/* Configuración de Plan */}
+        {formData.paymentPlanType === "custom" ? (
+          <Card className="h-fit border-l-4 border-l-green-500">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                Cuotas Personalizadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg">
+                <Button
+                  type="button"
+                  variant={quotaInputMode === "individual" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setQuotaInputMode("individual")}
+                  className={`flex-1 ${quotaInputMode === "individual" ? "bg-white shadow-sm" : "hover:bg-gray-200"}`}
+                >
+                  📝 Individual
+                </Button>
+                <Button
+                  type="button"
+                  variant={quotaInputMode === "batch" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setQuotaInputMode("batch")}
+                  className={`flex-1 ${quotaInputMode === "batch" ? "bg-white shadow-sm" : "hover:bg-gray-200"}`}
+                >
+                  📦 En Lote
+                </Button>
+              </div>
+
+              {quotaInputMode === "individual" && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">Agregar Cuota Individual</h4>
+                  <div className="flex gap-2">
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        placeholder="# Cuota"
+                        value={customQuotaInput.quotaNumber}
+                        onChange={(e) => setCustomQuotaInput((prev) => ({ ...prev, quotaNumber: e.target.value }))}
+                        className="text-center"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="number"
+                        placeholder="Valor de la cuota"
+                        value={customQuotaInput.amount}
+                        onChange={(e) => setCustomQuotaInput((prev) => ({ ...prev, amount: e.target.value }))}
+                      />
+                    </div>
+                    <Button type="button" onClick={addCustomQuota} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {quotaInputMode === "batch" && (
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-3">
+                  <h4 className="text-sm font-medium text-green-800 mb-2">Agregar Cuotas en Lote</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Desde cuota #</label>
+                      <Input
+                        type="number"
+                        placeholder="1"
+                        value={batchQuotaInput.startQuota}
+                        onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, startQuota: e.target.value }))}
+                        className="text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Hasta cuota #</label>
+                      <Input
+                        type="number"
+                        placeholder="35"
+                        value={batchQuotaInput.endQuota}
+                        onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, endQuota: e.target.value }))}
+                        className="text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Valor por cuota</label>
+                      <Input
+                        type="number"
+                        placeholder="1000000"
+                        value={batchQuotaInput.amount}
+                        onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, amount: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-green-700">
+                      💡 Crea múltiples cuotas con el mismo valor de una vez
+                    </p>
+                    <Button type="button" onClick={addBatchQuotas} size="sm" className="bg-green-600 hover:bg-green-700">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Agregar Lote
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="max-h-80 overflow-y-auto border rounded-lg bg-gray-50">
+                {formData.customQuotas.length === 0 ? (
+                  <div className="text-center py-6">
+                    <div className="text-gray-400 mb-2">
+                      <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-500">No hay cuotas agregadas</p>
+                  </div>
+                ) : (
+                  <div className="p-2">
+                    <div className="bg-white rounded border mb-2 p-2">
+                      <div className="flex justify-between text-xs text-gray-500 font-medium">
+                        <span>CUOTA</span>
+                        <span>VALOR</span>
+                        <span></span>
+                      </div>
+                    </div>
+                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                      {formData.customQuotas.map((quota) => (
+                        <div
+                          key={quota.quotaNumber}
+                          className="flex items-center justify-between p-2 bg-white border border-gray-100 rounded hover:border-green-300 hover:shadow-sm transition-all"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">
+                              {quota.quotaNumber}
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              ${quota.amount.toLocaleString('es-CO')}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCustomQuota(quota.quotaNumber)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 w-6 h-6 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {formData.customQuotas.length > 0 && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-center">
+                        <span className="text-green-700 font-medium">
+                          {formData.customQuotas.length} cuotas configuradas
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="h-fit border-l-4 border-l-gray-400">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                Configuración de Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <div className="text-gray-400 mb-2">
+                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 font-medium">
+                  {formData.paymentPlanType === "automatic"
+                    ? "Plan automático configurado"
+                    : "Plan de casa (30% inicial) configurado"}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Las cuotas se calculan automáticamente
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Campos de solo lectura para edición */}
+        {
+          isEditing && saleToEdit && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t mt-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Estado Financiero</h3>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">Recaudo Total</Label>
+                  <Input
+                    type="text"
+                    value={
+                      saleToEdit.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
+                    }
+                    readOnly
+                    disabled
+                    className="w-full bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">Deuda Total</Label>
+                  <Input
+                    type="text"
+                    value={
+                      saleToEdit.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
+                    }
+                    readOnly
+                    disabled
+                    className="w-full bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-700">Detalles del Plan</h3>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">Valor Cuota</Label>
+                  <Input
+                    type="text"
+                    value={
+                      calculateDisplayQuotaValue(saleToEdit)?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) || "N/A"
+                    }
+                    readOnly
+                    disabled
+                    className="w-full bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <Label className="block text-sm font-medium text-gray-700 mb-1">Estado de Venta</Label>
+                  <Input
+                    type="text"
+                    value={saleToEdit.status || "N/A"}
+                    readOnly
+                    disabled
+                    className="w-full bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        }
 
         <div className="flex justify-end space-x-4 pt-6 border-t">
           <Button type="button" onClick={onCancelEdit} variant="outline" disabled={loading}>

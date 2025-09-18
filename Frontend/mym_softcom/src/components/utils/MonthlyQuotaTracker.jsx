@@ -32,54 +32,46 @@ const formatDate = (dateString) => {
 export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
   const [showRedistributionModal, setShowRedistributionModal] = useState(false)
 
-  // 🔹 Copia local de props
-  const [localSale, setLocalSale] = useState(sale)
-  const [localPaymentDetails, setLocalPaymentDetails] = useState(paymentDetails)
-
   useEffect(() => {
     if (sale && paymentDetails) {
       console.log("[v0] Quota data updated - refreshing display")
-      console.log("[v0] Sale data received:", {
-        quota_value: sale.quota_value,
-        originalQuotaValue: sale.originalQuotaValue,
-        newQuotaValue: sale.newQuotaValue,
-        NewQuotaValue: sale.NewQuotaValue,
-        redistributedQuotaNumbers: sale.redistributedQuotaNumbers,
-      })
-      setLocalSale(sale)
-      setLocalPaymentDetails(paymentDetails)
     }
   }, [sale, paymentDetails])
 
-  if (!localSale || !localSale.plan) {
+  if (!sale || !sale.plan) {
     return <p className="text-center text-gray-500">No hay información de venta o plan disponible para las cuotas.</p>
   }
 
-  const totalQuotas = localSale.plan.number_quotas || 0
-  const quotaValue = localSale.quota_value || 0
-  const originalQuotaValue = localSale.originalQuotaValue || quotaValue
-  const newQuotaValue = localSale.newQuotaValue || localSale.NewQuotaValue || null
-  const lastQuotaValue = localSale.lastQuotaValue || localSale.LastQuotaValue || null
+  const totalQuotas = sale.plan.number_quotas || 0
+  const quotaValue = sale.quota_value || 0
+  const originalQuotaValue = sale.originalQuotaValue || quotaValue
+  const newQuotaValue = sale.newQuotaValue || sale.NewQuotaValue || null
+  const lastQuotaValue = sale.lastQuotaValue || sale.LastQuotaValue || null
 
-  console.log("[v0] DEBUGGING QUOTA VALUES:")
-  console.log("[v0] - quotaValue (current):", quotaValue)
-  console.log("[v0] - originalQuotaValue (preserved):", originalQuotaValue)
-  console.log("[v0] - newQuotaValue (calculated):", newQuotaValue)
-  console.log("[v0] - lastQuotaValue (for last quota):", lastQuotaValue)
-  console.log("[v0] - redistributedQuotaNumbers:", localSale.redistributedQuotaNumbers)
+  let customQuotas = null
+  // Priorizar los nombres de campo en minúsculas que espera el backend
+  const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
+  const customQuotasJson = sale.customQuotasJson || sale.CustomQuotasJson
+  
+  if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+    try {
+      customQuotas = JSON.parse(customQuotasJson)
+      console.log("[v0] Custom plan detected with", customQuotas?.length, "personalized quotas")
+    } catch (error) {
+      console.error("Error parsing custom quotas JSON:", error)
+    }
+  }
 
-  const redistributionAmount = localSale.redistributionAmount || 0
-  const redistributionType = localSale.redistributionType || null
-  const redistributedQuotaNumbers = localSale.redistributedQuotaNumbers
-    ? JSON.parse(localSale.redistributedQuotaNumbers)
-    : []
+  const redistributionAmount = sale.redistributionAmount || 0
+  const redistributionType = sale.redistributionType || null
+  const redistributedQuotaNumbers = sale.redistributedQuotaNumbers ? JSON.parse(sale.redistributedQuotaNumbers) : []
 
-  const saleDate = new Date(localSale.sale_date)
+  const saleDate = new Date(sale.sale_date)
   const currentDate = new Date()
 
   const aggregatedQuotas = new Map()
 
-  localPaymentDetails.forEach((detail) => {
+  paymentDetails.forEach((detail) => {
     if (detail.number_quota > 0) {
       const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0, paymentDates: [] }
       current.covered += detail.covered_amount || 0
@@ -106,9 +98,16 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
     let adjustedQuotaValue
 
-    if (isOverdueRedistributed) {
+    if (customQuotas && customQuotas.length > 0) {
+      // Use custom quota values for personalized plans
+      const customQuota = customQuotas.find((q) => q.QuotaNumber === i)
+      if (customQuota) {
+        adjustedQuotaValue = customQuota.Amount
+      } else {
+        adjustedQuotaValue = quotaValue
+      }
+    } else if (isOverdueRedistributed) {
       adjustedQuotaValue = originalQuotaValue
-      console.log(`[v0] Quota ${i} is REDISTRIBUTED - using originalQuotaValue: ${originalQuotaValue}`)
     } else if (redistributedQuotaNumbers.length > 0 && newQuotaValue !== null) {
       const pendingQuotas = []
       for (let j = 1; j <= totalQuotas; j++) {
@@ -120,22 +119,11 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
       if (redistributionType === "lastQuota" && isLastPendingQuota && lastQuotaValue !== null) {
         adjustedQuotaValue = lastQuotaValue
-        console.log(
-          `[v0] Quota ${i} is LAST QUOTA with lastQuota redistribution - using lastQuotaValue: ${lastQuotaValue}`,
-        )
       } else {
         adjustedQuotaValue = newQuotaValue
-        console.log(`[v0] Quota ${i} is PENDING after redistribution - using newQuotaValue: ${newQuotaValue}`)
       }
     } else {
-      adjustedQuotaValue = originalQuotaValue
-      console.log(`[v0] Quota ${i} NO redistribution - using originalQuotaValue: ${originalQuotaValue}`)
-    }
-
-    if (isOverdueRedistributed && adjustedQuotaValue !== originalQuotaValue) {
-      console.error(
-        `[v0] ERROR: Redistributed quota ${i} should show ${originalQuotaValue} but showing ${adjustedQuotaValue}`,
-      )
+      adjustedQuotaValue = quotaValue
     }
 
     let status = "Pendiente"
@@ -189,7 +177,7 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       statusIcon: statusIcon,
       isOverdue: isOverdue && !isOverdueRedistributed,
       daysOverdue: daysOverdue,
-      isRedistributed: isOverdueRedistributed, // Add flag for redistributed status
+      isRedistributed: isOverdueRedistributed,
     })
   }
 
@@ -212,7 +200,7 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
       console.log("[v0] Sending redistribution request:", requestData)
 
-      const response = await fetch(`http://localhost:5216/api/Sale/${localSale.id_Sales}/redistribute-quotas`, {
+      const response = await fetch(`http://localhost:5216/api/Sale/${sale.id_Sales}/redistribute-quotas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -228,12 +216,13 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
       setShowRedistributionModal(false)
 
-      // 🔹 Actualiza el estado local directamente con la respuesta
-      if (responseData.sale) setLocalSale(responseData.sale)
-      if (responseData.paymentDetails) setLocalPaymentDetails(responseData.paymentDetails)
-
       setTimeout(() => {
         console.log("[v0] Redistribution completed successfully")
+        window.dispatchEvent(
+          new CustomEvent("quotaRedistributionComplete", {
+            detail: { sale: responseData.sale, paymentDetails: responseData.paymentDetails },
+          }),
+        )
       }, 100)
     } catch (error) {
       console.error("Error:", error)
@@ -252,6 +241,15 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
                 Control de Cuotas
                 {overdueQuotasCount > 0 && (
                   <Badge className="bg-red-100 text-red-800 ml-2">{overdueQuotasCount} cuotas vencidas</Badge>
+                )}
+                {paymentPlanType && (
+                  <Badge className="bg-blue-100 text-blue-800 ml-2">
+                    {paymentPlanType === "custom"
+                      ? "Plan Personalizado"
+                      : paymentPlanType === "house"
+                        ? "Plan Casa"
+                        : "Plan Automático"}
+                  </Badge>
                 )}
               </CardTitle>
               <CardDescription>

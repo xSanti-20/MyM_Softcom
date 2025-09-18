@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Database, HardDrive, Calendar, TrendingUp } from "lucide-react"
 import { useBackup } from "@/hooks/useBackup"
@@ -15,11 +15,7 @@ const BackupStats = ({ refreshTrigger }) => {
 
   const { getBackupList } = useBackup()
 
-  useEffect(() => {
-    loadStats()
-  }, [refreshTrigger, loadStats])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     const result = await getBackupList()
     if (result.success) {
       const backups = result.backups
@@ -34,7 +30,11 @@ const BackupStats = ({ refreshTrigger }) => {
         totalRecords: totalRecords,
       })
     }
-  }
+  }, [getBackupList])
+
+  useEffect(() => {
+    loadStats()
+  }, [refreshTrigger, loadStats])
 
   const formatDate = (dateString) => {
     if (!dateString) return "Nunca"

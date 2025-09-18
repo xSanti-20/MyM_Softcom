@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import ExportPDFButton from '@/components/ExportPDFButton'
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
@@ -115,7 +115,53 @@ function SalesPage() {
     return "Sin proyecto"
   }
 
-  async function fetchProjectsForFilter() {
+  // Función para calcular el valor de cuota correcto basado en el tipo de plan
+  function calculateDisplayQuotaValue(sale) {
+    if (!sale) return 0
+    
+    console.log('Ventas - calculateDisplayQuotaValue:', {
+      saleId: sale.id_Sales,
+      paymentPlanType: sale.paymentPlanType,
+      hasCustomQuotas: !!sale.customQuotasJson,
+      quota_value: sale.quota_value,
+      customQuotasJsonRaw: sale.customQuotasJson
+    })
+    
+    // Si es plan personalizado y tiene cuotas personalizadas
+    if (sale.paymentPlanType === 'custom' && sale.customQuotasJson) {
+      try {
+        console.log('Ventas - customQuotasJson string:', sale.customQuotasJson)
+        const customQuotas = JSON.parse(sale.customQuotasJson)
+        console.log('Ventas - parsed customQuotas:', customQuotas)
+        if (Array.isArray(customQuotas) && customQuotas.length > 0) {
+          const amounts = customQuotas.map(q => q.Amount || 0)
+          console.log('Ventas - individual amounts:', amounts)
+          
+          // Opción 1: Mostrar el valor más común (mediana)
+          const sortedAmounts = [...amounts].sort((a, b) => a - b)
+          const median = sortedAmounts[Math.floor(sortedAmounts.length / 2)]
+          
+          // Opción 2: Promedio (valor actual)
+          const total = customQuotas.reduce((sum, quota) => sum + (parseFloat(quota.Amount) || 0), 0)
+          const average = total / customQuotas.length
+          
+          console.log('Ventas - median:', median, 'average:', average)
+          
+          // Cambiar esta línea para usar mediana en lugar de promedio
+          return median  // Mostrará $1,000,000 en lugar de $1,194,444
+          // return average  // Mostrará $1,194,444 (promedio real)
+        }
+      } catch (error) {
+        console.error('Error parsing customQuotasJson:', error)
+      }
+    }
+    
+    // Para planes automáticos o sin datos personalizados, usar quota_value
+    console.log('Ventas - Using standard quota_value:', sale.quota_value)
+    return sale.quota_value || 0
+  }
+
+  const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
       if (response.data && Array.isArray(response.data)) {
@@ -130,9 +176,9 @@ function SalesPage() {
       console.error("Error al cargar proyectos para el filtro:", error)
       showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
     }
-  }
+  }, [])
 
-  async function fetchSales(projectId = null) {
+  const fetchSales = useCallback(async (projectId = null) => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Sale/GetAllSales")
@@ -160,7 +206,7 @@ function SalesPage() {
           initial_payment: sale.initial_payment?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
           total_raised: sale.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
           total_debt: sale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
-          quota_value: sale.quota_value?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
+          quota_value: calculateDisplayQuotaValue(sale)?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
           status: createSaleStatusBadge(sale.status || "Active"),
           client: sale.client ? `${sale.client.names} ${sale.client.surnames}` : "N/A",
           lot: sale.lot ? `${sale.lot.block}-${sale.lot.lot_number}` : "N/A",
@@ -179,7 +225,7 @@ function SalesPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
@@ -189,7 +235,7 @@ function SalesPage() {
   useEffect(() => {
     fetchProjectsForFilter()
     fetchSales()
-  }, [])
+  }, [fetchProjectsForFilter, fetchSales])
 
   const handleDelete = async (id) => {
     try {
@@ -297,8 +343,8 @@ function SalesPage() {
           </div>
 
           {isModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl">
                 <RegisterSale
                   refreshData={() => fetchSales(selectedProjectId === "all" ? null : selectedProjectId)}
                   saleToEdit={editingSale}

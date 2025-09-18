@@ -11,12 +11,19 @@ public class AppDbContext : DbContext
         _configuration = configuration;
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    modelBuilder.Entity<User>().ToTable("users");
+    {
+        modelBuilder.Entity<User>().ToTable("users");
 
+        modelBuilder.Entity<Sale>(entity =>
+        {
+            entity.ToTable("sales");
+            entity.Property(e => e.status)
+                .HasColumnType("enum('Active','Desistida','Escriturar')")
+                .HasDefaultValue("Active");
+        });
 
-    base.OnModelCreating(modelBuilder);
-}
+        base.OnModelCreating(modelBuilder);
+    }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
     public DbSet<Client> Clients { get; set; }

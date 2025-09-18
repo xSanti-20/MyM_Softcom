@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import Image from 'next/image';
@@ -46,7 +46,7 @@ function ProjectPage() {
     if (callback) callback()
   }
 
-  async function fetchProjects() {
+  const fetchProjects = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
@@ -66,11 +66,11 @@ function ProjectPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchProjects()
-  }, [])
+  }, [fetchProjects])
 
   const handleDelete = async (id) => {
     try {

@@ -96,6 +96,55 @@ const FinancialSummary = ({ sale }) => {
     }).format(amount || 0)
   }
 
+  // Calcular el valor de cuota correcto según el tipo de plan
+  const calculateDisplayQuotaValue = () => {
+    const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
+    
+    console.log('Detalles - calculateDisplayQuotaValue:', {
+      saleId: sale.id_Sales,
+      paymentPlanType: paymentPlanType,
+      hasCustomQuotas: !!(sale.customQuotasJson || sale.CustomQuotasJson),
+      quota_value: sale.quota_value,
+      customQuotasJsonRaw: sale.customQuotasJson
+    })
+    
+    // Para planes personalizados, calcular promedio de las cuotas
+    if (paymentPlanType?.toLowerCase() === "custom" && (sale.customQuotasJson || sale.CustomQuotasJson)) {
+      try {
+        const customQuotasJson = sale.customQuotasJson || sale.CustomQuotasJson
+        console.log('Detalles - customQuotasJson string:', customQuotasJson)
+        const customQuotas = JSON.parse(customQuotasJson)
+        console.log('Detalles - parsed customQuotas:', customQuotas)
+        
+        if (customQuotas && customQuotas.length > 0) {
+          const amounts = customQuotas.map(q => q.Amount || 0)
+          console.log('Detalles - individual amounts:', amounts)
+          
+          // Opción 1: Mostrar el valor más común (mediana o moda)
+          const sortedAmounts = [...amounts].sort((a, b) => a - b)
+          const medianQuota = sortedAmounts[Math.floor(sortedAmounts.length / 2)]
+          
+          // Opción 2: Promedio (valor actual)
+          const totalCustomAmount = customQuotas.reduce((sum, quota) => sum + (quota.Amount || 0), 0)
+          const averageQuota = totalCustomAmount / customQuotas.length
+          
+          console.log('Detalles - median:', medianQuota, 'average:', averageQuota)
+          
+          // Cambiar esta línea para usar mediana en lugar de promedio
+          return medianQuota  // Mostrará $1,000,000 en lugar de $1,194,444
+          // return averageQuota  // Mostrará $1,194,444 (promedio real)
+        }
+      } catch (error) {
+        console.error("Error parsing custom quotas for financial summary:", error)
+      }
+    }
+    
+    // Para planes automáticos y de casa, usar el valor del backend
+    console.log('Detalles - Using standard quota_value:', sale.quota_value)
+    return sale.quota_value
+  }
+
+  const displayQuotaValue = calculateDisplayQuotaValue()
   const progressPercentage = sale.total_value > 0 ? (sale.total_raised / sale.total_value) * 100 : 0
 
   return (
@@ -122,7 +171,10 @@ const FinancialSummary = ({ sale }) => {
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <Label className="text-sm font-medium text-purple-600">Valor Cuota</Label>
-            <p className="text-xl font-bold text-purple-800">{formatCurrency(sale.quota_value)}</p>
+            <p className="text-xl font-bold text-purple-800">{formatCurrency(displayQuotaValue)}</p>
+            {sale.paymentPlanType?.toLowerCase() === "custom" && (
+              <p className="text-xs text-purple-600 mt-1">Cuota típica</p>
+            )}
           </div>
         </div>
 

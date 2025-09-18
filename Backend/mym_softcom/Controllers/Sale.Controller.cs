@@ -63,10 +63,11 @@ namespace mym_softcom.Controllers
 
             try
             {
+                sale.status = "Activa";
+
                 var success = await _saleServices.CreateSale(sale);
                 if (success)
                 {
-                    // Usar el nombre de la acción explícito para CreatedAtAction
                     return CreatedAtAction(nameof(GetSaleID), new { id = sale.id_Sales }, sale);
                 }
                 return StatusCode(500, "Error al crear la venta.");
@@ -102,7 +103,7 @@ namespace mym_softcom.Controllers
                 var success = await _saleServices.UpdateSale(id, sale);
                 if (success)
                 {
-                    return NoContent(); // 204 No Content para una actualización exitosa sin retorno de datos
+                    return NoContent();
                 }
                 return NotFound("Venta no encontrada o error al actualizar.");
             }
@@ -139,6 +140,7 @@ namespace mym_softcom.Controllers
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
+
         [HttpPost("{id}/redistribute-quotas")]
         public async Task<IActionResult> RedistributeQuotas(int id, [FromBody] RedistributeQuotasRequest request)
         {

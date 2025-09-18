@@ -3406,6 +3406,10 @@
             "type": "integer",
             "format": "int32"
           },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "nullable": true
@@ -3637,6 +3641,24 @@
             "nullable": true
           },
           "originalQuotaValue": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "paymentPlanType": {
+            "type": "string",
+            "nullable": true
+          },
+          "customQuotasJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "houseInitialPercentage": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "houseInitialAmount": {
             "type": "number",
             "format": "double",
             "nullable": true

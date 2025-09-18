@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrato de Arras - Reservas del Poblado Casa</title>
     <style>
-        /* Header fijo para Reservas del Poblado Casa que funciona con Puppeteer */
+        /* Header fijo para Reservas Casa que funciona con Puppeteer */
         .fixed-header {
             position: fixed;
             top: 0;
@@ -18,6 +18,7 @@
             width: 100%;
             height: 50px;
             padding: 5px 15px;
+            border-bottom: 1px solid #000;
             background: white;
             box-sizing: border-box;
             z-index: 1000;
@@ -55,34 +56,90 @@
             box-sizing: border-box;
         }
 
-        .firmas-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 30px;
-            border: 1px solid #000;
+        /* Estilos para sección de firmas profesional y compacta */
+        .firmas-section {
+            margin-top: 35px;
+            /* Separación moderada del último párrafo */
             page-break-inside: avoid;
         }
 
-        .firmas-table td {
-            border: 1px solid #000;
-            padding: 12px;
-            vertical-align: top;
+        .firmas-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            /* Espacio compacto para firmas */
+            gap: 80px;
         }
 
-        .firma-header {
-            font-weight: bold;
+        .firma-lado {
+            flex: 1;
             text-align: center;
-            background-color: #f0f0f0;
+            min-height: 40px;
+            /* Espacio suficiente pero compacto */
         }
 
-        .firma-space {
-            height: 80px;
+        .linea-firma {
+            width: 100%;
+            height: 1px;
+            border-bottom: 1px solid #000;
+            margin-bottom: 8px;
+            margin-top: 50px;
+            /* Espacio moderado para la firma */
+        }
+
+        .firma-label {
+            font-size: 10pt;
+            font-weight: bold;
+            margin: 0;
+            text-transform: uppercase;
             text-align: left;
         }
 
-        .firma-info {
+        .info-partes {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 50px;
+            /* Separación moderada entre columnas */
+        }
+
+        .info-empresa {
+            flex: 1;
+            text-align: justify;
+            /* Mantenemos el texto justificado profesional */
+            max-width: 50%;
+        }
+
+        .info-cliente {
+            flex: 1;
             text-align: left;
-            font-size: 11pt;
+            /* Mantenemos el texto justificado profesional */
+            max-width: 45%;
+        }
+
+        .info-empresa p,
+        .info-cliente p {
+            margin: 3px 0;
+            /* Espaciado compacto pero legible */
+            font-size: 10pt;
+            line-height: 1.3;
+            text-align: left;
+            /* Mantenemos la justificación profesional */
+        }
+
+        .empresa-detalles {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #ccc;
+        }
+
+        .empresa-detalles p {
+            margin: 2px 0;
+            /* Espaciado muy compacto para detalles */
+            font-size: 9pt;
+            line-height: 1.2;
+            text-align: justify;
+            /* Mantenemos la justificación */
         }
 
         .bold {
@@ -186,59 +243,196 @@
     <!-- TEMPLATE: reservas-casa -->
     <div class="content">
         <p>
-            <!-- Aquí va el contenido específico para Reservas del Poblado Casa -->
-            Entre los suscritos, a saber: <span class="bold">ANA SOFÍA ARCE PALMA</span>, domiciliada en la ciudad de
-            Ibagué, identificada con Cédula de Ciudadanía Número 1.105.676.043 de Ibagué, Tolima...
+            Entre los suscritos, a saber: <span class="bold">ANA SOFIA ARCE PALMA</span>, domiciliada en la ciudad de
+            Ibagué, identificada con Cédula de Ciudadanía Número, 1.105.676.043 de Ibagué, Tolima. actuando a nombre y
+            representación de <span class="bold">M&M MULTISERVICIOS E INGENIERÍA S.A.S</span>, persona jurídica
+            identificada con NIT 900.692.181-8 y con domicilio social principal en la ciudad de Bogotá, quien para los
+            efectos del presente contrato se denominará <span class="bold">EL PROMITENTE VENDEDOR,</span> de una parte;
+            y de la otra, <span class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</span> identificado(a) con Cédula de Ciudadanía
+            Número {{CLIENTE_CC_NUM}} expedida en {{CLIENTE_CC_EXPEDIDA_EN}}. Mayor de edad, domiciliado(a) en
+            {{CLIENTE_DIRECCION}}, con número de contactos {{CLIENTE_TELEFONO}} y correo electrónico {{CLIENTE_EMAIL}},
+            quien en adelante se denominará <span class="bold">EL PROMITENTE COMPRADOR,</span> se ha celebrado el
+            presente contrato de promesa de compraventa que se rige con las siguientes cláusulas:
         </p>
 
         <div class="clausula">
             <div class="clausula-titulo">Cláusula Primera: OBJETO.</div>
             <p>
-                <!-- Contenido específico para Reservas del Poblado - Casa -->
+                <span class="bold">EL PROMITENTE VENDEDOR</span> se obliga a vender al <span class="bold">PROMITENTE
+                    COMPRADOR</span>,
+                quien a su vez se obliga a comprar el bien inmueble que se describe a continuación: Bien inmueble
+                ubicado en la
+                <span class="bold">{{MANZANA}} {{LOTE}} {{LOCATION}}</span> de la <span class="bold">URBANIZACIÓN
+                    RESERVAS DEL POBLADO</span>
+                que se encuentra en
+                desarrollo en la
+                ciudad de El Espinal, el cual cuenta con área de <span class="bold">{{AREA_LOTE_LETRAS}} METROS
+                    CUADRADOS
+                    ({{AREA_LOTE}} m²)</span> y área construida de <span class="bold">{{AREA_CONSTRUIDA_LETRAS}} METROS
+                    CUADRADOS
+                    ({{AREA_CONSTRUIDA}} m²)</span>.
             </p>
         </div>
 
-        <!-- Agregar más cláusulas según sea necesario -->
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Segunda: OTRAS OBLIGACIONES.</div>
+            <p>
+                El <span class="bold">PROMITENTE VENDEDOR</span> se obliga a transferir el dominio del inmueble objeto
+                del presente contrato libre de hipotecas, demandas civiles, embargos, condiciones resolutorias, pleito
+                pendiente, censos, anticresis y en general, de todo gravamen o limitación del dominio y saldrá al
+                saneamiento en los casos de la ley. También se obliga el <span class="bold">PROMITENTE VENDEDOR</span>
+                al pago de paz y salvo de impuestos, tasas y contribuciones causadas hasta la fecha de la escritura
+                pública de compraventa.
+            </p>
+        </div>
 
-        <table class="firmas-table">
-            <tr>
-                <td class="firma-header">LA CONSTRUCTORA</td>
-                <td class="firma-header">EL INVERSIONISTA</td>
-            </tr>
-            <tr>
-                <td class="firma-space">
-                    <div class="bold">FIRMA Y HUELLA</div>
-                </td>
-                <td class="firma-space">
-                    <div class="bold">FIRMA Y HUELLA</div>
-                </td>
-            </tr>
-            <tr>
-                <td class="firma-info">
-                    <div class="bold">ANA SOFÍA ARCE PALMA</div>
-                    <div class="bold">Representante Legal</div>
-                    <div class="bold">C.C.: 1.105.676.043 de Ibagué, Tolima</div>
-                </td>
-                <td class="firma-info">
-                    <div class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</div>
-                    <div class="bold">CC: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</div>
-                    <div class="bold">CELULAR: {{CLIENTE_TELEFONO}}</div>
-                    <div class="bold">CORREO: {{CLIENTE_EMAIL}}</div>
-                </td>
-            </tr>
-            <tr>
-                <td class="firma-info">
-                    <div class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</div>
-                    <div class="bold">DIRECCIÓN: MZ A CASA 109 VILLA DEL PRADO</div>
-                    <div class="bold">CELULAR: 3115899706 - 3165589223</div>
-                    <div class="bold">CORREO: mymultiserciosingsas@gmail.com</div>
-                </td>
-                <td class="firma-info">
-                    <div class="bold">DIRECCIÓN: {{CLIENTE_DIRECCION}}</div>
-                    <div class="bold">CIUDAD: {{CLIENTE_CIUDAD}}</div>
-                </td>
-            </tr>
-        </table>
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Tercera: PRECIO.</div>
+            <p>
+                El precio del inmueble prometido en venta es de <span class="bold">{{PRECIO_LETRAS}} PESOS M/CTE
+                    (${{PRECIO}})</span>, suma que el <span class="bold">PROMITENTE COMPRADOR</span> pagará al <span
+                    class="bold">PROMITENTE VENDEDOR</span> de la siguiente manera:
+            </p>
+        </div>
+
+        <ol class="lista-alfabetica">
+            <li><span class="bold">{{SEPARACION_LETRAS}} PESOS M/CTE (${{SEPARACION}}) de separado del presente
+                    contrato:</span> dicha suma será cancelada por medio de transferencia electrónica a la <span
+                    class="bold">cuenta de ahorros número 411-187030-47 de Bancolombia cuenta convenio 6699</span> y a
+                nombre de <span class="bold">M&M MULTISERVICIOS E INGENIERÍA S.A.S</span> o bien sea en efectivo en la
+                oficina principal Mz A Casa 109 Villa del Prado - Sector 1, El Espinal, Tolima</li>
+            <li><span class="bold">El SALDO:</span> El saldo se dividirá en dos pagos, es decir, un 30% del valor total
+                del inmueble que corresponde a la suma de <span class="bold">{{SALDO_30_LETRAS}} PESOS M/CTE
+                    (${{SALDO_30}})</span> que serán pagados en {{CUOTAS}} cuotas mensuales después de la cuota inicial
+                de separación:</li>
+        </ol>
+
+        <div class="clausula">
+            <div class="clausula-titulo">PLAN DE PAGOS</div>
+            {{PLAN_PAGOS_HTML}}
+        </div>
+
+        <p class="punto-c">
+            c) El restante del 70% del valor de la vivienda que corresponde a <span class="bold">{{SALDO_70_LETRAS}}
+                PESOS M/CTE (${{SALDO_70}})</span> serán pagaderos en el momento del iniciar el trámite de la escritura
+            pública correspondiente, en síntesis, al finalizar el plan de pago del 30% inicial.
+        </p>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Cuarta: ARRAS.</div>
+            <p>
+                La terminación unilateral, retractación, el desistimiento o incumplimiento de los compromisos aquí
+                adquiridos, genera que se le cobre a título de sanción la suma de <span class="bold">{{ARRAS_LETRAS}}
+                    PESOS M/CTE (${{ARRAS}})</span> que corresponde al 10% del valor total del presente contrato,
+                incluyendo gastos administrativos los cuales se retendrán de lo ya pagado por parte del <span
+                    class="bold">PROMITENTE COMPRADOR.</span>
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Quinta: PENAL.</div>
+            <p>
+                Los promitentes establecemos, para el caso de incumplimiento, una multa de valor igual a la entregada
+                como arras, si el incumplimiento es de parte del <span class="bold">PROMITENTE COMPRADOR</span> quien
+                entonces perderá el valor dado como ARRAS; y si el incumplimiento es por parte del <span
+                    class="bold">PROMITENTE VENDEDOR</span> éste devolverá al <span class="bold">PROMITENTE
+                    COMPRADOR</span> los dineros recaudados por la venta de la vivienda. <span class="bold">PARÁGRAFO
+                    PRIMERO:</span> Todo pago o abono al precio de la venta prometida evidenciará con el comprobante de
+                consignación o transferencia electrónica a la <span class="bold">cuenta de ahorros número 411-187030-47
+                    de Bancolombia cuenta convenio 6699</span> y a nombre del <span class="bold">PROMITENTE
+                    VENDEDOR,</span> dicho pago debe ser enviado al número telefónico del departamento de cartera número
+                3165589223.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Sexta: GASTOS.</div>
+            <p>
+                Los Gastos que ocasione la firma de este contrato, los que demande el otorgamiento de la escritura
+                pública de compraventa, serán a cargo de las dos partes por mitades.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Séptima: INFORMACIÓN DEL PROYECTO "URBANIZACIÓN RESERVAS DEL POBLADO"</div>
+            <p>
+                El <span class="bold">PROMITENTE COMPRADOR</span> declara que recibió toda la información
+                correspondiente de las condiciones totales del proyecto, que será entregado con servicios públicos como
+                redes eléctricas, gas domiciliario, acueducto, alcantarillado e incluso vías de acceso pavimentadas.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Octava: AUTORIZACIÓN PARA TRATAMIENTOS DE DATOS PERSONALES.</div>
+            <p>
+                Con la firma del presente contrato y en cumplimiento de la política de calidad definida previamente los
+                datos de carácter personal de LAS PARTES, se suministren a través de este documento serán objeto de
+                tratamiento de ley 1581 de 2012, quienes se comprometen a implementar todas las medidas necesarias para
+                garantizar un tratamiento idóneo de los datos personales y a cumplir con las disposiciones que se tienen
+                en esta materia. Sus datos personales serán incorporados en la base de datos de cada una de ellas con la
+                finalidad que se determinan a continuación: tramitar su actual inscripción como cliente. Para ejercer
+                los derechos de actualización, rectificación, cancelación y oposición sobre sus datos personales podrá
+                dirigir su solicitud o reclamo a la siguiente dirección: Manzana A casa 109 Villa del Prado etapa 1
+                Espinal-Tolima.
+            </p>
+        </div>
+
+        <div class="clausula">
+            <div class="clausula-titulo">Cláusula Novena: ENTREGA.</div>
+            <p>
+                <span class="bold">EL PROMITENTE VENDEDOR</span> tendrá un plazo para la entrega del presente inmueble
+                <span class="bold">{{LOTE}} {{MANZANA}}</span> será entregado después de efectuar la cancelación de la
+                última cuota el día <span class="bold">{{FECHA_ENTREGA}}</span>, tal y como se evidencia en el plan de
+                pago.
+            </p>
+        </div>
+
+        <div class="clausula-final">
+            <p>
+                Los contratantes, afirman haber leído el presente documento y dan su asentimiento expresamente a lo
+                estipulado y firman como aparece, ante testigos que los suscriben, en la ciudad de El Espinal, Tolima a
+                los {{FECHA_FIRMA_DIA}} días del mes de {{FECHA_FIRMA_MES}} del {{FECHA_FIRMA_ANO}} en dos ejemplares,
+                uno para cada promitente.
+            </p>
+        </div>
+
+        <div class="firmas-section">
+            <div class="firmas-container">
+                <div class="firma-lado">
+                    <div class="linea-firma"></div>
+                    <p class="firma-label">EL PROMITENTE VENDEDOR</p>
+                </div>
+                <div class="firma-lado">
+                    <div class="linea-firma"></div>
+                    <p class="firma-label">EL PROMITENTE COMPRADOR</p>
+                </div>
+            </div>
+
+            <div class="info-partes">
+                <!-- Información de la empresa -->
+                <div class="info-empresa">
+                    <p class="bold">ANA SOFÍA ARCE PALMA</p>
+                    <p>Representante Legal</p>
+                    <p>C.C.: 1.105.676.043 de Ibagué, Tolima</p>
+
+                    <div class="empresa-detalles">
+                        <p class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</p>
+                        <p>NIT: 900.692.181-8</p>
+                        <p>Dirección: Mz A Casa 109 Villa del Prado - Sector 1, El Espinal, Tolima</p>
+                        <p>Teléfonos: 3115899706 - 3165589223</p>
+                        <p>Correo: mymultiserciosingsas@gmail.com</p>
+                    </div>
+                </div>
+
+                <!-- Información del cliente -->
+                <div class="info-cliente">
+                    <p class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</p>
+                    <p>C.C.: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</p>
+                    <p>Teléfono: {{CLIENTE_TELEFONO}}</p>
+                    <p>Correo: {{CLIENTE_EMAIL}}</p>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 

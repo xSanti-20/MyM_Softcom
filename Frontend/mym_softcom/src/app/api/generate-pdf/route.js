@@ -141,6 +141,29 @@ export async function POST(request) {
       const imgPath1 = path.join(process.cwd(), "public", "assets", "img", "mymsoftcom.png")
       const imgPath2 = path.join(process.cwd(), "public", "assets", "img", "malibu.png")
       
+      // Extraer consecutivo del HTML procesado
+      let consecutivo = ""
+      console.log("[v0] SERVER: Looking for consecutivo in HTML...");
+      console.log("[v0] SERVER: HTML start:", processedHtml.substring(0, 300));
+      
+      // Método 1: Buscar en comentario HTML
+      const consecutivoMatch = processedHtml.match(/<!--CONSECUTIVO:([^>]*)-->/);
+      if (consecutivoMatch) {
+        consecutivo = consecutivoMatch[1].trim();
+        console.log("[v0] SERVER: Consecutivo found in comment:", consecutivo);
+      } else {
+        console.log("[v0] SERVER: No consecutivo comment found, trying alternative methods...");
+        
+        // Método 2: Buscar placeholder no procesado {{CONSECUTIVO}}
+        const placeholderMatch = processedHtml.match(/\{\{CONSECUTIVO\}\}/);
+        if (placeholderMatch) {
+          console.log("[v0] SERVER: Found unprocessed CONSECUTIVO placeholder - this means temporaryData.consecutivo was empty");
+        }
+        
+        // Método 3: Para debug, usar un valor fijo si no se encuentra
+        console.log("[v0] SERVER: No consecutivo found, will show empty in header");
+      }
+      
       // Detectar el proyecto específico para usar el logo correcto
       let projectLogo = "malibu.png" // default
       if (processedHtml.includes("TEMPLATE: luxury")) {
@@ -153,10 +176,15 @@ export async function POST(request) {
       
       const projectLogoPath = path.join(process.cwd(), "public", "assets", "img", projectLogo)
       
+      console.log("[v0] SERVER: Creating header with consecutivo:", consecutivo);
+      
       pdfOptions.headerTemplate = `
         <div style="width:100%;display:flex;justify-content:space-between;align-items:center;font-size:11pt;padding:5px 40px;margin:0;background:white;box-sizing:border-box;">
           <img src="data:image/png;base64,${fs.readFileSync(imgPath1).toString("base64")}" style="height:60px;">
-          <span style="font-weight:bold;flex-grow:1;text-align:center;margin:0 20px;font-size:5pt;">CONTRATO DE ARRAS</span>
+          <div style="font-weight:bold;flex-grow:1;text-align:center;margin:0 20px;font-size:6pt;line-height:1.2;">
+            <div>CONTRATO DE ARRAS</div>
+            ${consecutivo ? `<div style="font-size:6pt;margin-top:2px;color:black;">${consecutivo}</div>` : '<div style="font-size:6pt;margin-top:2px;color:red;">NO_CONSECUTIVO</div>'}
+          </div>
           <img src="data:image/png;base64,${fs.readFileSync(projectLogoPath).toString("base64")}" style="height:60px;">
         </div>
       `
