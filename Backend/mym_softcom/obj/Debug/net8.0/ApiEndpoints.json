@@ -364,6 +364,22 @@
   },
   {
     "ContainingType": "mym_softcom.Controllers.DashboardController",
+    "Method": "DebugSale",
+    "RelativePath": "api/Dashboard/DebugSale/{saleId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "saleId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.DashboardController",
     "Method": "GetHistoricalProjectRevenue",
     "RelativePath": "api/Dashboard/GetHistoricalProjectRevenue",
     "HttpMethod": "GET",
@@ -1326,6 +1342,26 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.SaleController",
+    "Method": "FixNullStatuses",
+    "RelativePath": "api/Sale/debug/fix-null-statuses",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.SaleController",
+    "Method": "DebugSchema",
+    "RelativePath": "api/Sale/debug/schema",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "mym_softcom.Controllers.SaleController",

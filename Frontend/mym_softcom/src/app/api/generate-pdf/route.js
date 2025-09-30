@@ -20,6 +20,7 @@ export async function POST(request) {
       try {
         const imgPath1 = path.join(process.cwd(), "public", "assets", "img", "mymsoftcom.png")
         const imgPath2 = path.join(process.cwd(), "public", "assets", "img", "malibu.png")
+        const imgPath3 = path.join(process.cwd(), "public", "templates", "contratos", "FIRMA.png")
 
         let processedHtml = htmlContent
 
@@ -41,6 +42,18 @@ export async function POST(request) {
           console.log("[v0] Converted malibu.png to base64")
         } else {
           console.log("[v0] malibu.png not found, keeping original src")
+        }
+
+        // Convert FIRMA.png to base64 if exists
+        if (fs.existsSync(imgPath3)) {
+          const imgBuffer3 = fs.readFileSync(imgPath3)
+          const imgBase64_3 = `data:image/png;base64,${imgBuffer3.toString("base64")}`
+          // Replace both possible src patterns for FIRMA.png
+          processedHtml = processedHtml.replace(/src="\.\/FIRMA\.png"/g, `src="${imgBase64_3}"`)
+          processedHtml = processedHtml.replace(/src="\/assets\/img\/FIRMA\.png"/g, `src="${imgBase64_3}"`)
+          console.log("[v0] Converted FIRMA.png to base64")
+        } else {
+          console.log("[v0] FIRMA.png not found, keeping original src")
         }
 
         return processedHtml

@@ -163,6 +163,7 @@ namespace mym_softcom.Services
                 Console.WriteLine($"  - sale_date: {sale.sale_date}");
                 Console.WriteLine($"  - PaymentPlanType: {sale.PaymentPlanType}");
                 Console.WriteLine($"  - CustomQuotasJson: {sale.CustomQuotasJson}");
+                Console.WriteLine($"  - Status recibido: '{sale.status ?? "null"}'");
 
                 // Validar que el lote esté "Libre" antes de la venta
                 Console.WriteLine($"[SaleServices] Buscando lote con ID: {sale.id_Lots}");
@@ -180,8 +181,26 @@ namespace mym_softcom.Services
                     throw new InvalidOperationException($"El lote {lot.block}-{lot.lot_number} no está disponible para la venta. Su estado actual es: {lot.status}");
                 }
 
-                // Dejar que la base de datos use su valor por defecto
-                sale.status = null;
+                // ✅ SOLUCION DEFINITIVA: Establecer siempre el status como "Active" para nuevas ventas
+                if (string.IsNullOrEmpty(sale.status))
+                {
+                    sale.status = "Active";
+                    Console.WriteLine($"[SaleServices] Status establecido explícitamente como 'Active'");
+                }
+                else
+                {
+                    // Validar que el status sea uno de los valores válidos del enum
+                    var validStatuses = new[] { "Active", "Desistida", "Escriturar" };
+                    if (!validStatuses.Contains(sale.status))
+                    {
+                        Console.WriteLine($"[SaleServices] Status inválido '{sale.status}', estableciendo como 'Active'");
+                        sale.status = "Active";
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SaleServices] Status válido establecido: '{sale.status}'");
+                    }
+                }
 
                 // ✅ ACTUALIZACIÓN: Inicializar total_raised con el valor de initial_payment
                 sale.total_raised = sale.initial_payment ?? 0;
@@ -191,8 +210,36 @@ namespace mym_softcom.Services
 
                 await CalculateQuotaValueByPlanType(sale, plan);
 
+                Console.WriteLine($"[SaleServices] Intentando guardar venta con status: '{sale.status}'");
+
                 _context.Sales.Add(sale);
                 await _context.SaveChangesAsync(); // Guardar la venta para obtener su ID
+
+                Console.WriteLine($"[SaleServices] Venta guardada exitosamente con ID: {sale.id_Sales}");
+
+                // Verificar que el status se guardó correctamente
+                var savedSale = await _context.Sales.AsNoTracking().FirstOrDefaultAsync(s => s.id_Sales == sale.id_Sales);
+                if (savedSale != null)
+                {
+                    Console.WriteLine($"[SaleServices] Status verificado en BD: '{savedSale.status ?? "null"}'");
+                    
+                    // Si el status sigue siendo null después de guardar, hay un problema con la BD
+                    if (savedSale.status == null)
+                    {
+                        Console.WriteLine($"[SaleServices] WARNING: Status es null después de guardar. Intentando actualizar...");
+                        
+                        // Intentar actualizar explícitamente el status
+                        var updateSql = "UPDATE sales SET status = 'Active' WHERE id_Sales = {0}";
+                        await _context.Database.ExecuteSqlRawAsync(updateSql, sale.id_Sales);
+                        
+                        Console.WriteLine($"[SaleServices] Status actualizado via SQL directo");
+                        sale.status = "Active"; // Actualizar el objeto local
+                    }
+                    else
+                    {
+                        sale.status = savedSale.status; // Usar el valor de la BD
+                    }
+                }
 
                 // ✅ INICIO DE LA CORRECCIÓN: Registrar la cuota inicial como un Payment
                 if (sale.initial_payment.HasValue && sale.initial_payment.Value > 0)
@@ -213,6 +260,8 @@ namespace mym_softcom.Services
 
                 // Actualizar el estado del lote a "Vendido"
                 await _lotServices.ChangeLotStatus(sale.id_Lots, "Vendido");
+
+                Console.WriteLine($"[SaleServices] Venta creada exitosamente con ID: {sale.id_Sales}, Status final: '{sale.status}'");
 
                 return true;
             }
@@ -534,6 +583,83 @@ namespace mym_softcom.Services
 
                     Console.WriteLine($"[SaleServices] Automatic plan: {remainingValue:C} / {plan?.number_quotas ?? 0} quotas = {sale.quota_value:C}");
                     break;
+            }
+        }
+
+        /// <summary>
+        /// ✅ MÉTODO DE DEBUGGING: Verifica el schema de la tabla sales y valores por defecto
+        /// </summary>
+        public async Task<object> DebugSalesTableSchema()
+        {
+            try
+            {
+                // Consultar el schema de la tabla sales
+                var schemaQuery = @"
+                    SELECT 
+                        COLUMN_NAME, 
+                        DATA_TYPE, 
+                        COLUMN_TYPE, 
+                        IS_NULLABLE, 
+                        COLUMN_DEFAULT,
+                        EXTRA
+                    FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'sales'
+                    ORDER BY ORDINAL_POSITION";
+
+                var schemaResult = await _context.Database.SqlQueryRaw<dynamic>(schemaQuery).ToListAsync();
+
+                // También verificar algunas ventas existentes
+                var sampleSales = await _context.Sales
+                    .Select(s => new { s.id_Sales, s.status, s.PaymentPlanType })
+                    .Take(5)
+                    .ToListAsync();
+
+                return new
+                {
+                    tableSchema = schemaResult,
+                    sampleSales = sampleSales,
+                    message = "Debug information for sales table"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en DebugSalesTableSchema: {ex.Message}");
+                return new { error = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// ✅ MÉTODO DE UTILIDAD: Actualiza todas las ventas con status null a 'Active'
+        /// </summary>
+        public async Task<ServiceResult<string>> FixNullStatuses()
+        {
+            try
+            {
+                var nullStatusSales = await _context.Sales
+                    .Where(s => s.status == null)
+                    .ToListAsync();
+
+                Console.WriteLine($"[SaleServices] Encontradas {nullStatusSales.Count} ventas con status null");
+
+                foreach (var sale in nullStatusSales)
+                {
+                    sale.status = "Active";
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new ServiceResult<string>
+                {
+                    Success = true,
+                    Message = $"Se actualizaron {nullStatusSales.Count} ventas con status null a 'Active'",
+                    Data = $"{nullStatusSales.Count} ventas actualizadas"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error en FixNullStatuses: {ex.Message}");
+                return new ServiceResult<string> { Success = false, Message = ex.Message };
             }
         }
     }

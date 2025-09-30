@@ -63,8 +63,9 @@ namespace mym_softcom.Controllers
 
             try
             {
-                sale.status = "Activa";
-
+                // ✅ CORREGIDO: El enum de la BD es 'Active', no 'Activa'
+                // No establecer status aquí, dejar que el servicio lo maneje
+                
                 var success = await _saleServices.CreateSale(sale);
                 if (success)
                 {
@@ -150,6 +151,40 @@ namespace mym_softcom.Controllers
                 return Ok(result);
             else
                 return BadRequest(result);
+        }
+
+        /// <summary>
+        /// ✅ ENDPOINT TEMPORAL DE DEBUGGING: Diagnostica el schema de la tabla sales
+        /// </summary>
+        [HttpGet("debug/schema")]
+        public async Task<IActionResult> DebugSchema()
+        {
+            try
+            {
+                var result = await _saleServices.DebugSalesTableSchema();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ ENDPOINT TEMPORAL DE UTILIDAD: Corrige todas las ventas con status null
+        /// </summary>
+        [HttpPost("debug/fix-null-statuses")]
+        public async Task<IActionResult> FixNullStatuses()
+        {
+            try
+            {
+                var result = await _saleServices.FixNullStatuses();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
     }
 }

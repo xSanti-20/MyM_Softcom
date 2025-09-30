@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
+using System.Text.Json;
 
 namespace mym_softcom.Controllers
 {
@@ -49,70 +50,101 @@ namespace mym_softcom.Controllers
                     .Where(c => c.status == "Activo")
                     .CountAsync();
 
-                // CLIENTES EN MORA - Implementación basada en fechas de vencimiento de cuotas
+                // ✅ CLIENTES EN MORA - Lógica simplificada y corregida
                 var currentDate = DateTime.Now.Date;
-
-                // Obtener todas las ventas activas con sus detalles de pago
-                var activeSalesWithDetails = await _context.Sales
-                    .Include(s => s.client)
-                    .Include(s => s.plan)
-                    .Where(s => s.status == "Active" && s.total_debt > 0)
-                    .ToListAsync();
-
                 var overdueClientIds = new HashSet<int>();
                 decimal totalOwedByOverdueClients = 0;
 
+                // ✅ FILTRO CORREGIDO: Incluir ventas con status "Active" o null, y que tengan deuda pendiente
+                var activeSalesWithDetails = await _context.Sales
+                    .Include(s => s.client)
+                    .Include(s => s.plan)
+                    .Where(s => (s.status == "Active" || s.status == null) && s.total_debt > 0)
+                    .ToListAsync();
+
+                Console.WriteLine($"[DashboardController] Analizando {activeSalesWithDetails.Count} ventas activas con deuda");
+
                 foreach (var sale in activeSalesWithDetails)
                 {
-                    if (sale.plan?.number_quotas > 0 && sale.quota_value > 0)
+                    Console.WriteLine($"[DashboardController] Procesando venta ID: {sale.id_Sales}, Cliente: {sale.client?.names}");
+                    Console.WriteLine($"[DashboardController] - Status: {sale.status ?? "null"}");
+                    Console.WriteLine($"[DashboardController] - Fecha venta: {sale.sale_date:yyyy-MM-dd}");
+                    Console.WriteLine($"[DashboardController] - Total deuda: ${sale.total_debt}");
+                    Console.WriteLine($"[DashboardController] - Valor cuota: ${sale.quota_value}");
+                    Console.WriteLine($"[DashboardController] - Plan cuotas: {sale.plan?.number_quotas}");
+                    
+                    bool hasOverdueQuotas = false;
+                    decimal overdueAmountForThisSale = 0;
+
+                    // ✅ LÓGICA UNIFICADA: Todas las ventas se procesan igual
+                    if (sale.plan?.number_quotas > 0 && sale.quota_value.HasValue && sale.quota_value.Value > 0)
                     {
                         var saleDate = sale.sale_date.Date;
-                        var quotaValue = sale.quota_value.Value;
+                        var quotaValue = sale.NewQuotaValue ?? sale.quota_value.Value;
                         var totalQuotas = sale.plan.number_quotas.Value;
+
+                        Console.WriteLine($"[DashboardController] Procesando {totalQuotas} cuotas de ${quotaValue}");
 
                         // Obtener detalles de pagos para esta venta
                         var paymentDetails = await _context.Details
                             .Where(pd => pd.id_Sales == sale.id_Sales)
                             .ToListAsync();
 
-                        // Calcular montos cubiertos por cuota
+                        Console.WriteLine($"[DashboardController] Encontrados {paymentDetails.Count} detalles de pago");
+
                         var coveredAmountsPerQuota = paymentDetails
                             .GroupBy(pd => pd.number_quota)
                             .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
 
-                        // Verificar cada cuota para determinar si hay mora
-                        bool hasOverdueQuotas = false;
-                        decimal overdueAmountForThisSale = 0;
-
+                        // Verificar cada cuota para determinar si está vencida
                         for (int i = 1; i <= totalQuotas; i++)
                         {
-                            // Calcular fecha de vencimiento de la cuota
-                            var dueDate = saleDate.AddMonths(i);
+                            // ✅ FECHA DE VENCIMIENTO: Día 18 del mes correspondiente
+                            var baseDate = saleDate.AddMonths(i);
+                            var dueDate = new DateTime(baseDate.Year, baseDate.Month, 18);
+                            
                             var coveredAmount = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
                             var remainingAmount = quotaValue - coveredAmount;
 
-                            // Si la cuota está vencida y no está completamente pagada
+                            Console.WriteLine($"[DashboardController] Cuota {i}:");
+                            Console.WriteLine($"  - Fecha vencimiento: {dueDate:yyyy-MM-dd}");
+                            Console.WriteLine($"  - Valor cuota: ${quotaValue}");
+                            Console.WriteLine($"  - Monto cubierto: ${coveredAmount}");
+                            Console.WriteLine($"  - Saldo pendiente: ${remainingAmount}");
+                            Console.WriteLine($"  - Fecha actual: {currentDate:yyyy-MM-dd}");
+                            Console.WriteLine($"  - ¿Está vencida?: {dueDate < currentDate && remainingAmount > 0}");
+
+                            // Si la cuota está vencida y tiene saldo pendiente
                             if (dueDate < currentDate && remainingAmount > 0)
                             {
                                 hasOverdueQuotas = true;
                                 overdueAmountForThisSale += remainingAmount;
+                                Console.WriteLine($"[DashboardController] ¡CUOTA VENCIDA! Cuota #{i}, Días vencida: {(currentDate - dueDate).Days}, Saldo: ${remainingAmount}");
                             }
                         }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[DashboardController] Venta {sale.id_Sales} no tiene plan válido o valor de cuota");
+                    }
 
-                        // Si esta venta tiene cuotas vencidas, agregar el cliente y el monto
-                        if (hasOverdueQuotas)
-                        {
-                            overdueClientIds.Add(sale.id_Clients);
-                            totalOwedByOverdueClients += overdueAmountForThisSale;
-                        }
+                    // Si esta venta tiene cuotas vencidas, agregar el cliente y el monto
+                    if (hasOverdueQuotas)
+                    {
+                        overdueClientIds.Add(sale.id_Clients);
+                        totalOwedByOverdueClients += overdueAmountForThisSale;
+                        Console.WriteLine($"[DashboardController] ✅ Cliente {sale.client?.names} agregado con ${overdueAmountForThisSale} en mora");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[DashboardController] Cliente {sale.client?.names} NO tiene cuotas vencidas");
                     }
                 }
 
                 var overdueClients = overdueClientIds.Count;
                 var totalOwed = totalOwedByOverdueClients;
 
-                Console.WriteLine($"[DashboardController] Clientes en mora encontrados: {overdueClients}");
-                Console.WriteLine($"[DashboardController] Total adeudado por clientes en mora: ${totalOwed}");
+                Console.WriteLine($"[DashboardController] RESULTADO FINAL: {overdueClients} clientes en mora, total adeudado: ${totalOwed}");
 
                 // Desistimientos del mes actual
                 var withdrawalsThisMonth = await _context.Withdrawals
@@ -120,14 +152,11 @@ namespace mym_softcom.Controllers
                                w.withdrawal_date.Year == currentYear)
                     .CountAsync();
 
-                // Recaudo total del mes (pagos del mes actual) - Este es solo de pagos del mes
+                // Recaudo total del mes (pagos del mes actual)
                 var monthlyRevenue = await _context.Payments
                     .Where(p => p.payment_date.Month == currentMonth &&
                                p.payment_date.Year == currentYear)
                     .SumAsync(p => p.amount ?? 0);
-
-                // NOTA: La suma de penalizaciones no se expone aquí directamente,
-                // ya que se espera que afecte el 'total_raised' de la venta o se maneje internamente.
 
                 return Ok(new
                 {
@@ -135,11 +164,12 @@ namespace mym_softcom.Controllers
                     overdueClients,
                     totalOwed,
                     withdrawalsThisMonth,
-                    monthlyRevenue // Recaudo de pagos del mes actual
+                    monthlyRevenue
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[DashboardController] Error en GetMainStats: {ex.Message}");
                 return StatusCode(500, new { message = "Error al obtener estadísticas principales", details = ex.Message });
             }
         }
@@ -357,6 +387,7 @@ namespace mym_softcom.Controllers
 
         /// <summary>
         /// Obtiene clientes con cuotas vencidas (en mora) basado en fechas de vencimiento
+        /// ✅ ACTUALIZADO: Lógica simplificada para todas las ventas
         /// </summary>
         [HttpGet("GetOverdueClients")]
         public async Task<ActionResult<object>> GetOverdueClients()
@@ -366,21 +397,25 @@ namespace mym_softcom.Controllers
                 var currentDate = DateTime.Now.Date;
                 var overdueClients = new List<object>();
 
-                // Obtener todas las ventas activas con deuda pendiente
+                // ✅ FILTRO CORREGIDO: Incluir ventas con status "Active" o null, y que tengan deuda pendiente
                 var activeSalesWithDetails = await _context.Sales
                     .Include(s => s.client)
                     .Include(s => s.plan)
                     .Include(s => s.lot)
                     .ThenInclude(l => l.project)
-                    .Where(s => s.status == "Active" && s.total_debt > 0)
+                    .Where(s => (s.status == "Active" || s.status == null) && s.total_debt > 0)
                     .ToListAsync();
 
                 foreach (var sale in activeSalesWithDetails)
                 {
-                    if (sale.plan?.number_quotas > 0 && sale.quota_value > 0)
+                    var overdueQuotas = new List<object>();
+                    decimal totalOverdueAmount = 0;
+
+                    // ✅ LÓGICA UNIFICADA: Todas las ventas se procesan igual
+                    if (sale.plan?.number_quotas > 0 && sale.quota_value.HasValue && sale.quota_value.Value > 0)
                     {
                         var saleDate = sale.sale_date.Date;
-                        var quotaValue = sale.quota_value.Value;
+                        var quotaValue = sale.NewQuotaValue ?? sale.quota_value.Value;
                         var totalQuotas = sale.plan.number_quotas.Value;
 
                         // Obtener detalles de pagos para esta venta
@@ -388,18 +423,16 @@ namespace mym_softcom.Controllers
                             .Where(pd => pd.id_Sales == sale.id_Sales)
                             .ToListAsync();
 
-                        // Calcular montos cubiertos por cuota
                         var coveredAmountsPerQuota = paymentDetails
                             .GroupBy(pd => pd.number_quota)
                             .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
 
-                        // Verificar cuotas vencidas
-                        var overdueQuotas = new List<object>();
-                        decimal totalOverdueAmount = 0;
-
                         for (int i = 1; i <= totalQuotas; i++)
                         {
-                            var dueDate = saleDate.AddMonths(i);
+                            // ✅ FECHA DE VENCIMIENTO: Día 18 del mes correspondiente
+                            var baseDate = saleDate.AddMonths(i);
+                            var dueDate = new DateTime(baseDate.Year, baseDate.Month, 18);
+                            
                             var coveredAmount = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
                             var remainingAmount = quotaValue - coveredAmount;
 
@@ -417,28 +450,30 @@ namespace mym_softcom.Controllers
                                 totalOverdueAmount += remainingAmount;
                             }
                         }
+                    }
 
-                        // Si hay cuotas vencidas, agregar el cliente a la lista
-                        if (overdueQuotas.Count > 0)
+                    // Si hay cuotas vencidas, agregar el cliente a la lista
+                    if (overdueQuotas.Count > 0)
+                    {
+                        overdueClients.Add(new
                         {
-                            overdueClients.Add(new
-                            {
-                                clientId = sale.client.id_Clients,
-                                clientName = $"{sale.client.names} {sale.client.surnames}",
-                                clientDocument = sale.client.document,
-                                clientPhone = sale.client.phone,
-                                saleId = sale.id_Sales,
-                                projectName = sale.lot?.project?.name ?? "Sin proyecto",
-                                lotInfo = $"{sale.lot?.block}-{sale.lot?.lot_number}",
-                                totalSaleValue = sale.total_value,
-                                totalRaised = sale.total_raised,
-                                totalDebt = sale.total_debt,
-                                overdueAmount = totalOverdueAmount,
-                                overdueQuotasCount = overdueQuotas.Count,
-                                overdueQuotas = overdueQuotas,
-                                saleDate = sale.sale_date
-                            });
-                        }
+                            clientId = sale.client.id_Clients,
+                            clientName = $"{sale.client.names} {sale.client.surnames}",
+                            clientDocument = sale.client.document,
+                            clientPhone = sale.client.phone,
+                            saleId = sale.id_Sales,
+                            projectName = sale.lot?.project?.name ?? "Sin proyecto",
+                            lotInfo = $"{sale.lot?.block}-{sale.lot?.lot_number}",
+                            planType = "Automático", // Todas se procesan como automáticas
+                            totalSaleValue = sale.total_value,
+                            totalRaised = sale.total_raised,
+                            totalDebt = sale.total_debt,
+                            overdueAmount = totalOverdueAmount,
+                            overdueQuotasCount = overdueQuotas.Count,
+                            overdueQuotas = overdueQuotas,
+                            saleDate = sale.sale_date,
+                            saleStatus = sale.status ?? "Sin definir" // ✅ Mostrar el status real
+                        });
                     }
                 }
 
@@ -455,6 +490,109 @@ namespace mym_softcom.Controllers
             {
                 Console.WriteLine($"[DashboardController] Error en GetOverdueClients: {ex.Message}");
                 return StatusCode(500, new { message = "Error al obtener clientes en mora", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ MÉTODO TEMPORAL DE DEBUGGING: Obtiene información detallada de una venta específica para depurar
+        /// </summary>
+        [HttpGet("DebugSale/{saleId}")]
+        public async Task<ActionResult<object>> DebugSale(int saleId)
+        {
+            try
+            {
+                var sale = await _context.Sales
+                    .Include(s => s.client)
+                    .Include(s => s.plan)
+                    .Include(s => s.lot)
+                    .ThenInclude(l => l.project)
+                    .FirstOrDefaultAsync(s => s.id_Sales == saleId);
+
+                if (sale == null)
+                {
+                    return NotFound($"Venta con ID {saleId} no encontrada");
+                }
+
+                // Obtener detalles de pagos
+                var paymentDetails = await _context.Details
+                    .Where(pd => pd.id_Sales == sale.id_Sales)
+                    .ToListAsync();
+
+                var coveredAmountsPerQuota = paymentDetails
+                    .GroupBy(pd => pd.number_quota)
+                    .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+
+                var currentDate = DateTime.Now.Date;
+                var quotaAnalysis = new List<object>();
+
+                // ✅ LÓGICA UNIFICADA: Procesar todas las ventas igual
+                if (sale.plan?.number_quotas > 0 && sale.quota_value.HasValue && sale.quota_value.Value > 0)
+                {
+                    var quotaValue = sale.NewQuotaValue ?? sale.quota_value.Value;
+                    var totalQuotas = sale.plan.number_quotas.Value;
+
+                    for (int i = 1; i <= totalQuotas; i++)
+                    {
+                        // ✅ FECHA DE VENCIMIENTO: Día 18 del mes correspondiente
+                        var baseDate = sale.sale_date.Date.AddMonths(i);
+                        var dueDate = new DateTime(baseDate.Year, baseDate.Month, 18);
+                        
+                        var coveredAmount = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
+                        var remainingAmount = quotaValue - coveredAmount;
+                        var isOverdue = dueDate < currentDate && remainingAmount > 0;
+
+                        quotaAnalysis.Add(new
+                        {
+                            quotaNumber = i,
+                            dueDate = dueDate.ToString("yyyy-MM-dd"),
+                            quotaValue = quotaValue,
+                            coveredAmount = coveredAmount,
+                            remainingAmount = remainingAmount,
+                            isOverdue = isOverdue,
+                            daysFromToday = (dueDate - currentDate).Days,
+                            daysOverdue = isOverdue ? (currentDate - dueDate).Days : 0
+                        });
+                    }
+                }
+
+                return Ok(new
+                {
+                    saleInfo = new
+                    {
+                        id = sale.id_Sales,
+                        saleDate = sale.sale_date.ToString("yyyy-MM-dd"),
+                        clientName = $"{sale.client?.names} {sale.client?.surnames}",
+                        totalValue = sale.total_value,
+                        initialPayment = sale.initial_payment,
+                        totalRaised = sale.total_raised,
+                        totalDebt = sale.total_debt,
+                        quotaValue = sale.quota_value,
+                        newQuotaValue = sale.NewQuotaValue,
+                        status = sale.status,
+                        paymentPlanType = sale.PaymentPlanType,
+                        customQuotasJson = sale.CustomQuotasJson,
+                        planQuotas = sale.plan?.number_quotas
+                    },
+                    currentDate = currentDate.ToString("yyyy-MM-dd"),
+                    paymentDetails = paymentDetails.Select(pd => new
+                    {
+                        id = pd.id_Details,
+                        quotaNumber = pd.number_quota,
+                        coveredAmount = pd.covered_amount,
+                        paymentId = pd.id_Payments
+                    }),
+                    quotaAnalysis = quotaAnalysis,
+                    summary = new
+                    {
+                        totalQuotas = quotaAnalysis.Count,
+                        overdueQuotas = quotaAnalysis.Count(q => ((dynamic)q).isOverdue),
+                        totalOverdueAmount = quotaAnalysis.Where(q => ((dynamic)q).isOverdue).Sum(q => (decimal)((dynamic)q).remainingAmount)
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error en debugging", details = ex.Message });
             }
         }
     }

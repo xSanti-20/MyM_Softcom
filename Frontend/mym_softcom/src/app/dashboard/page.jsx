@@ -362,7 +362,11 @@ export default function Dashboard() {
       // Cargar estadísticas principales
       try {
         const response = await axiosInstance.get("/api/Dashboard/GetMainStats")
+        console.log("=== DATOS DE MORA DEL BACKEND ===")
         console.log("Main stats data:", response.data)
+        console.log("Clientes en mora:", response.data?.overdueClients)
+        console.log("Total adeudado:", response.data?.totalOwed)
+        console.log("==================================")
 
         if (response.data && typeof response.data === "object") {
           setStats((prevStats) => ({

@@ -174,3 +174,7 @@ C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\bin\Debug\net8.0\runtime
 C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\bin\Debug\net8.0\runtimes\win-arm64\native\libSkiaSharp.dll
 C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\bin\Debug\net8.0\runtimes\win-x64\native\libSkiaSharp.dll
 C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\bin\Debug\net8.0\runtimes\win-x86\native\libSkiaSharp.dll
+C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\rpswa.dswa.cache.json
+C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\rjimswa.dswa.cache.json
+C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
+C:\Proyecto\MyM SOFTCOM\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json

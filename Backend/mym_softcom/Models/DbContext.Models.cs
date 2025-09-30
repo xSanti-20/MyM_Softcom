@@ -17,9 +17,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Sale>(entity =>
         {
             entity.ToTable("sales");
+            
+            // CONFIGURACIÓN MEJORADA: Especificar explícitamente el tipo y valor por defecto
             entity.Property(e => e.status)
                 .HasColumnType("enum('Active','Desistida','Escriturar')")
-                .HasDefaultValue("Active");
+                .HasDefaultValue("Active")
+                .IsRequired(false); // Permitir null temporalmente para manejar el valor por defecto
+                
+            // CONFIGURACIÓN ADICIONAL: Asegurar que otras propiedades tengan la configuración correcta
+            entity.Property(e => e.PaymentPlanType)
+                .HasDefaultValue("Automatic");
+                
+            entity.Property(e => e.HouseInitialPercentage)
+                .HasDefaultValue(30m);
         });
 
         base.OnModelCreating(modelBuilder);

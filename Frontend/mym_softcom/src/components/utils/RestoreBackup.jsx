@@ -162,7 +162,7 @@ const RestoreBackup = ({ onBackupRestored }) => {
                   </Label>
                   <p className="text-sm text-gray-500">Verifica la integridad de los datos antes de proceder</p>
                 </div>
-              </div>
+              </div> 
 
               <div className="flex items-start space-x-3">
                 <Checkbox

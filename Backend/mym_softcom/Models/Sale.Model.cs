@@ -16,8 +16,9 @@ namespace mym_softcom.Models
         public decimal? quota_value { get; set; }
         public decimal? total_debt { get; set; } // Valor total pendiente
 
+        // ✅ CORREGIDO: Sin valor por defecto en C#, la BD lo manejará
         [Column(TypeName = "enum('Active','Desistida','Escriturar')")]
-        public string? status { get; set; } = "Active";
+        public string? status { get; set; }
 
         public decimal? RedistributionAmount { get; set; }
         public string? RedistributionType { get; set; }

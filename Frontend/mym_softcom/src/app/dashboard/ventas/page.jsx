@@ -336,7 +336,6 @@ function SalesPage() {
               onUpdate={handleUpdate}
               showDeleteButton={true}
               showToggleButton={false}
-              
               showPdfButton={true}
               headerActions={headerActions}
             />

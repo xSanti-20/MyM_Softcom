@@ -74,8 +74,11 @@
         .firma-lado {
             flex: 1;
             text-align: center;
-            min-height: 40px;
-            /* Espacio suficiente pero compacto */
+            min-height: 90px;
+            /* Altura uniforme para ambos lados */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
         }
 
         .linea-firma {
@@ -83,8 +86,8 @@
             height: 1px;
             border-bottom: 1px solid #000;
             margin-bottom: 8px;
-            margin-top: 50px;
-            /* Espacio moderado para la firma */
+            margin-top: 5px;
+            /* Espacio reducido para firma digital */
         }
 
         .firma-label {
@@ -101,6 +104,25 @@
             margin-top: 20px;
             gap: 50px;
             /* Separación moderada entre columnas */
+        }
+
+        .firma-digital {
+            text-align: center;
+            margin: 0 0 10px 0;
+            padding: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .firma-digital img {
+            max-width: 250px;
+            max-height: 60px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+            display: block;
         }
 
         .info-empresa {
@@ -399,6 +421,9 @@
         <div class="firmas-section">
             <div class="firmas-container">
                 <div class="firma-lado">
+                    <div class="firma-digital">
+                        <img src="./FIRMA.png" alt="Firma Digital Ana Sofía Arce">
+                    </div>
                     <div class="linea-firma"></div>
                     <p class="firma-label">EL PROMITENTE VENDEDOR</p>
                 </div>

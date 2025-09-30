@@ -714,6 +714,29 @@
         }
       }
     },
+    "/api/Dashboard/DebugSale/{saleId}": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Detail/GetAllDetails": {
       "get": {
         "tags": [
@@ -2408,6 +2431,30 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Sale/debug/schema": {
+      "get": {
+        "tags": [
+          "Sale"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Sale/debug/fix-null-statuses": {
+      "post": {
+        "tags": [
+          "Sale"
+        ],
         "responses": {
           "200": {
             "description": "OK"
