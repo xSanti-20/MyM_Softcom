@@ -2,7 +2,15 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset        .firmas-section {
+            margin-top: 15px;
+            page-break-inside: avoid;
+            page-break-before: avoid;
+            /* Evita cortes de página en toda la sección */
+            margin-bottom: 0;
+            min-height: 150px;
+            /* Altura mínima para asegurar espacio */
+        }-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrato de Arras - Malibu Lote</title>
     <style>
@@ -69,59 +77,105 @@
         .firmas-container {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 25px;
-            /* Espacio compacto para firmas */
-            gap: 80px;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            margin-top: 10px;
+            gap: 30px;
+            page-break-inside: avoid;
+            /* Layout: izquierda vendedor, derecha compradores en columna */
         }
 
-        .firma-lado {
+        .firma-vendedor {
             flex: 1;
+            max-width: 45%;
             text-align: center;
-            min-height: 90px;
-            /* Altura uniforme para ambos lados */
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
+            align-items: center;
+            /* Altura fija para alineación perfecta con primer comprador */
+            min-height: 140px;
+        }
+
+        .compradores-section {
+            flex: 1;
+            max-width: 50%;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            /* Compradores uno encima del otro con más espacio para firma y huella */
+        }
+
+        .firma-comprador {
+            text-align: center;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .linea-firma {
             width: 100%;
             height: 1px;
             border-bottom: 1px solid #000;
-            margin-bottom: 8px;
-            margin-top: 5px;
-            /* Espacio reducido para firma digital */
+            margin-bottom: 5px;
+            margin-top: 3px;
+            /* Espacios más compactos */
         }
 
         .firma-label {
-            font-size: 10pt;
+            font-size: 9pt;
+            /* Fuente más pequeña */
             font-weight: bold;
             margin: 0;
             text-transform: uppercase;
-            text-align: left;
+            text-align: center;
+            line-height: 1.1;
+            /* Espaciado de línea compacto */
         }
 
-        .info-partes {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            gap: 50px;
-            /* Separación moderada entre columnas */
+        .info-vendedor, .info-comprador {
+            margin-top: 10px;
+            font-size: 8pt;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .info-vendedor p, .info-comprador p {
+            margin: 2px 0;
+        }
+
+        .empresa-detalles {
+            margin-top: 5px;
+            font-size: 7pt;
+        }
+
+        .empresa-detalles p {
+            margin: 1px 0;
+        }
+
+        .espacio-firma {
+            height: 50px;
+            /* Espacio en blanco para firma manual */
+            width: 100%;
+            margin-bottom: 3px;
         }
 
         .firma-digital {
             text-align: center;
-            margin: 0 0 10px 0;
+            margin: 0 0 5px 0;
             padding: 0;
-            height: 60px;
+            height: 50px;
+            /* Altura más compacta */
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .firma-digital img {
-            max-width: 250px;
-            max-height: 60px;
+            max-width: 200px;
+            /* Ancho más compacto */
+            max-height: 50px;
+            /* Altura más compacta */
             height: auto;
             width: auto;
             object-fit: contain;
@@ -282,8 +336,10 @@
                 class="bold">{{CLIENTE_CC_EXPEDIDA_EN}}</span>,
             mayor de edad, domiciliado en <span class="bold">{{CLIENTE_DIRECCION}}</span>,
             con número de contacto <span class="bold">{{CLIENTE_TELEFONO}}</span> y correo electrónico
-            <span class="bold">{{CLIENTE_EMAIL}}</span>, quien en adelante se denominará
-            <span class="bold">EL PROMITENTE COMPRADOR</span>, se ha celebrado el presente contrato de promesa de
+            <span class="bold">{{CLIENTE_EMAIL}}</span>{{#SEGUNDO_COMPRADOR}}, 
+            y <span class="bold">{{SEGUNDO_COMPRADOR_NOMBRE}}</span>, identificado(a) con Cédula de Ciudadanía Número
+            <span class="bold">{{SEGUNDO_COMPRADOR_CEDULA}}</span>{{/SEGUNDO_COMPRADOR}}, quien{{#SEGUNDO_COMPRADOR}}es{{/SEGUNDO_COMPRADOR}}{{^SEGUNDO_COMPRADOR}} en adelante{{/SEGUNDO_COMPRADOR}} se denominar{{#SEGUNDO_COMPRADOR}}án{{/SEGUNDO_COMPRADOR}}{{^SEGUNDO_COMPRADOR}}á{{/SEGUNDO_COMPRADOR}}
+            <span class="bold">EL{{#SEGUNDO_COMPRADOR}}OS{{/SEGUNDO_COMPRADOR}} PROMITENTE{{#SEGUNDO_COMPRADOR}}S{{/SEGUNDO_COMPRADOR}} COMPRADOR{{#SEGUNDO_COMPRADOR}}ES{{/SEGUNDO_COMPRADOR}}</span>, se ha celebrado el presente contrato de promesa de
             compraventa
             que se rige con las siguientes cláusulas:
         </p>
@@ -327,7 +383,7 @@
                     COMPRADOR</span>
                 pagará al <span class="bold">PROMITENTE VENDEDOR</span> de la siguiente manera:
             </p>
-            <p class="indent">
+            <p class="indent"> 
                 a) <span class="bold">{{SEPARACION_LETRAS}}</span> (<span class="bold">{{SEPARACION_NUM}}</span>)
                 cancelados de la siguiente manera:
                 En transferencia o efectivo el día <span class="bold">{{FECHA_SEPARACION}}</span> como valor de separado
@@ -458,55 +514,72 @@
             </p>
         </div>
 
-        <p class="margin-top">
+        <p style="margin-top: 10px; margin-bottom: 5px;">
             Los contratantes, afirman haber leído el presente documento y dan su asentimiento expresamente a lo
             estipulado y firman como aparece,
             ante testigos que los suscriben, en la ciudad de <span class="bold">{{CIUDAD_FIRMA}}</span> a los
             <span class="bold">{{FECHA_CONTRATO_LARGA}}</span> en dos ejemplares, uno para cada promitente.
         </p>
 
-        <br>
-        <br>
         <!-- Sección de firmas profesional -->
         <div class="firmas-section">
             <!-- Firmas -->
             <div class="firmas-container">
-                <div class="firma-lado">
+                <!-- Vendedor a la izquierda -->
+                <div class="firma-vendedor">
                     <div class="firma-digital">
                         <img src="./FIRMA.png" alt="Firma Digital Ana Sofía Arce">
                     </div>
                     <div class="linea-firma"></div>
                     <p class="firma-label">EL PROMITENTE VENDEDOR</p>
-                </div>
-                <div class="firma-lado">
-                    <div class="linea-firma"></div>
-                    <p class="firma-label">EL PROMITENTE COMPRADOR</p>
-                </div>
-            </div>
-
-            <!-- Información de las partes -->
-            <div class="info-partes">
-                <!-- Información de la empresa -->
-                <div class="info-empresa">
-                    <p class="bold">ANA SOFÍA ARCE PALMA</p>
-                    <p>Representante Legal</p>
-                    <p>C.C.: 1.105.676.043 de Ibagué, Tolima</p>
-
-                    <div class="empresa-detalles">
-                        <p class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</p>
-                        <p>NIT: 900.692.181-8</p>
-                        <p>Dirección: Mz A Casa 109 Villa del Prado - Sector 1, El Espinal, Tolima</p>
-                        <p>Teléfonos: 3115899706 - 3165589223</p>
-                        <p>Correo: mymultiserciosingsas@gmail.com</p>
+                    
+                    <!-- Información del vendedor directamente bajo su firma -->
+                    <div class="info-vendedor">
+                        <p class="bold">ANA SOFÍA ARCE PALMA</p>
+                        <p>Representante Legal</p>
+                        <p>C.C.: 1.105.676.043 de Ibagué, Tolima</p>
+                        
+                        <div class="empresa-detalles">
+                            <p class="bold">M&M MULTISERVICIOS INGENIERIA S.A.S.</p>
+                            <p>NIT: 900.692.181-8</p>
+                            <p>Dirección: Mz A Casa 109 Villa del Prado - Sector 1, El Espinal, Tolima</p>
+                            <p>Teléfonos: 3115899706 - 3165589223</p>
+                            <p>Correo: mymultiserviciosingsas@gmail.com</p>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Información del cliente -->
-                <div class="info-cliente">
-                    <p class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</p>
-                    <p>C.C.: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</p>
-                    <p>Teléfono: {{CLIENTE_TELEFONO}}</p>
-                    <p>Correo: {{CLIENTE_EMAIL}}</p>
+                
+                <!-- Compradores a la derecha, uno encima del otro -->
+                <div class="compradores-section">
+                    <div class="firma-comprador">
+                        <!-- Espacio para firma manual del primer comprador -->
+                        <div class="espacio-firma"></div>
+                        <div class="linea-firma"></div>
+                        <p class="firma-label">{{#SEGUNDO_COMPRADOR}}PRIMER {{/SEGUNDO_COMPRADOR}}PROMITENTE COMPRADOR</p>
+                        
+                        <!-- Información del primer comprador directamente bajo su firma -->
+                        <div class="info-comprador">
+                            <p class="bold">{{CLIENTE_NOMBRE_COMPLETO}}</p>
+                            <p>C.C.: {{CLIENTE_CC_NUM}} de {{CLIENTE_CC_EXPEDIDA_EN}}</p>
+                            <p>Teléfono: {{CLIENTE_TELEFONO}}</p>
+                            <p>Correo: {{CLIENTE_EMAIL}}</p>
+                        </div>
+                    </div>
+                    
+                    {{#SEGUNDO_COMPRADOR}}
+                    <div class="firma-comprador">
+                        <!-- Espacio para firma manual del segundo comprador -->
+                        <div class="espacio-firma"></div>
+                        <div class="linea-firma"></div>
+                        <p class="firma-label">SEGUNDO PROMITENTE COMPRADOR</p>
+                        
+                        <!-- Información del segundo comprador directamente bajo su firma -->
+                        <div class="info-comprador">
+                            <p class="bold">{{SEGUNDO_COMPRADOR_NOMBRE}}</p>
+                            <p>C.C.: {{SEGUNDO_COMPRADOR_CEDULA}}</p>
+                        </div>
+                    </div>
+                    {{/SEGUNDO_COMPRADOR}}
                 </div>
             </div>
         </div>

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 
 function numeroALetras(num) {
   const unidades = [
@@ -108,6 +109,9 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
     tipoContrato: "",
     consecutivo: "",
     areaConstruida: "",
+    tieneSegundoComprador: false,
+    segundoCompradorNombre: "",
+    segundoCompradorCedula: "",
   })
 
   const handleInputChange = (field, value) => {
@@ -254,6 +258,54 @@ export function BusinessSheetModal({ isOpen, onClose, onConfirm, saleData }) {
               placeholder="Ej: Bogotá"
             />
           </div>
+
+          {/* Segundo Comprador */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">
+              ¿Segundo Comprador?
+            </Label>
+            <div className="col-span-3 flex items-center space-x-2">
+              <Checkbox
+                id="tieneSegundoComprador"
+                checked={formData.tieneSegundoComprador}
+                onCheckedChange={(checked) => handleInputChange("tieneSegundoComprador", checked)}
+              />
+              <Label htmlFor="tieneSegundoComprador" className="text-sm font-normal">
+                Sí, agregar segundo comprador
+              </Label>
+            </div>
+          </div>
+
+          {/* Campos del Segundo Comprador */}
+          {formData.tieneSegundoComprador && (
+            <>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="segundoCompradorNombre" className="text-right">
+                  Nombre
+                </Label>
+                <Input
+                  id="segundoCompradorNombre"
+                  value={formData.segundoCompradorNombre}
+                  onChange={(e) => handleInputChange("segundoCompradorNombre", e.target.value)}
+                  className="col-span-3"
+                  placeholder="Ej: Juan Pérez García"
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="segundoCompradorCedula" className="text-right">
+                  Cédula
+                </Label>
+                <Input
+                  id="segundoCompradorCedula"
+                  value={formData.segundoCompradorCedula}
+                  onChange={(e) => handleInputChange("segundoCompradorCedula", e.target.value)}
+                  className="col-span-3"
+                  placeholder="Ej: 12.345.678"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>

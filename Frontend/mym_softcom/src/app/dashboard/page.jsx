@@ -752,7 +752,7 @@ export default function Dashboard() {
                       icon={XCircle}
                       title="Desistimientos"
                       value={stats.cancellations.toString()}
-                      description="Pagos cancelados este mes"
+                      description="Ventas canceladas este mes"
                       color="purple"
                     />
                   </div>

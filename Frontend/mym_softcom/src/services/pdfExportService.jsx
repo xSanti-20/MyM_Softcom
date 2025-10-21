@@ -504,6 +504,13 @@ class SalesPDFService {
         CLIENTE_DIRECCION: (temporaryData.direccion || "N/A").toUpperCase(),
         CLIENTE_CIUDAD: (temporaryData.ciudad || "N/A").toUpperCase(),
         
+        // Segundo comprador (opcional)
+        SEGUNDO_COMPRADOR: temporaryData.tieneSegundoComprador ? true : false,
+        SEGUNDO_COMPRADOR_NOMBRE: temporaryData.tieneSegundoComprador ? 
+          (temporaryData.segundoCompradorNombre || "N/A").toUpperCase() : "",
+        SEGUNDO_COMPRADOR_CEDULA: temporaryData.tieneSegundoComprador ? 
+          (temporaryData.segundoCompradorCedula || "N/A").toUpperCase() : "",
+        
         // Consecutivo del contrato
         CONSECUTIVO: temporaryData.consecutivo ? temporaryData.consecutivo.toUpperCase() : "",
 
@@ -603,6 +610,30 @@ class SalesPDFService {
       }
 
       console.log("[v0] Applying replacements:", Object.keys(replacements))
+
+      // Process conditional blocks first (Mustache-style)
+      const processConditionals = (html, data) => {
+        // Process {{#SEGUNDO_COMPRADOR}} blocks
+        const conditionalRegex = /{{#(\w+)}}([\s\S]*?){{\/\1}}/g
+        const negativeConditionalRegex = /{{[\^](\w+)}}([\s\S]*?){{\/\1}}/g
+        
+        // Handle positive conditionals ({{#VAR}}...{{/VAR}})
+        html = html.replace(conditionalRegex, (match, varName, content) => {
+          const value = data[varName]
+          return value ? content : ''
+        })
+        
+        // Handle negative conditionals ({{^VAR}}...{{/VAR}})
+        html = html.replace(negativeConditionalRegex, (match, varName, content) => {
+          const value = data[varName]
+          return !value ? content : ''
+        })
+        
+        return html
+      }
+
+      // Apply conditional processing
+      htmlContent = processConditionals(htmlContent, replacements)
 
       // Replace all placeholders
       Object.entries(replacements).forEach(([key, value]) => {
