@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import Router from "next/router";
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5216/',
+  baseURL: 'http://192.168.1.15:5000/',
   headers: {
     'accept': '*/*',
     'Content-Type': 'application/json'

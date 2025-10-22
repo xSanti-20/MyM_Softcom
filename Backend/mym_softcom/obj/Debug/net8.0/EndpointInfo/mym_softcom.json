@@ -1513,6 +1513,54 @@
         }
       }
     },
+    "/api/NetworkInfo/info": {
+      "get": {
+        "tags": [
+          "NetworkInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/NetworkInfo/public-ip": {
+      "get": {
+        "tags": [
+          "NetworkInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/NetworkInfo/ping": {
+      "get": {
+        "tags": [
+          "NetworkInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/NetworkInfo/status": {
+      "get": {
+        "tags": [
+          "NetworkInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/OverdueNotification/process-all": {
       "post": {
         "tags": [

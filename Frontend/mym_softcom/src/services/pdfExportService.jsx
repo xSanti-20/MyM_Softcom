@@ -236,11 +236,29 @@ function buildPlanPagosHTML(saleData) {
   }
 
   const totalQuotas = saleData.plan.number_quotas || 0
-  const quotaValue = saleData.quota_value || 0
   const saleDate = new Date(saleData.sale_date)
+  const paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
+  const customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
 
-  if (totalQuotas === 0 || quotaValue === 0) {
-    console.log("[v0] Invalid quota data - totalQuotas:", totalQuotas, "quotaValue:", quotaValue)
+  console.log("[v0] Payment Plan Type:", paymentPlanType)
+  console.log("[v0] Custom Quotas JSON:", customQuotasJson)
+
+  // Detectar si es plan personalizado
+  let customQuotas = null
+  if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+    try {
+      customQuotas = JSON.parse(customQuotasJson)
+      console.log("[v0] Custom plan detected with", customQuotas?.length, "personalized quotas")
+      console.log("[v0] First 3 custom quotas:", customQuotas?.slice(0, 3))
+    } catch (error) {
+      console.error("Error parsing custom quotas JSON:", error)
+    }
+  }
+
+  const quotaValue = saleData.quota_value || 0
+
+  if (totalQuotas === 0) {
+    console.log("[v0] Invalid quota data - totalQuotas:", totalQuotas)
     return `
       <table class="plan-pagos-table">
         <thead>
@@ -259,13 +277,31 @@ function buildPlanPagosHTML(saleData) {
     `
   }
 
-  console.log("[v0] Generating quotas - totalQuotas:", totalQuotas, "quotaValue:", quotaValue)
+  console.log("[v0] Generating quotas - totalQuotas:", totalQuotas, "paymentPlanType:", paymentPlanType)
 
   const rows = []
   for (let i = 1; i <= totalQuotas; i++) {
     const dueDate = new Date(saleDate)
     dueDate.setMonth(saleDate.getMonth() + i)
     dueDate.setDate(saleDate.getDate())
+
+    // Usar valor de cuota personalizada si existe, sino usar el valor automático
+    let currentQuotaValue = quotaValue
+    if (customQuotas && customQuotas.length > 0) {
+      const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
+      if (customQuota) {
+        // Intentar con Amount (mayúscula) y amount (minúscula)
+        const customAmount = customQuota.amount || customQuota.Amount
+        if (customAmount) {
+          currentQuotaValue = customAmount
+          if (i <= 3 || i === totalQuotas) {
+            console.log(`[v0] Quota ${i}: Using custom value ${currentQuotaValue}`)
+          }
+        }
+      }
+    } else if (i === 1) {
+      console.log("[v0] No custom quotas found, using automatic value:", quotaValue)
+    }
 
     rows.push(`
       <tr>
@@ -274,7 +310,7 @@ function buildPlanPagosHTML(saleData) {
       style: "currency",
       currency: "COP",
       minimumFractionDigits: 0,
-    }).format(quotaValue)}</td>
+    }).format(currentQuotaValue)}</td>
         <td>${dueDate.toLocaleDateString("es-CO")}</td>
       </tr>
     `)

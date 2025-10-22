@@ -892,6 +892,46 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "mym_softcom.Controllers.NetworkInfoController",
+    "Method": "GetNetworkInfo",
+    "RelativePath": "api/NetworkInfo/info",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.NetworkInfoController",
+    "Method": "Ping",
+    "RelativePath": "api/NetworkInfo/ping",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.NetworkInfoController",
+    "Method": "GetPublicIP",
+    "RelativePath": "api/NetworkInfo/public-ip",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "mym_softcom.Controllers.NetworkInfoController",
+    "Method": "GetServerStatus",
+    "RelativePath": "api/NetworkInfo/status",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
     "Method": "GetClientsWithOverdue",
     "RelativePath": "api/OverdueNotification/clients-with-overdue",
