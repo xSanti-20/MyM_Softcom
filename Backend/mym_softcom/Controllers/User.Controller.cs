@@ -145,7 +145,7 @@ namespace mym_softcom.Controllers
                 user.ResetTokenExpiration = DateTime.UtcNow.AddMinutes(30);
                 await _Services.UpdateUserAsync(user);
 
-                string resetLink = $"http://localhost:3000/user/reset_password?token={token}";
+                string resetLink = $"http://192.168.1.27:3000/user/reset_password?token={token}";
 
                 var emailuser = await GeneralFunction.SendEmail(model.Email, resetLink);
                 if (!emailuser.Status)

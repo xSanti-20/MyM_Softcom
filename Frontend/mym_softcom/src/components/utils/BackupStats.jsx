@@ -34,7 +34,7 @@ const BackupStats = ({ refreshTrigger }) => {
 
   useEffect(() => {
     loadStats()
-  }, [refreshTrigger, loadStats])
+  }, [refreshTrigger])
 
   const formatDate = (dateString) => {
     if (!dateString) return "Nunca"

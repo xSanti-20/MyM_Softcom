@@ -101,7 +101,8 @@ function LotPage() {
             status: createLotStatusBadge(lot.status || "Libre"),
             project: lot.project?.name || "N/A",
             original: lot,
-            searchableIdentifier: `${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} ${lot.project?.name || ""} ${lot.location || ""}`,
+            // Búsqueda mejorada: prioriza manzana y número, separa ubicación con delimitadores
+            searchableIdentifier: `MZ:${lot.block} LOTE:${lot.lot_number} ${lot.block}-${lot.lot_number} ${lot.block}${lot.lot_number} PROYECTO:${lot.project?.name || ""} UBICACION:${lot.location || ""}`,
           }))
           setLotData(data)
         }

@@ -16,6 +16,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     sale_date: "",
     total_value: "",
     initial_payment: "",
+    initial_payment_method: "Efectivo",
     id_Clients: "",
     id_Lots: "",
     id_Users: "",
@@ -25,7 +26,10 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     customQuotas: [],
   })
 
-  const [customQuotaInput, setCustomQuotaInput] = useState({ quotaNumber: "", amount: "" })
+  const [customQuotaInput, setCustomQuotaInput] = useState({ quotaNumber: "", amount: "", dueDate: "" })
+  
+  // Ref para rastrear si ya se cargaron los datos de edición
+  const editDataLoadedRef = useRef(false)
 
   // Estados para búsqueda de cliente
   const [clientDocument, setClientDocument] = useState("")
@@ -77,9 +81,15 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   const addCustomQuota = () => {
     const quotaNumber = Number.parseInt(customQuotaInput.quotaNumber)
     const amount = Number.parseFloat(customQuotaInput.amount)
+    const dueDate = customQuotaInput.dueDate
 
     if (!quotaNumber || !amount || quotaNumber <= 0 || amount <= 0) {
       showAlert("error", "Por favor ingrese un número de cuota y monto válidos.")
+      return
+    }
+
+    if (!dueDate) {
+      showAlert("error", "Por favor ingrese una fecha de vencimiento para la cuota.")
       return
     }
 
@@ -89,10 +99,10 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       return
     }
 
-    const newQuotas = [...formData.customQuotas, { quotaNumber, amount }].sort((a, b) => a.quotaNumber - b.quotaNumber)
+    const newQuotas = [...formData.customQuotas, { quotaNumber, amount, dueDate }].sort((a, b) => a.quotaNumber - b.quotaNumber)
 
     setFormData((prev) => ({ ...prev, customQuotas: newQuotas }))
-    setCustomQuotaInput({ quotaNumber: "", amount: "" })
+    setCustomQuotaInput({ quotaNumber: "", amount: "", dueDate: "" })
   }
 
   const removeCustomQuota = (quotaNumber) => {
@@ -367,12 +377,8 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         setUsers(usersRes.data.filter((user) => user.status !== "Inactivo"))
         setPlans(plansRes.data)
 
-        if (!isEditing) {
-          setFormData((prev) => ({
-            ...prev,
-            sale_date: new Date().toISOString().split("T")[0],
-          }))
-        }
+        // NO establecer fecha actual automáticamente
+        // Dejar que el usuario seleccione la fecha que desee
       } catch (error) {
         console.error("Error al cargar datos para los selectores:", error)
         showAlert("error", "No se pudieron cargar las opciones necesarias para el formulario de ventas.")
@@ -385,7 +391,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Poblar formulario para edición
   useEffect(() => {
-    if (isEditing && saleToEdit) {
+    // ⚠️ IMPORTANTE: Solo cargar si users y plans ya están disponibles y no se ha cargado antes
+    if (isEditing && saleToEdit && users.length > 0 && plans.length > 0 && !editDataLoadedRef.current) {
+      console.log("🔧 [EDIT MODE] Cargando datos de venta:", saleToEdit)
+      editDataLoadedRef.current = true // Marcar como cargado
+      
       let customQuotas = []
       if (saleToEdit.customQuotasJson) {
         try {
@@ -393,16 +403,18 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           customQuotas = parsed.map((q) => ({
             quotaNumber: q.QuotaNumber || q.quotaNumber,
             amount: q.Amount || q.amount,
+            dueDate: q.DueDate || q.dueDate || "", // ← NUEVO: Cargar fecha de vencimiento
           }))
         } catch (e) {
           console.error("Error parsing custom quotas:", e)
         }
       }
 
-      setFormData({
+      const editFormData = {
         sale_date: saleToEdit.sale_date ? new Date(saleToEdit.sale_date).toISOString().split("T")[0] : "",
         total_value: saleToEdit.total_value?.toString() || "",
         initial_payment: saleToEdit.initial_payment?.toString() || "",
+        initial_payment_method: saleToEdit.initial_payment_method || "Efectivo",
         id_Clients: saleToEdit.id_Clients?.toString() || "",
         id_Lots: saleToEdit.id_Lots?.toString() || "",
         id_Users: saleToEdit.id_Users?.toString() || "",
@@ -410,7 +422,10 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         paymentPlanType: saleToEdit.paymentPlanType?.toLowerCase() || "automatic",
         houseInitialPercentage: saleToEdit.houseInitialPercentage?.toString() || "30",
         customQuotas: customQuotas,
-      })
+      }
+      
+      console.log("📝 [EDIT MODE] Datos del formulario a establecer:", editFormData)
+      setFormData(editFormData)
 
       // Cargar cliente para edición
       if (saleToEdit.id_Clients) {
@@ -431,16 +446,23 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
       // Cargar lote y proyecto para edición
       if (saleToEdit.lot) {
+        console.log("🏗️ [EDIT MODE] Cargando lote y proyecto:", saleToEdit.lot)
+        const projectId = saleToEdit.lot.project?.id_Projects?.toString() || ""
+        console.log("📍 [EDIT MODE] ID del proyecto:", projectId)
+        
         setSelectedLot(saleToEdit.lot)
-        setSelectedProject(saleToEdit.lot.project?.id_Projects?.toString() || "")
+        setSelectedProject(projectId)
         setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
       }
-    } else {
-      // Resetear estados
+    } else if (!isEditing) {
+      // ⚠️ Solo resetear si NO está en modo edición (evita resetear durante la carga)
+      console.log("🔄 [RESET] Limpiando formulario para nueva venta")
+      editDataLoadedRef.current = false // Resetear el flag
       setFormData({
-        sale_date: new Date().toISOString().split("T")[0],
+        sale_date: "", // Dejar vacío para que el usuario seleccione
         total_value: "",
         initial_payment: "",
+        initial_payment_method: "Efectivo",
         id_Clients: "",
         id_Lots: "",
         id_Users: "",
@@ -459,7 +481,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       setShowLotResults(false)
       setLotSearchError(null)
     }
-  }, [saleToEdit, isEditing])
+  }, [saleToEdit, isEditing, users, plans])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -514,9 +536,10 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     }
 
     const body = {
-      sale_date: new Date(sale_date).toISOString(),
+      sale_date: sale_date, // Enviar la fecha tal cual está en el input (YYYY-MM-DD)
       total_value: parsedTotalValue,
       initial_payment: parsedInitialPayment,
+      initial_payment_method: formData.initial_payment_method,
       id_Clients: Number.parseInt(id_Clients, 10),
       id_Lots: Number.parseInt(id_Lots, 10),
       id_Users: Number.parseInt(id_Users, 10),
@@ -528,6 +551,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
             formData.customQuotas.map((q) => ({
               QuotaNumber: q.quotaNumber,
               Amount: q.amount,
+              DueDate: q.dueDate, // ← NUEVO: Incluir fecha de vencimiento
             })),
           )
           : null,
@@ -537,6 +561,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           ? parsedTotalValue * (Number.parseFloat(formData.houseInitialPercentage) / 100)
           : null,
     }
+
+    console.log("📅 Fecha que se envía al backend:", sale_date)
+    console.log("📦 Body completo que se envía:", body)
 
     if (!isEditing) {
       body.status = "Active" // Valor por defecto para ventas nuevas
@@ -566,9 +593,10 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
       if (!isEditing || closeModal) {
         setFormData({
-          sale_date: new Date().toISOString().split("T")[0],
+          sale_date: "", // Dejar vacío para que el usuario seleccione la fecha
           total_value: "",
           initial_payment: "",
+          initial_payment_method: "Efectivo",
           id_Clients: "",
           id_Lots: "",
           id_Users: "",
@@ -609,6 +637,8 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     startQuota: "",
     endQuota: "",
     amount: "",
+    startDate: "",
+    intervalMonths: "1",
   })
   const [quotaInputMode, setQuotaInputMode] = useState("individual") // "individual" or "batch"
 
@@ -616,9 +646,16 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     const startQuota = Number.parseInt(batchQuotaInput.startQuota)
     const endQuota = Number.parseInt(batchQuotaInput.endQuota)
     const amount = Number.parseFloat(batchQuotaInput.amount)
+    const startDate = batchQuotaInput.startDate
+    const intervalMonths = Number.parseInt(batchQuotaInput.intervalMonths) || 1
 
     if (!startQuota || !endQuota || !amount || startQuota <= 0 || endQuota <= 0 || amount <= 0) {
       showAlert("error", "Por favor ingrese valores válidos para el rango de cuotas y monto.")
+      return
+    }
+
+    if (!startDate) {
+      showAlert("error", "Por favor ingrese la fecha de vencimiento de la primera cuota.")
       return
     }
 
@@ -635,19 +672,38 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       return
     }
 
-    // Create batch quotas
+    // Create batch quotas with calculated dates
     const newQuotas = []
+    const baseDate = new Date(startDate)
+    
     for (let i = startQuota; i <= endQuota; i++) {
-      newQuotas.push({ quotaNumber: i, amount })
+      const quotaDate = new Date(baseDate)
+      quotaDate.setMonth(quotaDate.getMonth() + (i - startQuota) * intervalMonths)
+      
+      newQuotas.push({ 
+        quotaNumber: i, 
+        amount,
+        dueDate: quotaDate.toISOString().split('T')[0]
+      })
     }
 
     const allQuotas = [...formData.customQuotas, ...newQuotas].sort((a, b) => a.quotaNumber - b.quotaNumber)
 
     setFormData((prev) => ({ ...prev, customQuotas: allQuotas }))
-    setBatchQuotaInput({ startQuota: "", endQuota: "", amount: "" })
+    setBatchQuotaInput({ startQuota: "", endQuota: "", amount: "", startDate: "", intervalMonths: "1" })
 
     showAlert("success", `Se agregaron ${newQuotas.length} cuotas del ${startQuota} al ${endQuota}.`)
   }
+
+  // Debug: Log cuando se renderiza
+  console.log("🎨 [RENDER] Estado actual del formulario:", {
+    isEditing,
+    formData,
+    usersLoaded: users.length,
+    plansLoaded: plans.length,
+    selectedProject,
+    selectedLot
+  })
 
   return (
     <div className="max-w-full mx-auto p-6 bg-white rounded-lg">
@@ -703,7 +759,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           {/* Cuota Inicial */}
           <div>
             <Label htmlFor="initial_payment" className="block text-sm font-medium text-gray-700 mb-1">
-              Cuota Inicial *
+              Valor Cuota Inicial *
             </Label>
             <div className="relative">
               <Input
@@ -719,6 +775,28 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               />
               <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             </div>
+          </div>
+
+          {/* Método de Pago de Cuota Inicial */}
+          <div>
+            <Label htmlFor="initial_payment_method" className="block text-sm font-medium text-gray-700 mb-1">
+              Método de Pago de Cuota Inicial *
+            </Label>
+            <Select
+              name="initial_payment_method"
+              value={formData.initial_payment_method}
+              onValueChange={(value) => handleSelectChange("initial_payment_method", value)}
+              required
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecciona el método de pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Efectivo">Efectivo</SelectItem>
+                <SelectItem value="Banco Ahorros">Banco Ahorros</SelectItem>
+                <SelectItem value="Banco Corriente">Banco Corriente</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -1095,27 +1173,39 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               {quotaInputMode === "individual" && (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h4 className="text-sm font-medium text-blue-800 mb-2">Agregar Cuota Individual</h4>
-                  <div className="flex gap-2">
-                    <div className="w-24">
+                  <div className="grid grid-cols-12 gap-2">
+                    <div className="col-span-2">
+                      <label className="text-xs text-gray-600 mb-1 block"># Cuota</label>
                       <Input
                         type="number"
-                        placeholder="# Cuota"
+                        placeholder="1"
                         value={customQuotaInput.quotaNumber}
                         onChange={(e) => setCustomQuotaInput((prev) => ({ ...prev, quotaNumber: e.target.value }))}
                         className="text-center"
                       />
                     </div>
-                    <div className="flex-1">
+                    <div className="col-span-4">
+                      <label className="text-xs text-gray-600 mb-1 block">Valor</label>
                       <Input
                         type="number"
-                        placeholder="Valor de la cuota"
+                        placeholder="1000000"
                         value={customQuotaInput.amount}
                         onChange={(e) => setCustomQuotaInput((prev) => ({ ...prev, amount: e.target.value }))}
                       />
                     </div>
-                    <Button type="button" onClick={addCustomQuota} size="sm" className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="col-span-5">
+                      <label className="text-xs text-gray-600 mb-1 block">📅 Fecha Vencimiento</label>
+                      <Input
+                        type="date"
+                        value={customQuotaInput.dueDate}
+                        onChange={(e) => setCustomQuotaInput((prev) => ({ ...prev, dueDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="col-span-1 flex items-end">
+                      <Button type="button" onClick={addCustomQuota} size="sm" className="bg-blue-600 hover:bg-blue-700 w-full">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1123,7 +1213,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               {quotaInputMode === "batch" && (
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200 space-y-3">
                   <h4 className="text-sm font-medium text-green-800 mb-2">Agregar Cuotas en Lote</h4>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-5 gap-2">
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">Desde cuota #</label>
                       <Input
@@ -1153,10 +1243,29 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                         onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, amount: e.target.value }))}
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">📅 1ra Fecha</label>
+                      <Input
+                        type="date"
+                        value={batchQuotaInput.startDate}
+                        onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, startDate: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Cada X meses</label>
+                      <Input
+                        type="number"
+                        placeholder="1"
+                        min="1"
+                        value={batchQuotaInput.intervalMonths}
+                        onChange={(e) => setBatchQuotaInput((prev) => ({ ...prev, intervalMonths: e.target.value }))}
+                        className="text-center"
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-xs text-green-700">
-                      💡 Crea múltiples cuotas con el mismo valor de una vez
+                      💡 Ejemplo: Cuotas 1-7 cada 4 meses, luego 8-9 cada 2 meses
                     </p>
                     <Button type="button" onClick={addBatchQuotas} size="sm" className="bg-green-600 hover:bg-green-700">
                       <Plus className="h-4 w-4 mr-1" />
@@ -1179,35 +1288,45 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                 ) : (
                   <div className="p-2">
                     <div className="bg-white rounded border mb-2 p-2">
-                      <div className="flex justify-between text-xs text-gray-500 font-medium">
-                        <span>CUOTA</span>
-                        <span>VALOR</span>
-                        <span></span>
+                      <div className="grid grid-cols-12 gap-2 text-xs text-gray-500 font-medium">
+                        <span className="col-span-2">CUOTA</span>
+                        <span className="col-span-4">VALOR</span>
+                        <span className="col-span-5">FECHA VENC.</span>
+                        <span className="col-span-1"></span>
                       </div>
                     </div>
                     <div className="space-y-1 max-h-64 overflow-y-auto">
                       {formData.customQuotas.map((quota) => (
                         <div
                           key={quota.quotaNumber}
-                          className="flex items-center justify-between p-2 bg-white border border-gray-100 rounded hover:border-green-300 hover:shadow-sm transition-all"
+                          className="grid grid-cols-12 gap-2 items-center p-2 bg-white border border-gray-100 rounded hover:border-green-300 hover:shadow-sm transition-all"
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="col-span-2 flex items-center gap-2">
                             <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">
                               {quota.quotaNumber}
                             </div>
-                            <span className="text-sm font-medium text-gray-700">
-                              ${quota.amount.toLocaleString('es-CO')}
-                            </span>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeCustomQuota(quota.quotaNumber)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 w-6 h-6 p-0"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <span className="col-span-4 text-sm font-medium text-gray-700">
+                            ${quota.amount.toLocaleString('es-CO')}
+                          </span>
+                          <span className="col-span-5 text-sm text-gray-600">
+                            {quota.dueDate ? (() => {
+                              const [year, month, day] = quota.dueDate.split('-').map(Number)
+                              const localDate = new Date(year, month - 1, day)
+                              return localDate.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                            })() : 'Sin fecha'}
+                          </span>
+                          <div className="col-span-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCustomQuota(quota.quotaNumber)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 w-6 h-6 p-0"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

@@ -106,114 +106,154 @@ namespace mym_softcom.Services
                 decimal baseQuotaValue = sale.quota_value ?? 0;
                 int totalQuotas = sale.plan?.number_quotas ?? 0;
 
-                if (baseQuotaValue <= 0 || totalQuotas <= 0)
-                {
-                    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
-                    // Continuar con la actualización de la venta, pero sin detalles de cuotas
-                }
-                else
-                {
-                    decimal redistributionAmount = sale.RedistributionAmount ?? 0;
-                    string redistributionType = sale.RedistributionType;
-                    List<int> redistributedQuotaNumbers = new List<int>();
+                // ✅ CORRECCIÓN: Cargar cuotas personalizadas si el tipo de plan es "custom"
+                Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
+                if (sale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(sale.CustomQuotasJson))
+     {
+          try
+        {
+   var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(sale.CustomQuotasJson);
+                if (customQuotas != null && customQuotas.Count > 0)
+  {
+      customQuotaData = customQuotas.ToDictionary(
+      q => q.QuotaNumber,
+      q => (q.Amount, q.DueDate)
+      );
+        totalQuotas = customQuotas.Count;
+            Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Plan personalizado con {totalQuotas} cuotas detectado.");
+     }
+      }
+    catch (Exception ex)
+ {
+           Console.WriteLine($"[PaymentServices] Error deserializando cuotas personalizadas: {ex.Message}");
+       }
+      }
 
-                    if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
-                    {
-                        try
-                        {
-                            redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers) ?? new List<int>();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[PaymentServices] Error deserializando cuotas redistribuidas: {ex.Message}");
-                        }
-                    }
+   if ((customQuotaData == null && baseQuotaValue <= 0) || totalQuotas <= 0)
+           {
+            Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
+       // Continuar con la actualización de la venta, pero sin detalles de cuotas
+             }
+    else
+   {
+   decimal redistributionAmount = sale.RedistributionAmount ?? 0;
+          string redistributionType = sale.RedistributionType;
+            List<int> redistributedQuotaNumbers = new List<int>();
 
-                    // Obtener los detalles de cuotas existentes para esta venta
-                    var existingDetails = await _context.Details
-                        .Where(pd => pd.id_Sales == sale.id_Sales)
-                        .ToListAsync();
+            if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
+    {
+           try
+      {
+      redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers) ?? new List<int>();
+  }
+         catch (Exception ex)
+             {
+  Console.WriteLine($"[PaymentServices] Error deserializando cuotas redistribuidas: {ex.Message}");
+      }
+       }
 
-                    // Calcular el monto cubierto por cada cuota hasta ahora
-                    var coveredAmountsPerQuota = existingDetails
-                        .GroupBy(pd => pd.number_quota)
-                        .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+     // Obtener los detalles de cuotas existentes para esta venta
+      var existingDetails = await _context.Details
+            .Where(pd => pd.id_Sales == sale.id_Sales)
+     .ToListAsync();
 
-                    var adjustedQuotaValues = new Dictionary<int, decimal>();
+ // Calcular el monto cubierto por cada cuota hasta ahora
+     var coveredAmountsPerQuota = existingDetails
+            .GroupBy(pd => pd.number_quota)
+ .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
 
-                    if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
-                    {
-                        for (int i = 1; i <= totalQuotas; i++)
-                        {
-                            decimal adjustedValue = baseQuotaValue;
+              var adjustedQuotaValues = new Dictionary<int, decimal>();
 
-                            // Si esta cuota NO fue redistribuida, recibe parte del monto redistribuido
-                            if (!redistributedQuotaNumbers.Contains(i))
-                            {
-                                if (redistributionType == "uniform")
-                                {
-                                    int remainingQuotasCount = totalQuotas - redistributedQuotaNumbers.Count;
-                                    if (remainingQuotasCount > 0)
-                                    {
-                                        decimal redistributionPerQuota = redistributionAmount / remainingQuotasCount;
-                                        adjustedValue += redistributionPerQuota;
-                                    }
-                                }
-                                else if (redistributionType == "lastQuota" && i == totalQuotas)
-                                {
-                                    adjustedValue += redistributionAmount;
-                                }
-                            }
+               // ✅ CORRECCIÓN: Usar valores personalizados si existen
+         if (customQuotaData != null)
+   {
+              // Para planes personalizados, usar los valores exactos del JSON
+          foreach (var kvp in customQuotaData)
+       {
+   adjustedQuotaValues[kvp.Key] = kvp.Value.Amount;
+             }
+  Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Usando valores de cuotas personalizadas.");
+      }
+    else if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
+     {
+   for (int i = 1; i <= totalQuotas; i++)
+        {
+         decimal adjustedValue = baseQuotaValue;
 
-                            adjustedQuotaValues[i] = adjustedValue;
-                        }
-                    }
-                    else
-                    {
-                        // Sin redistribución, usar valores base
-                        for (int i = 1; i <= totalQuotas; i++)
-                        {
-                            adjustedQuotaValues[i] = baseQuotaValue;
-                        }
-                    }
+       // Si esta cuota NO fue redistribuida, recibe parte del monto redistribuido
+           if (!redistributedQuotaNumbers.Contains(i))
+                 {
+        if (redistributionType == "uniform")
+    {
+ int remainingQuotasCount = totalQuotas - redistributedQuotaNumbers.Count;
+          if (remainingQuotasCount > 0)
+      {
+           decimal redistributionPerQuota = redistributionAmount / remainingQuotasCount;
+          adjustedValue += redistributionPerQuota;
+      }
+   }
+       else if (redistributionType == "lastQuota" && i == totalQuotas)
+          {
+   adjustedValue += redistributionAmount;
+}
+            }
 
-                    for (int i = 1; i <= totalQuotas && remainingPaymentAmount > 0; i++)
-                    {
-                        // Saltar cuotas que fueron redistribuidas
-                        if (redistributedQuotaNumbers.Contains(i))
-                        {
-                            Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Saltando cuota #{i} (redistribuida)");
-                            continue;
-                        }
+             adjustedQuotaValues[i] = adjustedValue;
+   }
+          }
+       else
+     {
+      // Sin redistribución, usar valores base
+             for (int i = 1; i <= totalQuotas; i++)
+     {
+     adjustedQuotaValues[i] = baseQuotaValue;
+   }
+             }
 
-                        decimal quotaValue = adjustedQuotaValues[i];
-                        decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
-                        decimal remainingForThisQuota = quotaValue - currentCovered;
+    // Ordenar las cuotas para procesarlas en orden
+           var sortedQuotas = adjustedQuotaValues.OrderBy(kvp => kvp.Key).ToList();
 
-                        if (remainingForThisQuota > 0)
-                        {
-                            decimal amountToApplyToThisQuota = Math.Min(remainingPaymentAmount, remainingForThisQuota);
+   foreach (var quotaKvp in sortedQuotas)
+    {
+             if (remainingPaymentAmount <= 0) break;
 
-                            _context.Details.Add(new Detail
-                            {
-                                id_Payments = payment.id_Payments,
-                                id_Sales = sale.id_Sales,
-                                number_quota = i,
-                                covered_amount = amountToApplyToThisQuota
-                            });
+          int quotaNumber = quotaKvp.Key;
+             decimal quotaValue = quotaKvp.Value;
 
-                            remainingPaymentAmount -= amountToApplyToThisQuota;
-                            Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Aplicado {amountToApplyToThisQuota} a cuota #{i} (valor ajustado: {quotaValue}). Restante del pago: {remainingPaymentAmount}");
-                        }
-                    }
+         // Saltar cuotas que fueron redistribuidas
+              if (redistributedQuotaNumbers.Contains(quotaNumber))
+              {
+   Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Saltando cuota #{quotaNumber} (redistribuida)");
+     continue;
+  }
 
-                    // Si aún queda monto después de cubrir todas las cuotas, se puede considerar un "pago adelantado"
-                    if (remainingPaymentAmount > 0)
-                    {
-                        Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Quedan {remainingPaymentAmount} después de cubrir todas las cuotas definidas. Esto se sumará al total_raised de la venta.");
-                    }
-                }
-                // --- Fin de la lógica MEJORADA para distribuir el pago ---
+     decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(quotaNumber, 0);
+              decimal remainingForThisQuota = quotaValue - currentCovered;
+
+     if (remainingForThisQuota > 0)
+        {
+     decimal amountToApplyToThisQuota = Math.Min(remainingPaymentAmount, remainingForThisQuota);
+
+   _context.Details.Add(new Detail
+  {
+     id_Payments = payment.id_Payments,
+        id_Sales = sale.id_Sales,
+    number_quota = quotaNumber,
+     covered_amount = amountToApplyToThisQuota
+ });
+
+    remainingPaymentAmount -= amountToApplyToThisQuota;
+    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Aplicado {amountToApplyToThisQuota:C} a cuota #{quotaNumber} (valor: {quotaValue:C}). Restante del pago: {remainingPaymentAmount:C}");
+     }
+  }
+
+       // Si aún queda monto después de cubrir todas las cuotas, se puede considerar un "pago adelantado"
+         if (remainingPaymentAmount > 0)
+               {
+   Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Quedan {remainingPaymentAmount:C} después de cubrir todas las cuotas definidas. Esto se sumará al total_raised de la venta.");
+      }
+   }
+   // --- Fin de la lógica MEJORADA para distribuir el pago ---
 
                 // Actualizar el total_raised y total_debt de la venta
                 sale.total_raised = (sale.total_raised ?? 0) + payment.amount.Value;
@@ -260,7 +300,7 @@ namespace mym_softcom.Services
         {
             try
             {
-                var existingPayment = await _context.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
+                var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
                 if (existingPayment == null) return false;
 
                 if (id_Payments != updatedPayment.id_Payments)
@@ -316,7 +356,34 @@ namespace mym_softcom.Services
                 decimal baseQuotaValue = newSale.quota_value ?? 0;
                 int totalQuotas = newSale.plan?.number_quotas ?? 0;
 
-                if (baseQuotaValue > 0 && totalQuotas > 0)
+                // ✅ CORRECCIÓN: Cargar cuotas personalizadas si el tipo de plan es "custom"
+                Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
+                if (newSale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(newSale.CustomQuotasJson))
+                {
+                    try
+                    {
+                        var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(newSale.CustomQuotasJson);
+                        if (customQuotas != null && customQuotas.Count > 0)
+                        {
+                            customQuotaData = customQuotas.ToDictionary(
+                                q => q.QuotaNumber,
+                                q => (q.Amount, q.DueDate)
+                            );
+                            totalQuotas = customQuotas.Count;
+                            Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Plan personalizado con {totalQuotas} cuotas detectado.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[PaymentServices] UpdatePayment - Error deserializando cuotas personalizadas: {ex.Message}");
+                    }
+                }
+
+                if ((customQuotaData == null && baseQuotaValue <= 0) || totalQuotas <= 0)
+                {
+                    Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
+                }
+                else
                 {
                     decimal redistributionAmount = newSale.RedistributionAmount ?? 0;
                     string redistributionType = newSale.RedistributionType;
@@ -330,7 +397,7 @@ namespace mym_softcom.Services
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"[PaymentServices] Error deserializando cuotas redistribuidas en UpdatePayment: {ex.Message}");
+                            Console.WriteLine($"[PaymentServices] UpdatePayment - Error deserializando cuotas redistribuidas: {ex.Message}");
                         }
                     }
 
@@ -345,12 +412,23 @@ namespace mym_softcom.Services
 
                     var adjustedQuotaValues = new Dictionary<int, decimal>();
 
-                    if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
+                    // ✅ CORRECCIÓN: Usar valores personalizados si existen
+                    if (customQuotaData != null)
+                    {
+                        // Para planes personalizados, usar los valores exactos del JSON
+                        foreach (var kvp in customQuotaData)
+                        {
+                            adjustedQuotaValues[kvp.Key] = kvp.Value.Amount;
+                        }
+                        Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Usando valores de cuotas personalizadas.");
+                    }
+                    else if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
                     {
                         for (int i = 1; i <= totalQuotas; i++)
                         {
                             decimal adjustedValue = baseQuotaValue;
 
+                            // Si esta cuota NO fue redistribuida, recibe parte del monto redistribuido
                             if (!redistributedQuotaNumbers.Contains(i))
                             {
                                 if (redistributionType == "uniform")
@@ -373,6 +451,7 @@ namespace mym_softcom.Services
                     }
                     else
                     {
+                        // Sin redistribución, usar valores base
                         for (int i = 1; i <= totalQuotas; i++)
                         {
                             adjustedQuotaValues[i] = baseQuotaValue;
@@ -413,7 +492,11 @@ namespace mym_softcom.Services
                 if (newSale.total_debt == 0) newSale.status = "Escriturar";
                 else if (newSale.status == "Cancelled" && newSale.total_debt > 0) newSale.status = "Active";
 
-                _context.Entry(existingPayment).CurrentValues.SetValues(updatedPayment);
+                existingPayment.amount = updatedPayment.amount;
+                existingPayment.payment_date = updatedPayment.payment_date;
+                existingPayment.payment_method = updatedPayment.payment_method;
+                existingPayment.id_Sales = updatedPayment.id_Sales;
+                _context.Entry(existingPayment).State = EntityState.Modified;
 
                 _context.Sales.Update(oldSale);
                 if (oldSale.id_Sales != newSale.id_Sales)

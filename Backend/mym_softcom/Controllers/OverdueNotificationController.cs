@@ -30,17 +30,30 @@ namespace mym_softcom.Controllers
         {
             try
             {
+                var startTime = DateTime.Now;
+                _logger.LogInformation("📧 Iniciando envío manual de notificaciones de mora - {Time}", startTime.ToString("dd/MM/yyyy HH:mm:ss"));
+
                 var notificationsSent = await _overdueNotificationService.ProcessOverdueNotificationsAsync();
+
+                var duration = DateTime.Now - startTime;
+                _logger.LogInformation("✅ Envío manual completado en {Duration}ms. Notificaciones enviadas: {Count}", 
+                duration.TotalMilliseconds, notificationsSent);
+
                 return Ok(new
                 {
                     message = "Notificaciones procesadas exitosamente",
-                    notificationsSent = notificationsSent
+                    notificationsSent = notificationsSent,
+                    timestamp = startTime.ToString("dd/MM/yyyy HH:mm:ss"),
+                    durationMs = duration.TotalMilliseconds
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error procesando notificaciones");
-                return StatusCode(500, new { message = "Error interno del servidor" });
+                _logger.LogError(ex, "❌ Error procesando notificaciones manuales");
+                return StatusCode(500, new { 
+                    message = "Error interno del servidor",
+                    error = ex.Message
+                });
             }
         }
 
@@ -60,6 +73,7 @@ namespace mym_softcom.Controllers
                     return BadRequest(result);
             }
             catch (Exception ex)
+
             {
                 _logger.LogError(ex, "Error enviando notificación al cliente {ClientId}", clientId);
                 return StatusCode(500, new { message = "Error interno del servidor" });
@@ -137,6 +151,55 @@ namespace mym_softcom.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error obteniendo cuotas para la venta {SaleId}", saleId);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Obtiene un resumen de la situación actual de mora sin enviar correos
+        /// </summary>
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetOverdueSummary()
+        {
+            try
+            {
+                var clientsWithOverdue = await _overdueNotificationService.GetClientsWithOverdueAsync();
+
+                var totalClients = clientsWithOverdue.Count;
+                var totalAmount = clientsWithOverdue.Sum(c => c.TotalOverdueAmount);
+                var totalQuotas = clientsWithOverdue.Sum(c => c.TotalOverdueQuotas);
+
+                // Agrupar por días de atraso
+                var byDaysOverdue = clientsWithOverdue
+                    .SelectMany(c => c.OverdueInstallments)
+                    .GroupBy(i => i.DaysOverdue switch
+                    {
+                        <= 30 => "1-30 días",
+                        <= 60 => "31-60 días",
+                        <= 90 => "61-90 días",
+                        _ => "Más de 90 días"
+                    })
+                    .Select(g => new
+                    {
+                        Range = g.Key,
+                        Count = g.Count(),
+                        Amount = g.Sum(i => i.Balance)
+                    })
+                    .OrderBy(x => x.Range);
+
+                return Ok(new
+                {
+                    totalClientsWithOverdue = totalClients,
+                    totalOverdueAmount = totalAmount,
+                    totalOverdueQuotas = totalQuotas,
+                    byDaysOverdue = byDaysOverdue,
+                    timestamp = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                    message = $"Hay {totalClients} cliente(s) con mora total de ${totalAmount:N0}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo resumen de mora");
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Search,
   Edit,
@@ -45,6 +46,10 @@ function DataTable({
   showInactiveRecords = true,
   showPdfButton = true,
   headerActions = null,
+  showCheckboxes = false,
+  selectedItems = [],
+  onToggleSelection = null,
+  onToggleSelectAll = null,
 }) {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -209,16 +214,27 @@ function DataTable({
           const mainFields = allFields.slice(0, 4)
           const additionalFields = allFields.slice(4)
 
+          const isSelected = selectedItems.includes(row.id)
+
           return (
             <Card
               key={row.id || `mobile-${rowIndex}-${Math.random()}`}
-              className="transition-all duration-200 hover:shadow-md border-l-4 border-l-blue-500 hover:border-l-blue-600"
+              className={`transition-all duration-200 hover:shadow-md border-l-4 ${
+                isSelected ? "border-l-green-500 bg-green-50" : "border-l-blue-500"
+              } hover:border-l-blue-600`}
             >
               <CardContent className="p-4">
                 <div className="space-y-3">
                   {/* Header */}
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                     <div className="flex items-center space-x-2">
+                      {showCheckboxes && (
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => onToggleSelection(row.id)}
+                          aria-label={`Seleccionar registro ${row.id}`}
+                        />
+                      )}
                       <div className="w-2 h-2 rounded-full bg-blue-500" />
                       <span className="font-semibold text-slate-900">Registro #{row.id || rowIndex + 1}</span>
                     </div>
@@ -366,6 +382,15 @@ function DataTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
+                {showCheckboxes && (
+                  <TableHead className="w-12 px-4">
+                    <Checkbox
+                      checked={selectedItems.length === currentItems.length && currentItems.length > 0}
+                      onCheckedChange={onToggleSelectAll}
+                      aria-label="Seleccionar todos"
+                    />
+                  </TableHead>
+                )}
                 {TitlesTable.map((title, index) => (
                   <TableHead key={index} className="font-semibold text-slate-900 h-12 px-4">
                     {title}
@@ -378,12 +403,24 @@ function DataTable({
               {currentItems.map((row, rowIndex) => {
                 const saleId = row.original?.id || row.id
                 const isExporting = saleId ? exportingPDF.has(saleId) : false
+                const isSelected = selectedItems.includes(row.id)
 
                 return (
                   <TableRow
                     key={row.id || `table-${rowIndex}-${Math.random()}`}
-                    className="transition-colors hover:bg-slate-50 border-b border-slate-100"
+                    className={`transition-colors hover:bg-slate-50 border-b border-slate-100 ${
+                      isSelected ? "bg-blue-50" : ""
+                    }`}
                   >
+                    {showCheckboxes && (
+                      <TableCell className="w-12 px-4">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => onToggleSelection(row.id)}
+                          aria-label={`Seleccionar fila ${row.id}`}
+                        />
+                      </TableCell>
+                    )}
                     {TitlesTable.map((title, cellIndex) => {
                       const key = Object.keys(row).filter(
                         (k) => k !== "original" && k !== "searchableIdentifier" && k !== "isActive",

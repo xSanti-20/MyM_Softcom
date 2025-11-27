@@ -244,19 +244,21 @@ namespace mym_softcom.Services
                 // ✅ INICIO DE LA CORRECCIÓN: Registrar la cuota inicial como un Payment
                 if (sale.initial_payment.HasValue && sale.initial_payment.Value > 0)
                 {
-                    var initialPayment = new Payment
-                    {
-                        id_Sales = sale.id_Sales, // Vincular el pago a la nueva venta
-                        amount = sale.initial_payment.Value,
-                        payment_date = sale.sale_date, // Usar la fecha de la venta como fecha del pago inicial
-                        payment_method = "Cuota Inicial", // Puedes ajustar esto según tus métodos de pago
-                        // id_Users NO SE INCLUYE AQUÍ, ya que no está directamente en el modelo Payment
-                    };
+                    var paymentMethod = MapPaymentMethod(sale.initial_payment_method);
 
-                    _context.Payments.Add(initialPayment);
-                    await _context.SaveChangesAsync(); // Guardar el pago inicial
-                    Console.WriteLine($"[SaleServices] Pago inicial de ${initialPayment.amount} registrado para venta ID: {sale.id_Sales}");
-                }
+                   var initialPayment = new Payment
+                   {
+                           id_Sales = sale.id_Sales, // Vincular el pago a la nueva venta
+                        amount = sale.initial_payment.Value,
+                         payment_date = sale.sale_date, // Usar la fecha de la venta como fecha del pago inicial
+                          payment_method = paymentMethod,
+                             // id_Users NO SE INCLUYE AQUÍ, ya que no está directamente en el modelo Payment
+                            };
+
+                            _context.Payments.Add(initialPayment);
+                   await _context.SaveChangesAsync(); // Guardar el pago inicial
+               Console.WriteLine($"[SaleServices] Pago inicial de ${initialPayment.amount} registrado para venta ID: {sale.id_Sales} con método '{paymentMethod}'");
+               }
 
                 // Actualizar el estado del lote a "Vendido"
                 await _lotServices.ChangeLotStatus(sale.id_Lots, "Vendido");
@@ -319,10 +321,30 @@ namespace mym_softcom.Services
                     paymentAmount = updatedSale.initial_payment.Value;
                 }
 
+                // Si hay un pago nuevo, registrar Payment para que quede trazabilidad del método
+                if (paymentAmount > 0)
+                {
+                    var methodSource = updatedSale.initial_payment_method ?? existingSale.initial_payment_method;
+                    var paymentMethod = MapPaymentMethod(methodSource);
+
+                    var newPayment = new Payment
+                    {
+                        id_Sales = existingSale.id_Sales,
+                        amount = paymentAmount,
+                        payment_date = updatedSale.sale_date,
+                        payment_method = paymentMethod,
+                    };
+
+                    _context.Payments.Add(newPayment);
+                    Console.WriteLine($"[SaleServices] Se ha agregado registro de Payment por ${paymentAmount} para sale {existingSale.id_Sales} con método '{paymentMethod}'");
+                    // No guardamos aquí aún: se guardará al final junto con la venta para hacer un solo SaveChanges
+                }
+
                 // Actualizar propiedades básicas
                 existingSale.sale_date = updatedSale.sale_date;
                 existingSale.total_value = updatedSale.total_value;
                 existingSale.initial_payment = updatedSale.initial_payment;
+                existingSale.initial_payment_method = updatedSale.initial_payment_method; // Actualizar método de pago
                 existingSale.id_Clients = updatedSale.id_Clients;
                 existingSale.id_Lots = updatedSale.id_Lots;
                 existingSale.id_Users = updatedSale.id_Users;
@@ -662,5 +684,27 @@ namespace mym_softcom.Services
                 return new ServiceResult<string> { Success = false, Message = ex.Message };
             }
         }
+
+        /// <summary>
+        /// Mappea el campo enviado desde el frontend a valores estándar para Payment.payment_method.
+        /// Devuelve "Banco" para cualquier tipo de banco, "Efectivo" para efectivo, o el valor original como fallback.
+        /// </summary>
+        private string MapPaymentMethod(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "Cuota Inicial";
+
+            var normalized = input.Trim().ToLowerInvariant();
+            if (normalized.Contains("banco") || normalized.Contains("corriente") || normalized.Contains("ahorro"))
+            {
+                return "Banco";
+            }
+            if (normalized.Contains("efectivo") || normalized.Contains("cash"))
+        {
+ return "Efectivo";
+      }
+
+      // Fallback: si vienen otros textos, devolver el texto original tal y como fue enviado
+   return input.Trim();
+      }
     }
 }

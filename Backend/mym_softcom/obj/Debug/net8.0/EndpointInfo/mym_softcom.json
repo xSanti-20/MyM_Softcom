@@ -1631,6 +1631,18 @@
         }
       }
     },
+    "/api/OverdueNotification/summary": {
+      "get": {
+        "tags": [
+          "OverdueNotification"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Payment/GetAllPayments": {
       "get": {
         "tags": [
@@ -3691,6 +3703,10 @@
           "initial_payment": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "initial_payment_method": {
+            "type": "string",
             "nullable": true
           },
           "total_raised": {

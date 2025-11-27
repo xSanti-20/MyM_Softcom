@@ -984,6 +984,16 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "mym_softcom.Controllers.OverdueNotificationController",
+    "Method": "GetOverdueSummary",
+    "RelativePath": "api/OverdueNotification/summary",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "mym_softcom.Controllers.PaymentController",
     "Method": "CreatePayment",
     "RelativePath": "api/Payment/CreatePayment",

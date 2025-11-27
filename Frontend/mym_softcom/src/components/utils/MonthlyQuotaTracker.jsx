@@ -90,9 +90,26 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
     const coveredInfo = aggregatedQuotas.get(i)
     const coveredAmount = coveredInfo?.covered || 0
 
-    const dueDate = new Date(saleDate)
-    dueDate.setMonth(saleDate.getMonth() + i)
-    dueDate.setDate(saleDate.getDate())
+    // 🔧 Calcular fecha de vencimiento (usar fecha personalizada si existe)
+    let dueDate
+    if (customQuotas && customQuotas.length > 0) {
+      const customQuota = customQuotas.find((q) => q.QuotaNumber === i)
+      if (customQuota && customQuota.DueDate) {
+        // ✅ Usar fecha personalizada SIN problemas de zona horaria
+        const [year, month, day] = customQuota.DueDate.split('-').map(Number)
+        dueDate = new Date(year, month - 1, day) // month - 1 porque enero = 0
+      } else {
+        // Fallback a cálculo automático
+        dueDate = new Date(saleDate)
+        dueDate.setMonth(saleDate.getMonth() + i)
+        dueDate.setDate(saleDate.getDate())
+      }
+    } else {
+      // Cálculo automático para planes no personalizados
+      dueDate = new Date(saleDate)
+      dueDate.setMonth(saleDate.getMonth() + i)
+      dueDate.setDate(saleDate.getDate())
+    }
 
     const isOverdueRedistributed = redistributedQuotaNumbers.includes(i)
 
@@ -126,6 +143,18 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       adjustedQuotaValue = quotaValue
     }
 
+    // 🔍 DEBUG: Ver el valor real de cada cuota
+    if (i <= 7) {
+      console.log(`[DEBUG] Cuota ${i}:`, {
+        coveredAmount,
+        adjustedQuotaValue,
+        isPaid: coveredAmount >= adjustedQuotaValue,
+        difference: adjustedQuotaValue - coveredAmount,
+        dueDate: dueDate.toLocaleDateString(),
+        isCustom: customQuotas && customQuotas.length > 0
+      })
+    }
+
     let status = "Pendiente"
     let statusColor = "bg-gray-100 text-gray-800"
     let statusIcon = <Clock className="h-4 w-4" />
@@ -136,35 +165,44 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       statusColor = "bg-purple-100 text-purple-800"
       statusIcon = <CheckCircle className="h-4 w-4" />
     } else if (coveredAmount >= adjustedQuotaValue) {
+      // ✅ Cuota pagada completamente - NO importa si se pagó tarde
       status = "Pagada"
       statusColor = "bg-green-100 text-green-800"
       statusIcon = <CheckCircle className="h-4 w-4" />
+      // NO marcar como vencida si ya está pagada completamente
+      isOverdue = false
     } else if (coveredAmount > 0) {
+      // Hay abono parcial - solo marcar como vencida si aún tiene saldo pendiente
       if (dueDate < currentDate) {
         status = "Vencida (Abonada)"
         statusColor = "bg-red-100 text-red-800"
         statusIcon = <AlertTriangle className="h-4 w-4" />
-        isOverdue = true
+        isOverdue = true // ✅ Solo es mora si tiene saldo pendiente
       } else {
         status = "Abonada"
         statusColor = "bg-yellow-100 text-yellow-800"
         statusIcon = <Clock className="h-4 w-4" />
       }
     } else if (dueDate < currentDate) {
+      // Sin ningún pago y ya venció
       status = "Vencida"
       statusColor = "bg-red-100 text-red-800"
       statusIcon = <XCircle className="h-4 w-4" />
       isOverdue = true
     }
 
-    if (isOverdue && !isOverdueRedistributed) {
+    // ✅ Solo contar como vencida si tiene saldo pendiente
+    if (isOverdue && !isOverdueRedistributed && coveredAmount < adjustedQuotaValue) {
       const overdueAmount = adjustedQuotaValue - coveredAmount
       totalOverdueAmount += overdueAmount
       overdueQuotasCount++
     }
 
+    // ✅ Solo calcular días de atraso si tiene saldo pendiente Y está vencida
     const daysOverdue =
-      isOverdue && !isOverdueRedistributed ? Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24)) : 0
+      isOverdue && !isOverdueRedistributed && coveredAmount < adjustedQuotaValue
+        ? Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24))
+        : 0
 
     quotas.push({
       quotaNumber: i,
@@ -175,7 +213,7 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       status: status,
       statusColor: statusColor,
       statusIcon: statusIcon,
-      isOverdue: isOverdue && !isOverdueRedistributed,
+      isOverdue: isOverdue && !isOverdueRedistributed && coveredAmount < adjustedQuotaValue, // ✅ Solo si tiene saldo pendiente
       daysOverdue: daysOverdue,
       isRedistributed: isOverdueRedistributed,
     })
@@ -187,6 +225,20 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
   const remainingQuotas = quotas.filter(
     (q) => !redistributedQuotaNumbers.includes(q.quotaNumber) && q.status === "Pendiente",
   )
+
+  // 🔍 DEBUG: Ver por qué aparece el botón de redistribución
+  console.log('[REDISTRIBUCION] Estado:', {
+    overdueQuotasCount: overdueQuotas.length,
+    remainingQuotasCount: remainingQuotas.length,
+    shouldShowButton: overdueQuotas.length > 0 && remainingQuotas.length > 0,
+    overdueQuotas: overdueQuotas.map(q => ({
+      cuota: q.quotaNumber,
+      esperado: q.expectedAmount,
+      cubierto: q.coveredAmount,
+      restante: q.remainingAmount,
+      isOverdue: q.isOverdue
+    }))
+  })
 
   const handleRedistribute = async (option) => {
     try {

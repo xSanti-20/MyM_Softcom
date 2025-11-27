@@ -12,6 +12,7 @@ namespace mym_softcom.Models
         public DateTime sale_date { get; set; }
         public decimal? total_value { get; set; }
         public decimal? initial_payment { get; set; }
+        public string? initial_payment_method { get; set; } // Método de pago de la cuota inicial: "Efectivo", "Banco Ahorros", "Banco Corriente"
         public decimal? total_raised { get; set; }
         public decimal? quota_value { get; set; }
         public decimal? total_debt { get; set; } // Valor total pendiente
@@ -62,6 +63,7 @@ namespace mym_softcom.Models
     {
         public int QuotaNumber { get; set; }
         public decimal Amount { get; set; }
+        public DateTime? DueDate { get; set; } // ✅ NUEVO: Fecha de vencimiento personalizada (opcional para compatibilidad)
     }
 
     public class RedistributeQuotasRequest

@@ -12,16 +12,16 @@ const BackupList = ({ refreshTrigger, onBackupDeleted }) => {
   const [backups, setBackups] = useState([])
   const { getBackupList, downloadBackup, deleteBackup, loading, error } = useBackup()
 
-  useEffect(() => {
-    loadBackups()
-  }, [refreshTrigger, loadBackups])
-
   const loadBackups = useCallback(async () => {
     const result = await getBackupList()
     if (result.success) {
       setBackups(result.backups)
     }
   }, [getBackupList])
+
+  useEffect(() => {
+    loadBackups()
+  }, [refreshTrigger])
 
   const handleDownload = async (fileName) => {
     await downloadBackup(fileName)

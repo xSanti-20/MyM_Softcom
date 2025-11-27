@@ -21,16 +21,16 @@ const RestoreBackup = ({ onBackupRestored }) => {
 
   const { getBackupList, restoreBackup, uploadBackup, loading, error, success } = useBackup()
 
-  useEffect(() => {
-    loadBackups()
-  }, [loadBackups])
-
   const loadBackups = useCallback(async () => {
     const result = await getBackupList()
     if (result.success) {
       setBackups(result.backups.filter((b) => b.status === "Completed"))
     }
   }, [getBackupList])
+
+  useEffect(() => {
+    loadBackups()
+  }, [])
 
   const handleRestore = async () => {
     if (!selectedBackup) {

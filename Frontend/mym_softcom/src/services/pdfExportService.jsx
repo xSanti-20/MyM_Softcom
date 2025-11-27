@@ -366,6 +366,18 @@ class SalesPDFService {
       const processedHTML = await this.loadAndProcessTemplate(templateType, saleData, temporaryData)
       console.log("[v0] HTML processed, sending to API")
 
+      // Generar nombre del archivo con el nombre del cliente
+      const firstName = saleData.client?.names || saleData.client?.name || ''
+      const lastName = saleData.client?.surnames || saleData.client?.surname || ''
+      const fullName = `${firstName} ${lastName}`.trim()
+      const clientName = fullName || temporaryData.cliente || 'Cliente'
+      
+      // Limpiar el nombre del cliente (eliminar caracteres especiales)
+      const sanitizedClientName = clientName.trim().replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+      const fileName = `Contrato_${sanitizedClientName}.pdf`
+      
+      console.log("[v0] Generated filename:", fileName)
+
       const response = await fetch("/api/generate-pdf", {
         method: "POST",
         headers: {
@@ -373,7 +385,7 @@ class SalesPDFService {
         },
         body: JSON.stringify({
           html: processedHTML,
-          filename: `Contrato_${saleId}.pdf`,
+          filename: fileName,
         }),
       })
 
@@ -389,7 +401,7 @@ class SalesPDFService {
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
-      link.download = `Contrato_${saleId}.pdf`
+      link.download = fileName
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -550,7 +562,7 @@ class SalesPDFService {
         // Consecutivo del contrato
         CONSECUTIVO: temporaryData.consecutivo ? temporaryData.consecutivo.toUpperCase() : "",
 
-        PROYECTO: (temporaryData.proyecto || "N/A").toUpperCase(),
+        PROYECTO: (temporaryData.proyecto || "N/A").replace(/-/g, ' ').toUpperCase(),
         LOTE: lote.toUpperCase(),
         MANZANA: manzana.toUpperCase(),
         LOCATION: (saleData.lot?.location || "N/A").toUpperCase(),

@@ -104,6 +104,28 @@ namespace mym_softcom.Services
                 }
             }
 
+            // ✅ NUEVO: Cargar cuotas personalizadas con fechas de vencimiento
+            Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
+            if (sale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(sale.CustomQuotasJson))
+            {
+                try
+                {
+                    var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(sale.CustomQuotasJson);
+                    if (customQuotas != null && customQuotas.Count > 0)
+                    {
+                        customQuotaData = customQuotas.ToDictionary(
+                            q => q.QuotaNumber,
+                            q => (q.Amount, q.DueDate)
+                        );
+                        _logger.LogDebug("Sale {SaleId} has {Count} custom quotas with dates", saleId, customQuotas.Count);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error deserializing custom quotas for sale {SaleId}", saleId);
+                }
+            }
+
             // Obtener todos los detalles de pagos para esta venta
             var paymentDetails = await _context.Details
                 .Where(d => d.id_Sales == saleId)
@@ -122,8 +144,38 @@ namespace mym_softcom.Services
             for (int i = 1; i <= totalQuotas; i++)
             {
                 var paidAmount = paymentDetails.GetValueOrDefault(i, 0);
-                var balance = quotaValue - paidAmount;
-                var dueDate = sale.sale_date.AddMonths(i);
+                // ✅ NUEVO: Obtener valor y fecha de vencimiento (personalizada o calculada)
+                decimal currentQuotaValue;
+                DateTime dueDate;
+
+                if (customQuotaData != null && customQuotaData.ContainsKey(i))
+                {
+                    var customData = customQuotaData[i];
+                    currentQuotaValue = customData.Amount;
+
+                    // ✅ Usar fecha personalizada si existe, sino calcular
+                    if (customData.DueDate.HasValue)
+                    {
+                        dueDate = customData.DueDate.Value;
+                        _logger.LogDebug("Quota {QuotaNumber} for sale {SaleId}: Using custom due date {DueDate:yyyy-MM-dd}",
+                            i, saleId, dueDate);
+                    }
+                    else
+                    {
+                        // Compatibilidad: calcular fecha si no existe en JSON
+                        dueDate = sale.sale_date.AddMonths(i);
+                        _logger.LogDebug("Quota {QuotaNumber} for sale {SaleId}: Custom quota without DueDate, calculated {DueDate:yyyy-MM-dd}",
+                            i, saleId, dueDate);
+                    }
+                }
+                else
+                {
+                    // Plan automático: usar valor estándar y calcular fecha
+                    currentQuotaValue = quotaValue;
+                    dueDate = sale.sale_date.AddMonths(i);
+                }
+
+                var balance = currentQuotaValue - paidAmount;
                 var today = DateTime.Now.Date;
 
                 string status;
@@ -156,7 +208,7 @@ namespace mym_softcom.Services
                 installments.Add(new CalculatedInstallment
                 {
                     QuotaNumber = i,
-                    QuotaValue = quotaValue,
+                    QuotaValue = currentQuotaValue,
                     PaidAmount = paidAmount,
                     Balance = Math.Max(0, balance),
                     DueDate = dueDate,

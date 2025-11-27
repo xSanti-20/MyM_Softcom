@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import axiosInstance from "@/lib/axiosInstance"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +29,9 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
   const [loading, setLoading] = useState(false)
   const isEditing = !!paymentToEdit
+  
+  // Ref para rastrear si ya se cargaron los datos de edición
+  const editDataLoadedRef = useRef(false)
 
   // Métodos de pago disponibles
   const paymentMethods = [
@@ -167,7 +170,10 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
   // Poblar formulario para edición
   useEffect(() => {
-    if (isEditing && paymentToEdit) {
+    if (isEditing && paymentToEdit && !editDataLoadedRef.current) {
+      console.log("🔧 [EDIT MODE - PAGO] Cargando datos del pago:", paymentToEdit)
+      editDataLoadedRef.current = true // Marcar como cargado
+      
       setFormData({
         amount: paymentToEdit.amount?.toString() || "",
         payment_date: paymentToEdit.payment_date
@@ -179,13 +185,17 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
       // Cargar datos del cliente y venta para edición
       if (paymentToEdit.sale?.client) {
+        console.log("👤 [EDIT MODE - PAGO] Cargando cliente y venta:", paymentToEdit.sale.client)
         setFoundClient(paymentToEdit.sale.client)
         setClientDocument(paymentToEdit.sale.client.document?.toString() || "")
         setSelectedSale(paymentToEdit.sale)
         setClientSales([paymentToEdit.sale])
       }
-    } else {
-      // Resetear estados
+    } else if (!isEditing) {
+      // Resetear estados solo si NO está en modo edición
+      console.log("🔄 [RESET - PAGO] Limpiando formulario")
+      editDataLoadedRef.current = false // Resetear el flag
+      
       setFormData({
         amount: "",
         payment_date: new Date().toISOString().split("T")[0],
@@ -231,13 +241,31 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       return
     }
 
-    // Validar que el monto no exceda la deuda pendiente
-    if (selectedSale && parsedAmount > selectedSale.total_debt) {
+    // ⚠️ IMPORTANTE: Solo validar deuda cuando estás CREANDO un nuevo pago
+    // Al EDITAR, el pago ya está registrado, solo cambias método/fecha/monto
+    if (!isEditing && selectedSale && parsedAmount > selectedSale.total_debt) {
       showAlert(
         "error",
         `El monto no puede exceder la deuda pendiente de ${selectedSale.total_debt.toLocaleString("es-CO", { style: "currency", currency: "COP" })}.`,
       )
       return
+    }
+    
+    // Al editar, validar que el nuevo monto no sea excesivo
+    if (isEditing && selectedSale && paymentToEdit) {
+      // Calcular cuánto aumentaría la deuda con el cambio
+      const currentPaymentAmount = paymentToEdit.amount || 0
+      const debtAfterEdit = selectedSale.total_debt + currentPaymentAmount - parsedAmount
+      
+      // Solo validar si el nuevo monto haría la deuda negativa (sobrepagaría)
+      if (debtAfterEdit < 0) {
+        showAlert(
+          "error",
+          `El nuevo monto causaría un sobrepago de ${Math.abs(debtAfterEdit).toLocaleString("es-CO", { style: "currency", currency: "COP" })}. ` +
+          `El monto máximo permitido es ${(currentPaymentAmount + selectedSale.total_debt).toLocaleString("es-CO", { style: "currency", currency: "COP" })}.`,
+        )
+        return
+      }
     }
 
     const body = {
@@ -253,9 +281,27 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
     try {
       setLoading(true)
+      console.log("📤 [SUBMIT] Enviando datos:", {
+        isEditing,
+        endpoint: isEditing ? `/api/Payment/UpdatePayment/${paymentToEdit.id_Payments}` : "/api/Payment/CreatePayment",
+        body
+      })
+      
       let response
       if (isEditing) {
-        response = await axiosInstance.put("/api/Payment/UpdatePayment", body)
+        // Intentar diferentes formatos de endpoint
+        try {
+          // Opción 1: Con ID en URL
+          response = await axiosInstance.put(`/api/Payment/UpdatePayment/${paymentToEdit.id_Payments}`, body)
+        } catch (error404) {
+          if (error404.response?.status === 404) {
+            console.log("⚠️ Intentando endpoint alternativo: sin ID en URL")
+            // Opción 2: Sin ID en URL (solo en body)
+            response = await axiosInstance.put("/api/Payment/UpdatePayment", body)
+          } else {
+            throw error404
+          }
+        }
       } else {
         response = await axiosInstance.post("/api/Payment/CreatePayment", body)
       }
@@ -293,6 +339,15 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       setLoading(false)
     }
   }
+
+  // Debug: Log cuando se renderiza
+  console.log("🎨 [RENDER - PAGO] Estado actual del formulario:", {
+    isEditing,
+    formData,
+    foundClient: !!foundClient,
+    selectedSale: !!selectedSale,
+    clientSalesCount: clientSales.length
+  })
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -447,6 +502,15 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
                   <strong>Plan:</strong> {selectedSale.plan?.name || "N/A"} ({selectedSale.plan?.number_quotas || 0}{" "}
                   cuotas)
                 </p>
+                
+                {/* Mensaje informativo si está editando y la venta está totalmente pagada */}
+                {isEditing && selectedSale.total_debt === 0 && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      ℹ️ <strong>Modo Edición:</strong> Esta venta ya está completamente pagada. Puedes cambiar el método de pago, fecha o monto sin restricciones.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -477,10 +541,25 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
                 />
                 <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
-              {selectedSale && (
+              {selectedSale && !isEditing && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Máximo: {selectedSale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                  Deuda Pendiente: {selectedSale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
                 </p>
+              )}
+              {selectedSale && isEditing && paymentToEdit && (
+                <div className="text-sm mt-1 space-y-1">
+                  <p className="text-blue-600">
+                    💰 Monto Original: {paymentToEdit.amount?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                  </p>
+                  <p className="text-gray-600">
+                    💳 Deuda Actual: {selectedSale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                  </p>
+                  {selectedSale.total_debt + (paymentToEdit.amount || 0) > 0 && (
+                    <p className="text-green-600">
+                      ✅ Máximo Permitido: {(selectedSale.total_debt + (paymentToEdit.amount || 0)).toLocaleString("es-CO", { style: "currency", currency: "COP" })}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

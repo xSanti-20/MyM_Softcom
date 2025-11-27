@@ -5507,23 +5507,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\p1lab\\.nuget\\packages\\": {},
+    "C:\\Users\\SERVIDOR\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\mym_softcom.csproj",
+      "projectUniqueName": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\mym_softcom.csproj",
       "projectName": "mym_softcom",
-      "projectPath": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\mym_softcom.csproj",
-      "packagesPath": "C:\\Users\\p1lab\\.nuget\\packages\\",
-      "outputPath": "C:\\Proyecto\\MyM SOFTCOM\\MyM_Softcom\\Backend\\mym_softcom\\obj\\",
+      "projectPath": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\mym_softcom.csproj",
+      "packagesPath": "C:\\Users\\SERVIDOR\\.nuget\\packages\\",
+      "outputPath": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\p1lab\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\SERVIDOR\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -5630,7 +5630,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
