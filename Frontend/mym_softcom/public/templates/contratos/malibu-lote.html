@@ -339,9 +339,7 @@
             <span class="bold">{{CLIENTE_EMAIL}}</span>{{#SEGUNDO_COMPRADOR}}, 
             y <span class="bold">{{SEGUNDO_COMPRADOR_NOMBRE}}</span>, identificado(a) con Cédula de Ciudadanía Número
             <span class="bold">{{SEGUNDO_COMPRADOR_CEDULA}}</span>{{/SEGUNDO_COMPRADOR}}, quien{{#SEGUNDO_COMPRADOR}}es{{/SEGUNDO_COMPRADOR}}{{^SEGUNDO_COMPRADOR}} en adelante{{/SEGUNDO_COMPRADOR}} se denominar{{#SEGUNDO_COMPRADOR}}án{{/SEGUNDO_COMPRADOR}}{{^SEGUNDO_COMPRADOR}}á{{/SEGUNDO_COMPRADOR}}
-            <span class="bold">EL{{#SEGUNDO_COMPRADOR}}OS{{/SEGUNDO_COMPRADOR}} PROMITENTE{{#SEGUNDO_COMPRADOR}}S{{/SEGUNDO_COMPRADOR}} COMPRADOR{{#SEGUNDO_COMPRADOR}}ES{{/SEGUNDO_COMPRADOR}}</span>, se ha celebrado el presente contrato de promesa de
-            compraventa
-            que se rige con las siguientes cláusulas:
+            <span class="bold">EL{{#SEGUNDO_COMPRADOR}}OS{{/SEGUNDO_COMPRADOR}} PROMITENTE{{#SEGUNDO_COMPRADOR}}S{{/SEGUNDO_COMPRADOR}} COMPRADOR{{#SEGUNDO_COMPRADOR}}ES{{/SEGUNDO_COMPRADOR}}</span>, se ha celebrado el presente contrato que se rige con las siguientes cláusulas:
         </p>
 
         <div class="clausula">
@@ -517,7 +515,7 @@
         <p style="margin-top: 10px; margin-bottom: 5px;">
             Los contratantes, afirman haber leído el presente documento y dan su asentimiento expresamente a lo
             estipulado y firman como aparece,
-            ante testigos que los suscriben, en la ciudad de <span class="bold">{{CIUDAD_FIRMA}}</span> a los
+            ante testigos que los suscriben, en la ciudad de <span class="bold">{{CIUDAD_FIRMA}}</span> el dia
             <span class="bold">{{FECHA_CONTRATO_LARGA}}</span> en dos ejemplares, uno para cada promitente.
         </p>
 
@@ -528,7 +526,8 @@
                 <!-- Vendedor a la izquierda -->
                 <div class="firma-vendedor">
                     <div class="firma-digital">
-                        <img src="./FIRMA.png" alt="Firma Digital Ana Sofía Arce">
+                        <!-- Espacio reservado para firma manual -->
+                        <div style="height: 80px;"></div>
                     </div>
                     <div class="linea-firma"></div>
                     <p class="firma-label">EL PROMITENTE VENDEDOR</p>

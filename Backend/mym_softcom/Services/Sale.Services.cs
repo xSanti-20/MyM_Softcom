@@ -286,17 +286,20 @@ namespace mym_softcom.Services
             try
             {
                 var existingSale = await _context.Sales
-                                          .Include(s => s.plan) // Incluir plan para recalcular cuotas
+                                          .Include(s => s.plan)
                                           .FirstOrDefaultAsync(s => s.id_Sales == id_Sales);
 
                 if (existingSale == null) return false;
 
+                // ✅ Consultar el total de pagos reales de la base de datos
+                var totalPaid = await _context.Payments
+                    .Where(p => p.id_Sales == id_Sales)
+                    .SumAsync(p => p.amount ?? 0);
+
                 // Si el lote de la venta cambia, necesitamos actualizar el estado del lote anterior y el nuevo
                 if (existingSale.id_Lots != updatedSale.id_Lots)
                 {
-                    // Marcar el lote anterior como "Libre" (o el estado que corresponda si se cancela la venta)
-                    await _lotServices.ChangeLotStatus(existingSale.id_Lots, "Libre"); // Asumiendo que se libera
-                    // Marcar el nuevo lote como "Vendido"
+                    await _lotServices.ChangeLotStatus(existingSale.id_Lots, "Libre");
                     var newLot = await _lotServices.GetLotById(updatedSale.id_Lots);
                     if (newLot == null)
                     {
@@ -309,78 +312,56 @@ namespace mym_softcom.Services
                     await _lotServices.ChangeLotStatus(updatedSale.id_Lots, "Vendido");
                 }
 
-                // Calcular el monto del pago si total_raised ha aumentado
-                decimal paymentAmount = 0;
-                if (updatedSale.total_raised.HasValue && existingSale.total_raised.HasValue && updatedSale.total_raised.Value > existingSale.total_raised.Value)
-                {
-                    paymentAmount = updatedSale.total_raised.Value - existingSale.total_raised.Value;
-                }
-                // Si el initial_payment se actualiza y total_raised era 0, se asume que es el primer pago.
-                else if (existingSale.total_raised == 0 && updatedSale.initial_payment.HasValue && updatedSale.initial_payment.Value > 0)
-                {
-                    paymentAmount = updatedSale.initial_payment.Value;
-                }
-
-                // Si hay un pago nuevo, registrar Payment para que quede trazabilidad del método
-                if (paymentAmount > 0)
-                {
-                    var methodSource = updatedSale.initial_payment_method ?? existingSale.initial_payment_method;
-                    var paymentMethod = MapPaymentMethod(methodSource);
-
-                    var newPayment = new Payment
-                    {
-                        id_Sales = existingSale.id_Sales,
-                        amount = paymentAmount,
-                        payment_date = updatedSale.sale_date,
-                        payment_method = paymentMethod,
-                    };
-
-                    _context.Payments.Add(newPayment);
-                    Console.WriteLine($"[SaleServices] Se ha agregado registro de Payment por ${paymentAmount} para sale {existingSale.id_Sales} con método '{paymentMethod}'");
-                    // No guardamos aquí aún: se guardará al final junto con la venta para hacer un solo SaveChanges
-                }
-
                 // Actualizar propiedades básicas
                 existingSale.sale_date = updatedSale.sale_date;
                 existingSale.total_value = updatedSale.total_value;
                 existingSale.initial_payment = updatedSale.initial_payment;
-                existingSale.initial_payment_method = updatedSale.initial_payment_method; // Actualizar método de pago
+                existingSale.initial_payment_method = updatedSale.initial_payment_method;
                 existingSale.id_Clients = updatedSale.id_Clients;
                 existingSale.id_Lots = updatedSale.id_Lots;
                 existingSale.id_Users = updatedSale.id_Users;
                 existingSale.id_Plans = updatedSale.id_Plans;
-                existingSale.status = updatedSale.status; // Permitir que el estado se actualice desde el frontend
 
                 existingSale.PaymentPlanType = updatedSale.PaymentPlanType;
                 existingSale.CustomQuotasJson = updatedSale.CustomQuotasJson;
                 existingSale.HouseInitialPercentage = updatedSale.HouseInitialPercentage;
                 existingSale.HouseInitialAmount = updatedSale.HouseInitialAmount;
 
-                // ✅ ACTUALIZACIÓN: Sumar el monto pagado a total_raised
-                existingSale.total_raised += paymentAmount;
+                // ✅ Recalcular total_raised y total_debt basándose en pagos reales
+                existingSale.total_raised = totalPaid;
+                existingSale.total_debt = updatedSale.total_value - totalPaid;
+                if (existingSale.total_debt < 0) existingSale.total_debt = 0;
 
-                // ✅ ACTUALIZACIÓN: Restar el monto pagado de total_debt
-                if (existingSale.total_debt.HasValue)
+                // ✅ Guardar los valores correctos ANTES de CalculateQuotaValueByPlanType
+                decimal correctTotalRaised = existingSale.total_raised.Value;
+                decimal correctTotalDebt = existingSale.total_debt.Value;
+
+                // ✅ Actualizar estado basándose en la deuda
+                if (existingSale.total_debt == 0 && totalPaid > 0)
                 {
-                    existingSale.total_debt -= paymentAmount;
-                    if (existingSale.total_debt < 0) existingSale.total_debt = 0; // Asegurar que no sea negativo
+                    existingSale.status = "Escriturar";
                 }
-                else
+                else if (existingSale.status == "Escriturar" && existingSale.total_debt > 0)
                 {
-                    // Si total_debt era null, inicializarlo y luego restar
-                    existingSale.total_debt = existingSale.total_value - existingSale.initial_payment - paymentAmount;
-                    if (existingSale.total_debt < 0) existingSale.total_debt = 0;
+                    existingSale.status = "Active";
+                }
+                else if (updatedSale.status == "Cancelled" || updatedSale.status == "Desisted")
+                {
+                    existingSale.status = updatedSale.status;
                 }
 
                 // Recalcular quota_value si los campos relevantes cambiaron
                 Plan? currentPlan = existingSale.plan;
-                // Si el ID del plan cambió o el plan no se cargó inicialmente
                 if (existingSale.id_Plans != updatedSale.id_Plans || currentPlan == null)
                 {
                     currentPlan = await _planServices.GetPlanById(updatedSale.id_Plans);
                 }
 
                 await CalculateQuotaValueByPlanType(existingSale, currentPlan);
+
+                // ✅ RESTAURAR los valores correctos DESPUÉS de CalculateQuotaValueByPlanType
+                existingSale.total_raised = correctTotalRaised;
+                existingSale.total_debt = correctTotalDebt;
 
                 _context.Sales.Update(existingSale);
                 await _context.SaveChangesAsync();
@@ -396,6 +377,7 @@ namespace mym_softcom.Services
                 throw;
             }
         }
+         
 
         /// <summary>
         /// Elimina una venta por su ID.

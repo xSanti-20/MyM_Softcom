@@ -24,6 +24,32 @@ namespace mym_softcom.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// ✅ NUEVO: Calcula la fecha de vencimiento ajustándola al último día del mes si es necesario
+        /// Soluciona el problema cuando la fecha inicial es 30/31 y el mes destino tiene menos días (ej: febrero)
+        /// </summary>
+        private DateTime CalculateDueDateWithMonthEndAdjustment(DateTime startDate, int monthsToAdd)
+        {
+            // Sumar los meses
+            var dueDate = startDate.AddMonths(monthsToAdd);
+
+            // Obtener el día de la fecha inicial
+            var originalDay = startDate.Day;
+
+            // Obtener el máximo día del mes de la fecha calculada
+            var maxDayInMonth = DateTime.DaysInMonth(dueDate.Year, dueDate.Month);
+
+            // Si el día original es mayor que el máximo del mes destino, ajustar
+            if (originalDay > maxDayInMonth)
+            {
+                dueDate = new DateTime(dueDate.Year, dueDate.Month, maxDayInMonth);
+                _logger.LogDebug("Adjusted due date: original day {OriginalDay} exceeds max day {MaxDay} for {Month}/{Year}, set to {AdjustedDate:yyyy-MM-dd}",
+                    originalDay, maxDayInMonth, dueDate.Month, dueDate.Year, dueDate);
+            }
+
+            return dueDate;
+        }
+
         public async Task<List<ClientOverdueInfo>> GetClientsWithOverdueInstallmentsAsync()
         {
             var clientsWithOverdue = new List<ClientOverdueInfo>();
@@ -144,7 +170,6 @@ namespace mym_softcom.Services
             for (int i = 1; i <= totalQuotas; i++)
             {
                 var paidAmount = paymentDetails.GetValueOrDefault(i, 0);
-                // ✅ NUEVO: Obtener valor y fecha de vencimiento (personalizada o calculada)
                 decimal currentQuotaValue;
                 DateTime dueDate;
 
@@ -153,7 +178,6 @@ namespace mym_softcom.Services
                     var customData = customQuotaData[i];
                     currentQuotaValue = customData.Amount;
 
-                    // ✅ Usar fecha personalizada si existe, sino calcular
                     if (customData.DueDate.HasValue)
                     {
                         dueDate = customData.DueDate.Value;
@@ -162,17 +186,15 @@ namespace mym_softcom.Services
                     }
                     else
                     {
-                        // Compatibilidad: calcular fecha si no existe en JSON
-                        dueDate = sale.sale_date.AddMonths(i);
+                        dueDate = CalculateDueDateWithMonthEndAdjustment(sale.sale_date, i);
                         _logger.LogDebug("Quota {QuotaNumber} for sale {SaleId}: Custom quota without DueDate, calculated {DueDate:yyyy-MM-dd}",
                             i, saleId, dueDate);
                     }
                 }
                 else
                 {
-                    // Plan automático: usar valor estándar y calcular fecha
                     currentQuotaValue = quotaValue;
-                    dueDate = sale.sale_date.AddMonths(i);
+                    dueDate = CalculateDueDateWithMonthEndAdjustment(sale.sale_date, i);
                 }
 
                 var balance = currentQuotaValue - paidAmount;

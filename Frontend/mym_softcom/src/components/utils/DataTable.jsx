@@ -137,6 +137,17 @@ function DataTable({
         ...selectedSale,
         paymentDetails: selectedSale.paymentDetails || [], // Include payment details for quotas
       }
+      
+      // ✅ Parsear customQuotas si existen
+      if (selectedSale.customQuotasJson) {
+        try {
+          const parsedQuotas = JSON.parse(selectedSale.customQuotasJson)
+          saleDataWithQuotas.customQuotas = parsedQuotas
+          console.log("[v0] DataTable - Parsed customQuotas:", parsedQuotas)
+        } catch (e) {
+          console.error("[v0] DataTable - Error parsing customQuotasJson:", e)
+        }
+      }
 
       console.log("[v0] DataTable - saleDataWithQuotas:", saleDataWithQuotas)
       console.log("[v0] DataTable - paymentDetails:", saleDataWithQuotas.paymentDetails)
@@ -384,11 +395,7 @@ function DataTable({
               <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
                 {showCheckboxes && (
                   <TableHead className="w-12 px-4">
-                    <Checkbox
-                      checked={selectedItems.length === currentItems.length && currentItems.length > 0}
-                      onCheckedChange={onToggleSelectAll}
-                      aria-label="Seleccionar todos"
-                    />
+                    {/* ✅ Checkbox de "Seleccionar todos" removido por seguridad */}
                   </TableHead>
                 )}
                 {TitlesTable.map((title, index) => (
@@ -585,11 +592,20 @@ function DataTable({
                 <ChevronLeft className="w-4 h-4" />
               </Button>
 
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center gap-1 flex-wrap max-w-md justify-center">
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((page) => {
-                    if (!isMobile) return true
-                    return Math.abs(page - currentPage) <= 1 || page === 1 || page === totalPages
+                    // ✅ CORRECCIÓN: Mostrar solo páginas cercanas para evitar desbordamiento
+                    const maxVisible = isMobile ? 3 : 7
+                    const halfVisible = Math.floor(maxVisible / 2)
+                    
+                    // Siempre mostrar primera y última página
+                    if (page === 1 || page === totalPages) return true
+                    
+                    // Mostrar páginas cercanas a la actual
+                    if (Math.abs(page - currentPage) <= halfVisible) return true
+                    
+                    return false
                   })
                   .map((page, index, array) => (
                     <div key={page} className="flex items-center">
@@ -600,7 +616,7 @@ function DataTable({
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => handlePageChange(page)}
-                        className={`h-9 min-w-9 ${
+                        className={`h-9 min-w-[36px] px-2 ${
                           currentPage === page
                             ? "bg-blue-600 hover:bg-blue-700 text-white"
                             : "border-slate-200 hover:bg-slate-50"

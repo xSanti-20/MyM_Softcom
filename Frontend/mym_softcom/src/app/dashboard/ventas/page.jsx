@@ -215,7 +215,25 @@ function SalesPage() {
           plan: sale.plan?.name || "N/A",
           original: sale,
           searchableIdentifier: `${sale.id_Sales} ${sale.client?.names} ${sale.client?.surnames} ${sale.lot?.block}-${sale.lot?.lot_number} ${getProjectName(sale)} ${sale.status} ${sale.plan?.name}`,
-        }))
+        })).sort((a, b) => {
+          // ✅ Ordenar por manzana y luego por número de lote ascendentemente
+          const lotA = a.original.lot
+          const lotB = b.original.lot
+          
+          if (!lotA && !lotB) return 0
+          if (!lotA) return 1
+          if (!lotB) return -1
+          
+          // Comparar primero por manzana (block)
+          const blockComparison = (lotA.block || '').localeCompare(lotB.block || '')
+          if (blockComparison !== 0) return blockComparison
+          
+          // Si la manzana es igual, comparar por número de lote
+          const lotNumA = Number(lotA.lot_number) || 0
+          const lotNumB = Number(lotB.lot_number) || 0
+          return lotNumA - lotNumB
+        })
+        
         setSalesData(data)
       }
     } catch (error) {

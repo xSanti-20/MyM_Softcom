@@ -3,8 +3,12 @@
   "WorkspaceRootPath": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -19,16 +23,8 @@
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\overduenotificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\sale.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\sale.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\guia_correos_manuales.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:guia_correos_manuales.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
     }
   ],
   "DocumentGroupContainers": [
@@ -38,11 +34,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Sale.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Sale.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
+              "RelativeToolTip": "Services\\Sale.Services.cs",
+              "ViewState": "AgIAAF0BAAAAAAAAAAAiwF0BAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-27T15:56:23.536Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "User.Controller.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\User.Controller.cs",
               "RelativeDocumentMoniker": "Controllers\\User.Controller.cs",
@@ -50,24 +59,11 @@
               "RelativeToolTip": "Controllers\\User.Controller.cs",
               "ViewState": "AgIAAIcAAAAAAAAAAAAmwJMAAAA9AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-25T19:23:00.183Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-11-25T19:23:00.183Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "GUIA_CORREOS_MANUALES.md",
-              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\GUIA_CORREOS_MANUALES.md",
-              "RelativeDocumentMoniker": "GUIA_CORREOS_MANUALES.md",
-              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\GUIA_CORREOS_MANUALES.md",
-              "RelativeToolTip": "GUIA_CORREOS_MANUALES.md",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
-              "WhenOpened": "2025-10-30T16:31:05.364Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "OverdueNotificationController.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\OverdueNotificationController.cs",
               "RelativeDocumentMoniker": "Controllers\\OverdueNotificationController.cs",
@@ -75,20 +71,20 @@
               "RelativeToolTip": "Controllers\\OverdueNotificationController.cs",
               "ViewState": "AgIAAC0AAAAAAAAAAAAowEIAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-30T16:12:24.631Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-30T16:12:24.631Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 0,
               "Title": "OverdueDetectionService.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\OverdueDetectionService.cs",
               "RelativeDocumentMoniker": "Services\\OverdueDetectionService.cs",
               "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\OverdueDetectionService.cs",
               "RelativeToolTip": "Services\\OverdueDetectionService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAABlAAAAAAAAAA==",
+              "ViewState": "AgIAANwAAAAAAAAAAAAQwKAAAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-29T21:36:45.731Z"
+              "WhenOpened": "2025-10-29T21:36:45.731Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -104,20 +100,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Payment.Services.cs",
-              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
-              "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
-              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
-              "RelativeToolTip": "Services\\Payment.Services.cs",
-              "ViewState": "AgIAANUBAAAAAAAAAAAgwPcBAAAzAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-29T15:14:11.723Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",
@@ -125,8 +108,7 @@
               "RelativeToolTip": "appsettings.json",
               "ViewState": "AgIAAAMAAAAAAAAAAAAAABkAAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-10-28T21:29:14.238Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-28T21:29:14.238Z"
             }
           ]
         }

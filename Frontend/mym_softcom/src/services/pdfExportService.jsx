@@ -281,12 +281,22 @@ function buildPlanPagosHTML(saleData) {
 
   const rows = []
   for (let i = 1; i <= totalQuotas; i++) {
-    const dueDate = new Date(saleDate)
-    dueDate.setMonth(saleDate.getMonth() + i)
-    dueDate.setDate(saleDate.getDate())
+    // ✅ Fecha por defecto: calculada automáticamente
+    let dueDate = new Date(saleDate)
+    const targetMonth = saleDate.getMonth() + i
+    const targetDay = saleDate.getDate()
+    
+    // Establecer el mes primero
+    dueDate.setMonth(targetMonth)
+    
+    // Ajustar al último día del mes si el día original no existe en el mes de destino
+    const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
+    dueDate.setDate(Math.min(targetDay, maxDayInMonth))
 
     // Usar valor de cuota personalizada si existe, sino usar el valor automático
     let currentQuotaValue = quotaValue
+    let formattedDate = dueDate.toLocaleDateString("es-CO")
+    
     if (customQuotas && customQuotas.length > 0) {
       const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
       if (customQuota) {
@@ -296,6 +306,18 @@ function buildPlanPagosHTML(saleData) {
           currentQuotaValue = customAmount
           if (i <= 3 || i === totalQuotas) {
             console.log(`[v0] Quota ${i}: Using custom value ${currentQuotaValue}`)
+          }
+        }
+        
+        // ✅ CORRECCIÓN: Usar fecha personalizada si existe
+        const customDueDate = customQuota.dueDate || customQuota.DueDate
+        if (customDueDate) {
+          // Parsear manualmente para evitar problemas de UTC
+          const [year, month, day] = customDueDate.split('-').map(Number)
+          const localDate = new Date(year, month - 1, day)
+          formattedDate = localDate.toLocaleDateString("es-CO")
+          if (i <= 3 || i === totalQuotas) {
+            console.log(`[v0] Quota ${i}: Using custom date ${customDueDate} -> ${formattedDate}`)
           }
         }
       }
@@ -311,7 +333,7 @@ function buildPlanPagosHTML(saleData) {
       currency: "COP",
       minimumFractionDigits: 0,
     }).format(currentQuotaValue)}</td>
-        <td>${dueDate.toLocaleDateString("es-CO")}</td>
+        <td>${formattedDate}</td>
       </tr>
     `)
   }
@@ -477,10 +499,41 @@ class SalesPDFService {
           return "N/A"
         }
 
+        // ✅ CORRECCIÓN: Si hay cuotas personalizadas, usar la fecha de la última cuota
+        if (saleData.customQuotas && saleData.customQuotas.length > 0) {
+          // Encontrar la cuota con el número más alto (última cuota)
+          const lastCustomQuota = saleData.customQuotas.reduce((max, quota) => {
+            const quotaNum = quota.quotaNumber || quota.QuotaNumber || 0
+            const maxNum = max.quotaNumber || max.QuotaNumber || 0
+            return quotaNum > maxNum ? quota : max
+          })
+          
+          const lastDueDate = lastCustomQuota.dueDate || lastCustomQuota.DueDate
+          if (lastDueDate) {
+            // Parsear manualmente para evitar problemas de UTC
+            const [year, month, day] = lastDueDate.split('-').map(Number)
+            const localDate = new Date(year, month - 1, day)
+            console.log(`[PDF] Using custom last quota date: ${lastDueDate} -> ${localDate.toLocaleDateString("es-CO")}`)
+            return localDate.toLocaleDateString("es-CO", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })
+          }
+        }
+
+        // ✅ Si no hay cuotas personalizadas, calcular automáticamente
         const saleDate = new Date(saleData.sale_date)
         const lastQuotaDate = new Date(saleDate)
-        lastQuotaDate.setMonth(saleDate.getMonth() + saleData.plan.number_quotas)
-        lastQuotaDate.setDate(saleDate.getDate())
+        const targetMonth = saleDate.getMonth() + saleData.plan.number_quotas
+        const targetDay = saleDate.getDate()
+        
+        // Establecer el mes primero
+        lastQuotaDate.setMonth(targetMonth)
+        
+        // Ajustar al último día del mes si el día original no existe en el mes de destino
+        const maxDayInMonth = new Date(lastQuotaDate.getFullYear(), lastQuotaDate.getMonth() + 1, 0).getDate()
+        lastQuotaDate.setDate(Math.min(targetDay, maxDayInMonth))
 
         return lastQuotaDate.toLocaleDateString("es-CO", {
           day: "2-digit",
@@ -514,6 +567,7 @@ class SalesPDFService {
         // If it's a string format like "1-1"
         if (typeof lotData === "string" && lotData.includes("-")) {
           const [block, lotNum] = lotData.split("-")
+          
           return {
             manzana: `Manzana ${block}`,
             lote: `Lote ${lotNum}`,

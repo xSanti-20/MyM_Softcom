@@ -454,33 +454,8 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         setSelectedProject(projectId)
         setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
       }
-    } else if (!isEditing) {
-      // ⚠️ Solo resetear si NO está en modo edición (evita resetear durante la carga)
-      console.log("🔄 [RESET] Limpiando formulario para nueva venta")
-      editDataLoadedRef.current = false // Resetear el flag
-      setFormData({
-        sale_date: "", // Dejar vacío para que el usuario seleccione
-        total_value: "",
-        initial_payment: "",
-        initial_payment_method: "Efectivo",
-        id_Clients: "",
-        id_Lots: "",
-        id_Users: "",
-        id_Plans: "",
-        paymentPlanType: "automatic",
-        houseInitialPercentage: "30",
-        customQuotas: [],
-      })
-      setClientDocument("")
-      setFoundClient(null)
-      setClientSearchError(null)
-      setSelectedProject("")
-      setLotSearchTerm("")
-      setSelectedLot(null)
-      setLotSearchResults([])
-      setShowLotResults(false)
-      setLotSearchError(null)
     }
+    // ✅ NOTA: El reset del formulario ahora solo ocurre después de guardar exitosamente o cancelar edición
   }, [saleToEdit, isEditing, users, plans])
 
   const handleChange = (e) => {
@@ -675,10 +650,20 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     // Create batch quotas with calculated dates
     const newQuotas = []
     const baseDate = new Date(startDate)
+    const dayOfMonth = baseDate.getDate() // ✅ Guardar el día del mes (1, 15, 30, etc.)
     
     for (let i = startQuota; i <= endQuota; i++) {
       const quotaDate = new Date(baseDate)
-      quotaDate.setMonth(quotaDate.getMonth() + (i - startQuota) * intervalMonths)
+      
+      // Calcular el mes de destino
+      const targetMonth = baseDate.getMonth() + (i - startQuota) * intervalMonths
+      quotaDate.setMonth(targetMonth)
+      
+      // Obtener el último día del mes de destino
+      const maxDayInMonth = new Date(quotaDate.getFullYear(), quotaDate.getMonth() + 1, 0).getDate()
+      
+      // Ajustar al día solicitado o al último día del mes si no existe
+      quotaDate.setDate(Math.min(dayOfMonth, maxDayInMonth))
       
       newQuotas.push({ 
         quotaNumber: i, 
