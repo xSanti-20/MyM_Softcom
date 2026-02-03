@@ -351,7 +351,6 @@ C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\staticwebassets.bui
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\staticwebassets.build.json.cache
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\staticwebassets.development.json
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\mym_soft.DE32FF52.Up2Date
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\mym_softcom.dll
 C:\Proyecto\MyM_Softcom\Backend\mym_softcom\obj\Debug\net8.0\refint\mym_softcom.dll

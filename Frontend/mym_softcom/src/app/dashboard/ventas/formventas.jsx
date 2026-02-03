@@ -649,21 +649,24 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
     // Create batch quotas with calculated dates
     const newQuotas = []
-    const baseDate = new Date(startDate)
-    const dayOfMonth = baseDate.getDate() // ✅ Guardar el día del mes (1, 15, 30, etc.)
+    // ✅ Parsear la fecha correctamente sin problemas de zona horaria
+    const [yearBase, monthBase, dayBase] = startDate.split('-').map(Number)
+    const baseDate = new Date(yearBase, monthBase - 1, dayBase) // Crear fecha local
+    const dayOfMonth = dayBase // ✅ Usar directamente el día del string
     
     for (let i = startQuota; i <= endQuota; i++) {
-      const quotaDate = new Date(baseDate)
+      // Calcular el mes de destino (meses desde la fecha base)
+      const monthsToAdd = (i - startQuota) * intervalMonths
+      const targetMonth = baseDate.getMonth() + monthsToAdd
+      const targetYear = baseDate.getFullYear() + Math.floor(targetMonth / 12)
+      const adjustedMonth = ((targetMonth % 12) + 12) % 12 // Asegurar que esté entre 0-11
       
-      // Calcular el mes de destino
-      const targetMonth = baseDate.getMonth() + (i - startQuota) * intervalMonths
-      quotaDate.setMonth(targetMonth)
+      // ✅ Obtener el último día del mes de destino ANTES de crear la fecha
+      const maxDayInMonth = new Date(targetYear, adjustedMonth + 1, 0).getDate()
       
-      // Obtener el último día del mes de destino
-      const maxDayInMonth = new Date(quotaDate.getFullYear(), quotaDate.getMonth() + 1, 0).getDate()
-      
-      // Ajustar al día solicitado o al último día del mes si no existe
-      quotaDate.setDate(Math.min(dayOfMonth, maxDayInMonth))
+      // Crear la fecha directamente con el día correcto
+      const finalDay = Math.min(dayOfMonth, maxDayInMonth)
+      const quotaDate = new Date(targetYear, adjustedMonth, finalDay)
       
       newQuotas.push({ 
         quotaNumber: i, 

@@ -101,14 +101,27 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       } else {
         // Fallback a cálculo automático
         dueDate = new Date(saleDate)
-        dueDate.setMonth(saleDate.getMonth() + i)
-        dueDate.setDate(saleDate.getDate())
+        const targetMonth = saleDate.getMonth() + i
+        const targetDay = saleDate.getDate()
+        
+        dueDate.setMonth(targetMonth)
+        
+        // Ajustar al último día del mes si el día original no existe en el mes de destino
+        const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
+        dueDate.setDate(Math.min(targetDay, maxDayInMonth))
       }
     } else {
       // Cálculo automático para planes no personalizados
       dueDate = new Date(saleDate)
-      dueDate.setMonth(saleDate.getMonth() + i)
-      dueDate.setDate(saleDate.getDate())
+      const targetMonth = saleDate.getMonth() + i
+      const targetDay = saleDate.getDate()
+      
+      // Establecer el mes primero
+      dueDate.setMonth(targetMonth)
+      
+      // Ajustar al último día del mes si el día original no existe en el mes de destino
+      const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
+      dueDate.setDate(Math.min(targetDay, maxDayInMonth))
     }
 
     const isOverdueRedistributed = redistributedQuotaNumbers.includes(i)

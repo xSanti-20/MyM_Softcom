@@ -59,11 +59,39 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
           dueDate = new Date(year, month - 1, day) // month - 1 porque enero = 0
         } else {
           // Fallback a cálculo automático
-          dueDate = new Date(saleDate.getFullYear(), saleDate.getMonth() + i, saleDate.getDate())
+          const saleDay = saleDate.getDate()
+          const saleMonth = saleDate.getMonth()
+          const saleYear = saleDate.getFullYear()
+          
+          // Calcular el año y mes de destino
+          const totalMonths = saleMonth + i
+          const targetYear = saleYear + Math.floor(totalMonths / 12)
+          const targetMonth = ((totalMonths % 12) + 12) % 12 // Asegurar que esté entre 0-11
+          
+          // ✅ Obtener el último día del mes de destino ANTES de crear la fecha
+          const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+          
+          // Crear la fecha directamente con el día correcto
+          const finalDay = Math.min(saleDay, maxDayInMonth)
+          dueDate = new Date(targetYear, targetMonth, finalDay)
         }
       } else {
         // Cálculo automático para planes no personalizados
-        dueDate = new Date(saleDate.getFullYear(), saleDate.getMonth() + i, saleDate.getDate())
+        const saleDay = saleDate.getDate()
+        const saleMonth = saleDate.getMonth()
+        const saleYear = saleDate.getFullYear()
+        
+        // Calcular el año y mes de destino
+        const totalMonths = saleMonth + i
+        const targetYear = saleYear + Math.floor(totalMonths / 12)
+        const targetMonth = ((totalMonths % 12) + 12) % 12 // Asegurar que esté entre 0-11
+        
+        // ✅ Obtener el último día del mes de destino ANTES de crear la fecha
+        const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+        
+        // Crear la fecha directamente con el día correcto
+        const finalDay = Math.min(saleDay, maxDayInMonth)
+        dueDate = new Date(targetYear, targetMonth, finalDay)
       }
       
       const isOverdue = dueDate < currentDate

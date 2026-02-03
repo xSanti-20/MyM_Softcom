@@ -281,17 +281,22 @@ function buildPlanPagosHTML(saleData) {
 
   const rows = []
   for (let i = 1; i <= totalQuotas; i++) {
-    // ✅ Fecha por defecto: calculada automáticamente
-    let dueDate = new Date(saleDate)
-    const targetMonth = saleDate.getMonth() + i
-    const targetDay = saleDate.getDate()
+    // ✅ Fecha por defecto: calculada automáticamente (corregida para evitar desbordamiento)
+    const saleDay = saleDate.getDate()
+    const saleMonth = saleDate.getMonth()
+    const saleYear = saleDate.getFullYear()
     
-    // Establecer el mes primero
-    dueDate.setMonth(targetMonth)
+    // Calcular el año y mes de destino
+    const totalMonths = saleMonth + i
+    const targetYear = saleYear + Math.floor(totalMonths / 12)
+    const targetMonth = ((totalMonths % 12) + 12) % 12 // Asegurar que esté entre 0-11
     
-    // Ajustar al último día del mes si el día original no existe en el mes de destino
-    const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
-    dueDate.setDate(Math.min(targetDay, maxDayInMonth))
+    // ✅ Obtener el último día del mes de destino ANTES de crear la fecha
+    const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+    
+    // Crear la fecha directamente con el día correcto
+    const finalDay = Math.min(saleDay, maxDayInMonth)
+    const dueDate = new Date(targetYear, targetMonth, finalDay)
 
     // Usar valor de cuota personalizada si existe, sino usar el valor automático
     let currentQuotaValue = quotaValue
