@@ -281,10 +281,16 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
     try {
       setLoading(true)
-      console.log("📤 [SUBMIT] Enviando datos:", {
+      console.log("📤 [SUBMIT - PAGO] Enviando datos:", {
         isEditing,
         endpoint: isEditing ? `/api/Payment/UpdatePayment/${paymentToEdit.id_Payments}` : "/api/Payment/CreatePayment",
-        body
+        body,
+        selectedSale: {
+          id: selectedSale?.id_Sales,
+          total_value: selectedSale?.total_value,
+          total_raised: selectedSale?.total_raised,
+          total_debt: selectedSale?.total_debt
+        }
       })
       
       let response
@@ -305,6 +311,8 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       } else {
         response = await axiosInstance.post("/api/Payment/CreatePayment", body)
       }
+      
+      console.log("✅ [SUBMIT - PAGO] Respuesta del backend:", response.data)
 
       const successMessage =
         response.data?.message || (isEditing ? "Pago actualizado con éxito." : "Pago registrado con éxito.")
@@ -328,12 +336,35 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       if (closeModal) closeModal()
       if (typeof refreshData === "function") refreshData()
     } catch (error) {
-      console.error("Error completo:", error)
-      const errorMessage = error.response?.data?.message || error.response?.data || "Error desconocido"
+      console.error("❌ [SUBMIT - PAGO] Error completo:", error)
+      console.error("❌ Response status:", error.response?.status)
+      console.error("❌ Response data:", error.response?.data)
+      console.error("❌ Response headers:", error.response?.headers)
+      
+      let errorMessage = "Error desconocido"
+      
+      if (error.response?.status === 500) {
+        const errorData = error.response?.data
+        if (typeof errorData === 'string' && errorData.includes('entity changes')) {
+          errorMessage = `🔴 ERROR DEL BACKEND: No se puede guardar el pago.
+
+Posibles causas:
+1. PaymentDetails duplicados en la base de datos
+2. Restricciones de foreign key violadas
+3. El backend está intentando crear registros duplicados
+
+Este es un problema que debe resolver el desarrollador del backend.
+Detalles: ${errorData.substring(0, 150)}...`
+        } else {
+          errorMessage = error.response?.data?.message || error.response?.data || "Error interno del servidor (500)"
+        }
+      } else {
+        errorMessage = error.response?.data?.message || error.response?.data || "Error desconocido"
+      }
 
       showAlert(
         "error",
-        `Ocurrió un error al ${isEditing ? "actualizar" : "registrar"} el pago: ` + JSON.stringify(errorMessage),
+        `Ocurrió un error al ${isEditing ? "actualizar" : "registrar"} el pago: ` + errorMessage,
       )
     } finally {
       setLoading(false)

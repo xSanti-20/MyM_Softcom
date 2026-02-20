@@ -154,6 +154,7 @@ namespace mym_softcom.Services
 
      // Obtener los detalles de cuotas existentes para esta venta
       var existingDetails = await _context.Details
+          .AsNoTracking()
             .Where(pd => pd.id_Sales == sale.id_Sales)
      .ToListAsync();
 
@@ -403,6 +404,7 @@ namespace mym_softcom.Services
 
                     // Obtener los detalles de cuotas existentes para esta VENTA (excluyendo los que acabamos de revertir)
                     var currentSaleDetails = await _context.Details
+                        .AsNoTracking()
                         .Where(pd => pd.id_Sales == newSale.id_Sales && pd.id_Payments != updatedPayment.id_Payments)
                         .ToListAsync();
 
@@ -492,21 +494,22 @@ namespace mym_softcom.Services
                 if (newSale.total_debt == 0) newSale.status = "Escriturar";
                 else if (newSale.status == "Cancelled" && newSale.total_debt > 0) newSale.status = "Active";
 
-                existingPayment.amount = updatedPayment.amount;
-                existingPayment.payment_date = updatedPayment.payment_date;
-                existingPayment.payment_method = updatedPayment.payment_method;
-                existingPayment.id_Sales = updatedPayment.id_Sales;
-                _context.Entry(existingPayment).State = EntityState.Modified;
+                // ✅ CORRECCIÓN: Actualizar el pago existente correctamente
+     existingPayment.amount = updatedPayment.amount;
+     existingPayment.payment_date = updatedPayment.payment_date;
+     existingPayment.payment_method = updatedPayment.payment_method;
+ existingPayment.id_Sales = updatedPayment.id_Sales;
+       _context.Payments.Update(existingPayment);
 
-                _context.Sales.Update(oldSale);
-                if (oldSale.id_Sales != newSale.id_Sales)
-                {
-                    _context.Sales.Update(newSale);
-                }
+    _context.Sales.Update(oldSale);
+    if (oldSale.id_Sales != newSale.id_Sales)
+             {
+          _context.Sales.Update(newSale);
+}
 
-                await _context.SaveChangesAsync();
+           await _context.SaveChangesAsync();
 
-                return true;
+     return true;
             }
             catch (Exception ex)
             {

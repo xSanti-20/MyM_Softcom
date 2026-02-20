@@ -389,6 +389,13 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     fetchProjects()
   }, [isEditing, showAlert, fetchProjects])
 
+  // Resetear flag cuando cambia la venta a editar o se cancela la edición
+  useEffect(() => {
+    if (!isEditing || !saleToEdit) {
+      editDataLoadedRef.current = false
+    }
+  }, [isEditing, saleToEdit])
+
   // Poblar formulario para edición
   useEffect(() => {
     // ⚠️ IMPORTANTE: Solo cargar si users y plans ya están disponibles y no se ha cargado antes
@@ -400,13 +407,58 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       if (saleToEdit.customQuotasJson) {
         try {
           const parsed = JSON.parse(saleToEdit.customQuotasJson)
-          customQuotas = parsed.map((q) => ({
-            quotaNumber: q.QuotaNumber || q.quotaNumber,
-            amount: q.Amount || q.amount,
-            dueDate: q.DueDate || q.dueDate || "", // ← NUEVO: Cargar fecha de vencimiento
-          }))
+          console.log("📋 [EDIT MODE] Raw customQuotasJson:", saleToEdit.customQuotasJson)
+          console.log("📋 [EDIT MODE] Parsed custom quotas:", parsed)
+          
+          // 🔧 SOLUCIÓN: Generar fechas automáticamente cuando falten
+          const saleDate = new Date(saleToEdit.sale_date)
+          
+          customQuotas = parsed.map((q, index) => {
+            const quotaNumber = q.QuotaNumber || q.quotaNumber
+            const amount = q.Amount || q.amount
+            let dueDate = q.DueDate || q.dueDate || ""
+            
+            // Si no hay fecha, generarla automáticamente
+            if (!dueDate) {
+              const monthsToAdd = quotaNumber
+              const targetDate = new Date(saleDate)
+              targetDate.setMonth(saleDate.getMonth() + monthsToAdd)
+              
+              // Ajustar al último día del mes si es necesario
+              const targetDay = saleDate.getDate()
+              const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
+              targetDate.setDate(Math.min(targetDay, maxDayInMonth))
+              
+              dueDate = targetDate.toISOString().split('T')[0]
+              
+              if (index < 3) {
+                console.warn(`🔧 [EDIT MODE] Cuota #${quotaNumber} generando fecha automáticamente: ${dueDate}`)
+              }
+            }
+            
+            return {
+              quotaNumber,
+              amount,
+              dueDate
+            }
+          })
+          
+          console.log("📅 [EDIT MODE] Mapped custom quotas with dates:", customQuotas.slice(0, 5))
+          
+          const quotasWithoutDate = customQuotas.filter(q => !q.dueDate)
+          if (quotasWithoutDate.length > 0) {
+            console.error(`❌ [EDIT MODE] ${quotasWithoutDate.length} cuotas aún sin fecha de ${customQuotas.length} totales`)
+          } else {
+            console.log(`✅ [EDIT MODE] Todas las ${customQuotas.length} cuotas tienen fecha asignada`)
+          }
+          
+          // Informar al usuario si se generaron fechas automáticamente
+          const hadMissingDates = parsed.some(q => !(q.DueDate || q.dueDate))
+          if (hadMissingDates) {
+            console.warn(`⚠️ [BACKEND ISSUE] Esta venta fue creada sin fechas. Se generaron automáticamente. Guarda la venta para actualizarlas en el backend.`)
+          }
         } catch (e) {
-          console.error("Error parsing custom quotas:", e)
+          console.error("❌ [EDIT MODE] Error parsing custom quotas:", e)
         }
       }
 
@@ -458,6 +510,13 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     // ✅ NOTA: El reset del formulario ahora solo ocurre después de guardar exitosamente o cancelar edición
   }, [saleToEdit, isEditing, users, plans])
 
+  // Resetear flag cuando cambia la venta a editar o se cancela la edición
+  useEffect(() => {
+    if (!isEditing || !saleToEdit) {
+      editDataLoadedRef.current = false
+    }
+  }, [isEditing, saleToEdit])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -471,6 +530,39 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       ...prev,
       [name]: value,
     }))
+  }
+
+  // Función mejorada para cancelar edición
+  const handleCancelEdit = () => {
+    // Resetear el flag de carga de datos de edición
+    editDataLoadedRef.current = false
+    
+    // Limpiar todos los estados del formulario
+    setFormData({
+      sale_date: "",
+      total_value: "",
+      initial_payment: "",
+      initial_payment_method: "Efectivo",
+      id_Clients: "",
+      id_Lots: "",
+      id_Users: "",
+      id_Plans: "",
+      paymentPlanType: "automatic",
+      houseInitialPercentage: "30",
+      customQuotas: [],
+    })
+    setClientDocument("")
+    setFoundClient(null)
+    setClientSearchError(null)
+    setSelectedProject("")
+    setLotSearchTerm("")
+    setSelectedLot(null)
+    setLotSearchResults([])
+    setShowLotResults(false)
+    setLotSearchError(null)
+    
+    // Llamar a la función de cancelación del padre
+    if (onCancelEdit) onCancelEdit()
   }
 
   async function handleSubmit(event) {
@@ -492,6 +584,15 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     if (paymentPlanType === "custom" && formData.customQuotas.length === 0) {
       showAlert("error", "Debe agregar al menos una cuota personalizada.")
       return
+    }
+
+    // Validar que todas las cuotas personalizadas tengan fecha de vencimiento
+    if (paymentPlanType === "custom") {
+      const quotasWithoutDate = formData.customQuotas.filter(q => !q.dueDate || q.dueDate === "")
+      if (quotasWithoutDate.length > 0) {
+        showAlert("error", `Las siguientes cuotas no tienen fecha de vencimiento: ${quotasWithoutDate.map(q => q.quotaNumber).join(', ')}. Por favor, asigne fechas a todas las cuotas.`)
+        return
+      }
     }
 
     const parsedTotalValue = Number.parseFloat(total_value)
@@ -565,6 +666,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         response.data?.message || (isEditing ? "Venta actualizada con éxito." : "Venta registrada con éxito.")
 
       showAlert("success", successMessage)
+
+      // Resetear el flag de edición después de guardar
+      editDataLoadedRef.current = false
 
       if (!isEditing || closeModal) {
         setFormData({
@@ -1297,12 +1401,20 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                           <span className="col-span-4 text-sm font-medium text-gray-700">
                             ${quota.amount.toLocaleString('es-CO')}
                           </span>
-                          <span className="col-span-5 text-sm text-gray-600">
+                          <span className="col-span-5 text-sm">
                             {quota.dueDate ? (() => {
                               const [year, month, day] = quota.dueDate.split('-').map(Number)
                               const localDate = new Date(year, month - 1, day)
-                              return localDate.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                            })() : 'Sin fecha'}
+                              return (
+                                <span className="text-gray-700">
+                                  {localDate.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </span>
+                              )
+                            })() : (
+                              <span className="text-red-600 font-medium flex items-center gap-1">
+                                ⚠️ Sin fecha
+                              </span>
+                            )}
                           </span>
                           <div className="col-span-1">
                             <Button
@@ -1419,7 +1531,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         }
 
         <div className="flex justify-end space-x-4 pt-6 border-t">
-          <Button type="button" onClick={onCancelEdit} variant="outline" disabled={loading}>
+          <Button type="button" onClick={handleCancelEdit} variant="outline" disabled={loading}>
             Cancelar
           </Button>
           <Button type="submit" disabled={loading || !selectedProject} className="bg-blue-600 hover:bg-blue-700">

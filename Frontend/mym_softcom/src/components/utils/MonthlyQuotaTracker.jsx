@@ -69,17 +69,92 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
   const saleDate = new Date(sale.sale_date)
   const currentDate = new Date()
 
+  // 🔧 CORRECCIÓN: Agrupar pagos por cuota evitando duplicados
+  // En lugar de sumar todos los covered_amount, debemos agrupar por pago único
   const aggregatedQuotas = new Map()
-
+  
+  // Primero, crear un mapa de pagos únicos por ID
+  const uniquePayments = new Map()
   paymentDetails.forEach((detail) => {
-    if (detail.number_quota > 0) {
-      const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0, paymentDates: [] }
-      current.covered += detail.covered_amount || 0
-      if (detail.payment?.payment_date) {
-        current.paymentDates.push(new Date(detail.payment.payment_date))
+    if (detail.payment?.id_Payments) {
+      const paymentId = detail.payment.id_Payments
+      if (!uniquePayments.has(paymentId)) {
+        uniquePayments.set(paymentId, {
+          amount: detail.payment.amount || 0,
+          date: detail.payment.payment_date,
+          details: []
+        })
       }
-      aggregatedQuotas.set(detail.number_quota, current)
+      uniquePayments.get(paymentId).details.push(detail)
     }
+  })
+
+  console.log(`[QUOTA TRACKER] 📦 Total payment details: ${paymentDetails.length}`)
+  console.log(`[QUOTA TRACKER] 💳 Unique payments: ${uniquePayments.size}`)
+
+  // Ahora distribuir los montos de pagos únicos a las cuotas
+  uniquePayments.forEach((payment, paymentId) => {
+    // Obtener todos los detalles de este pago
+    const detailsForPayment = payment.details
+    
+    console.log(`[QUOTA TRACKER] 💳 Pago ID ${paymentId}:`, {
+      amount: payment.amount,
+      detailsCount: detailsForPayment.length,
+      details: detailsForPayment.map(d => ({
+        quota: d.number_quota,
+        covered_amount: d.covered_amount
+      }))
+    })
+    
+    // Verificar si hay inconsistencias
+    const totalCovered = detailsForPayment.reduce((sum, d) => sum + (d.covered_amount || 0), 0)
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Si el covered_amount total no coincide con el monto del pago,
+    // distribuir el monto real del pago proporcionalmente
+    let useCorrection = false
+    if (Math.abs(totalCovered - payment.amount) > 0.01) {
+      console.warn(`⚠️ [QUOTA TRACKER] INCONSISTENCIA DETECTADA en pago ${paymentId}:`, {
+        paymentAmount: payment.amount,
+        totalCoveredInDetails: totalCovered,
+        difference: totalCovered - payment.amount,
+        percentageDiff: ((totalCovered - payment.amount) / payment.amount * 100).toFixed(2) + '%'
+      })
+      useCorrection = true
+    }
+    
+    // Si el pago tiene múltiples detalles (distribuido en varias cuotas)
+    detailsForPayment.forEach((detail) => {
+      if (detail.number_quota > 0) {
+        const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0, paymentDates: [] }
+        
+        // 🔧 Si hay inconsistencia, usar el monto real del pago distribuido proporcionalmente
+        let amountToAdd
+        if (useCorrection && totalCovered > 0) {
+          // Distribuir el monto real del pago proporcionalmente
+          const proportion = (detail.covered_amount || 0) / totalCovered
+          amountToAdd = payment.amount * proportion
+          console.log(`🔧 [QUOTA TRACKER] Corrigiendo cuota ${detail.number_quota}: ${detail.covered_amount} → ${amountToAdd}`)
+        } else {
+          // Usar el covered_amount tal cual
+          amountToAdd = detail.covered_amount || 0
+        }
+        
+        current.covered += amountToAdd
+        if (payment.date && !current.paymentDates.some(d => d.getTime() === new Date(payment.date).getTime())) {
+          current.paymentDates.push(new Date(payment.date))
+        }
+        aggregatedQuotas.set(detail.number_quota, current)
+      }
+    })
+  })
+
+  console.log('[QUOTA TRACKER] 📊 Resumen:', {
+    uniquePayments: uniquePayments.size,
+    totalPaymentAmount: Array.from(uniquePayments.values()).reduce((sum, p) => sum + p.amount, 0),
+    aggregatedQuotas: Array.from(aggregatedQuotas.entries()).slice(0, 5).map(([quota, data]) => ({
+      quota,
+      covered: data.covered
+    }))
   })
 
   const quotas = []
@@ -98,8 +173,10 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
         // ✅ Usar fecha personalizada SIN problemas de zona horaria
         const [year, month, day] = customQuota.DueDate.split('-').map(Number)
         dueDate = new Date(year, month - 1, day) // month - 1 porque enero = 0
+        console.log(`[QUOTA ${i}] Using custom date: ${customQuota.DueDate} -> ${dueDate.toLocaleDateString('es-CO')}`)
       } else {
-        // Fallback a cálculo automático
+        // Fallback a cálculo automático si no hay fecha personalizada
+        console.log(`[QUOTA ${i}] No custom date found, using automatic calculation`)
         dueDate = new Date(saleDate)
         const targetMonth = saleDate.getMonth() + i
         const targetDay = saleDate.getDate()

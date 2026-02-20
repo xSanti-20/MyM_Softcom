@@ -3,16 +3,28 @@
   "WorkspaceRootPath": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -34,11 +46,58 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAEgAAAAAAAAAAAAAAFwAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-19T13:36:57.956Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Payment.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
+              "RelativeToolTip": "Services\\Payment.Services.cs",
+              "ViewState": "AgIAABMCAAAAAAAAAAAWwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-19T13:29:35.068Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Detail.Model.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Detail.Model.cs",
+              "RelativeDocumentMoniker": "Models\\Detail.Model.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Detail.Model.cs",
+              "RelativeToolTip": "Models\\Detail.Model.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-19T13:29:19.128Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
               "Title": "Sale.Services.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
               "RelativeDocumentMoniker": "Services\\Sale.Services.cs",
@@ -50,19 +109,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "User.Controller.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\User.Controller.cs",
               "RelativeDocumentMoniker": "Controllers\\User.Controller.cs",
               "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\User.Controller.cs",
               "RelativeToolTip": "Controllers\\User.Controller.cs",
-              "ViewState": "AgIAAIcAAAAAAAAAAAAmwJMAAAA9AAAAAAAAAA==",
+              "ViewState": "AgIAAEkAAAAAAAAAAAAcwJMAAABhAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-11-25T19:23:00.183Z"
+              "WhenOpened": "2025-11-25T19:23:00.183Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 7,
               "Title": "OverdueNotificationController.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\OverdueNotificationController.cs",
               "RelativeDocumentMoniker": "Controllers\\OverdueNotificationController.cs",
@@ -74,20 +134,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 4,
               "Title": "OverdueDetectionService.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\OverdueDetectionService.cs",
               "RelativeDocumentMoniker": "Services\\OverdueDetectionService.cs",
               "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\OverdueDetectionService.cs",
               "RelativeToolTip": "Services\\OverdueDetectionService.cs",
-              "ViewState": "AgIAAOUAAAAAAAAAAAAQwKAAAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAABcAAAAAAAAAAAAuwKAAAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-29T21:36:45.731Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-29T21:36:45.731Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "Sale.Model.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Sale.Model.cs",
               "RelativeDocumentMoniker": "Models\\Sale.Model.cs",
@@ -99,7 +158,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",

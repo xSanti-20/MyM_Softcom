@@ -39,13 +39,78 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
     const remainingQuotas = []
     let totalOverdueAmount = 0
 
+    // 🔧 CORRECCIÓN: Agrupar pagos por cuota evitando duplicados
     const aggregatedQuotas = new Map()
+    
+    // Primero, crear un mapa de pagos únicos por ID
+    const uniquePayments = new Map()
     paymentDetails.forEach((detail) => {
-      if (detail.number_quota > 0) {
-        const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0 }
-        current.covered += detail.covered_amount || 0
-        aggregatedQuotas.set(detail.number_quota, current)
+      if (detail.payment?.id_Payments) {
+        const paymentId = detail.payment.id_Payments
+        if (!uniquePayments.has(paymentId)) {
+          uniquePayments.set(paymentId, {
+            amount: detail.payment.amount || 0,
+            details: []
+          })
+        }
+        uniquePayments.get(paymentId).details.push(detail)
       }
+    })
+
+    // Ahora distribuir los montos de pagos únicos a las cuotas
+    uniquePayments.forEach((payment, paymentId) => {
+      console.log(`[REDISTRIBUTION] 💳 Pago ID ${paymentId}:`, {
+        amount: payment.amount,
+        detailsCount: payment.details.length,
+        details: payment.details.map(d => ({
+          quota: d.number_quota,
+          covered_amount: d.covered_amount
+        }))
+      })
+      
+      // Verificar si hay inconsistencias
+      const totalCovered = payment.details.reduce((sum, d) => sum + (d.covered_amount || 0), 0)
+      
+      // 🔧 CORRECCIÓN CRÍTICA: Si el covered_amount total no coincide con el monto del pago,
+      // distribuir el monto real del pago proporcionalmente
+      let useCorrection = false
+      if (Math.abs(totalCovered - payment.amount) > 0.01) {
+        console.warn(`⚠️ [REDISTRIBUTION] INCONSISTENCIA DETECTADA en pago ${paymentId}:`, {
+          paymentAmount: payment.amount,
+          totalCoveredInDetails: totalCovered,
+          difference: totalCovered - payment.amount,
+          percentageDiff: ((totalCovered - payment.amount) / payment.amount * 100).toFixed(2) + '%'
+        })
+        useCorrection = true
+      }
+      
+      payment.details.forEach((detail) => {
+        if (detail.number_quota > 0) {
+          const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0 }
+          
+          // 🔧 Si hay inconsistencia, usar el monto real del pago distribuido proporcionalmente
+          let amountToAdd
+          if (useCorrection && totalCovered > 0) {
+            const proportion = (detail.covered_amount || 0) / totalCovered
+            amountToAdd = payment.amount * proportion
+            console.log(`🔧 [REDISTRIBUTION] Corrigiendo cuota ${detail.number_quota}: ${detail.covered_amount} → ${amountToAdd}`)
+          } else {
+            amountToAdd = detail.covered_amount || 0
+          }
+          
+          current.covered += amountToAdd
+          aggregatedQuotas.set(detail.number_quota, current)
+        }
+      })
+    })
+
+    console.log('[REDISTRIBUTION] 📊 Resumen:', {
+      uniquePayments: uniquePayments.size,
+      totalPaymentAmount: Array.from(uniquePayments.values()).reduce((sum, p) => sum + p.amount, 0),
+      aggregatedQuotas: Array.from(aggregatedQuotas.entries()).slice(0, 5).map(([quota, data]) => ({
+        quota,
+        covered: data.covered
+      }))
     })
 
     for (let i = 1; i <= totalQuotas; i++) {

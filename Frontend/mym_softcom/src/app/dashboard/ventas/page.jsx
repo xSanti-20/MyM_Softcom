@@ -258,12 +258,31 @@ function SalesPage() {
   const handleDelete = async (id) => {
     try {
       const numericId = Number.parseInt(id, 10)
+      console.log(`🗑️ Intentando eliminar venta ID: ${numericId}`)
+      
       await axiosInstance.delete(`/api/Sale/DeleteSale/${numericId}`)
       fetchSales(selectedProjectId === "all" ? null : selectedProjectId)
       showAlert("success", "Venta eliminada correctamente. El lote asociado ha sido liberado.")
     } catch (error) {
-      console.error("Error detallado al eliminar:", error)
-      showAlert("error", "Error al eliminar la venta.")
+      console.error("❌ Error detallado al eliminar:", error)
+      console.error("Response data:", error.response?.data)
+      console.error("Response status:", error.response?.status)
+      
+      let errorMessage = "Error al eliminar la venta."
+      
+      if (error.response?.status === 409) {
+        errorMessage = "No se puede eliminar esta venta porque tiene pagos asociados. Elimine primero los pagos."
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.message || error.response?.data || "La venta no se puede eliminar."
+      } else if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = `Error: ${error.response.data}`
+        } else if (error.response.data.message) {
+          errorMessage = `Error: ${error.response.data.message}`
+        }
+      }
+      
+      showAlert("error", errorMessage)
     }
   }
 

@@ -37,7 +37,9 @@ function NavPrivada({ children, title }) {
     { title: "Cesiones", path: "/dashboard/cesiones", icon: "🔁" },
     { title: "Detalles", path: "/dashboard/detalles", icon: "ℹ️" },
     { title: "Correos", path: "/dashboard/correos", icon: "📧" },
-    { title: "Backups", path: "/dashboard/backups", icon: "💾" }
+    { title: "Backups", path: "/dashboard/backups", icon: "💾" },
+    { title: "Reports", path: "/dashboard/reportes", icon: "📋" }
+
   ]
 
   useEffect(() => {
