@@ -87,6 +87,9 @@ function ReportesPage() {
     const saleDate = new Date(sale.sale_date)
     const currentDate = new Date()
 
+    console.log(`[MORA REPORT] Procesando venta ${sale.id_Sales} - Total cuotas: ${totalQuotas}`)
+    console.log(`[MORA REPORT] Payment details recibidos:`, paymentDetails?.length || 0)
+
     // Procesar customQuotas si existen
     let customQuotas = null
     const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
@@ -105,6 +108,12 @@ function ReportesPage() {
     const uniquePayments = new Map()
 
     if (paymentDetails && Array.isArray(paymentDetails)) {
+      console.log(`[MORA REPORT] Venta ${sale.id_Sales} - Detalles:`, paymentDetails.map(d => ({
+        quota: d.number_quota,
+        covered: d.covered_amount,
+        hasPayment: !!d.payment
+      })))
+      
       paymentDetails.forEach((detail) => {
         if (detail.payment?.id_Payments) {
           const paymentId = detail.payment.id_Payments
@@ -203,6 +212,12 @@ function ReportesPage() {
       }
     }
 
+    console.log(`[MORA REPORT] Venta ${sale.id_Sales} - Cuotas en mora: ${overdueQuotas.length}`)
+    console.log(`[MORA REPORT] Cuotas cubiertas:`, Array.from(aggregatedQuotas.entries()).map(([quota, info]) => ({
+      quota,
+      covered: info.covered
+    })))
+
     return {
       count: overdueQuotas.length,
       details: overdueQuotas,
@@ -248,25 +263,27 @@ function ReportesPage() {
   const fetchSalesWithOverdue = useCallback(async () => {
     try {
       setIsLoading(true)
-      const [salesResponse, paymentsResponse] = await Promise.all([
-        axiosInstance.get("/api/Sale/GetAllSales"),
-        axiosInstance.get("/api/Payment/GetAllPayments")
-      ])
+      const salesResponse = await axiosInstance.get("/api/Sale/GetAllSales")
 
       if (salesResponse.status === 200) {
         let filteredSales = salesResponse.data.filter(
           sale => sale.status?.toLowerCase() === "active" || sale.status?.toLowerCase() === "activa"
         )
 
-        // Obtener todos los payment details
-        const allPaymentDetails = paymentsResponse.data || []
+        // Obtener payment details para cada venta
+        const detailsPromises = filteredSales.map(sale =>
+          axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
+            .then(response => ({ saleId: sale.id_Sales, details: response.data }))
+            .catch(() => ({ saleId: sale.id_Sales, details: [] }))
+        )
+
+        const allDetails = await Promise.all(detailsPromises)
+        const detailsMap = new Map(allDetails.map(item => [item.saleId, item.details]))
 
         // Procesar cada venta para calcular mora
         const salesWithMora = filteredSales.map(sale => {
-          // Filtrar payment details para esta venta
-          const salePaymentDetails = allPaymentDetails.filter(
-            pd => pd.id_Sales === sale.id_Sales
-          )
+          // Obtener payment details para esta venta
+          const salePaymentDetails = detailsMap.get(sale.id_Sales) || []
 
           const moraInfo = calculateOverdueQuotas(sale, salePaymentDetails)
 
@@ -284,7 +301,8 @@ function ReportesPage() {
             sellerName: sale.user?.nom_Users || "N/A",
             sellerId: sale.user?.id_Users,
             saleDate: sale.sale_date,
-            lotInfo: sale.lot ? `${sale.lot.block}-${sale.lot.lot_number}` : "N/A",
+            block: sale.lot?.block || "N/A",
+            lotNumber: sale.lot?.lot_number || "N/A",
             original: sale
           }
         })
@@ -328,6 +346,37 @@ function ReportesPage() {
       filtered = filtered.filter(sale => sale.sellerId === targetSellerId)
     }
 
+    // Ordenar por manzana y lote
+    filtered.sort((a, b) => {
+      // Obtener manzanas
+      const blockA = a.block || ""
+      const blockB = b.block || ""
+      
+      // Verificar si son números o letras
+      const isNumberA = /^\d+$/.test(blockA)
+      const isNumberB = /^\d+$/.test(blockB)
+      
+      // Las letras van antes que los números
+      if (!isNumberA && isNumberB) return -1
+      if (isNumberA && !isNumberB) return 1
+      
+      // Si ambos son números, comparar numéricamente
+      if (isNumberA && isNumberB) {
+        const numA = parseInt(blockA)
+        const numB = parseInt(blockB)
+        if (numA !== numB) return numA - numB
+      } else {
+        // Si ambos son letras, comparar alfabéticamente
+        const blockComparison = blockA.localeCompare(blockB)
+        if (blockComparison !== 0) return blockComparison
+      }
+      
+      // Si las manzanas son iguales, ordenar por número de lote
+      const lotNumA = parseInt(a.lotNumber) || 0
+      const lotNumB = parseInt(b.lotNumber) || 0
+      return lotNumA - lotNumB
+    })
+
     return filtered
   }
 
@@ -358,7 +407,7 @@ function ReportesPage() {
 
   // Exportar a CSV
   const exportToCSV = () => {
-    const headers = ["Cliente", "Cédula", "Valor Total Lote", "Deuda Total", "Cuotas en Mora", "Monto en Mora", "Proyecto", "Vendedor", "Lote"]
+    const headers = ["Cliente", "Cédula", "Valor Total Lote", "Deuda Total", "Cuotas en Mora", "Monto en Mora", "Proyecto", "Vendedor", "Manzana", "Lote"]
     
     const csvData = filteredSales.map(sale => [
       sale.clientName,
@@ -369,7 +418,8 @@ function ReportesPage() {
       sale.totalOverdue,
       sale.projectName,
       sale.sellerName,
-      sale.lotInfo
+      sale.block,
+      sale.lotNumber
     ])
 
     const csvContent = [
@@ -510,6 +560,7 @@ function ReportesPage() {
                       <TableHead className="w-[50px]"></TableHead>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Cédula</TableHead>
+                      <TableHead>Manzana</TableHead>
                       <TableHead>Lote</TableHead>
                       <TableHead>Proyecto</TableHead>
                       <TableHead>Vendedor</TableHead>
@@ -539,7 +590,8 @@ function ReportesPage() {
                           </TableCell>
                           <TableCell className="font-medium">{sale.clientName}</TableCell>
                           <TableCell>{sale.clientDocument}</TableCell>
-                          <TableCell>{sale.lotInfo}</TableCell>
+                          <TableCell>{sale.block}</TableCell>
+                          <TableCell>{sale.lotNumber}</TableCell>
                           <TableCell>{sale.projectName}</TableCell>
                           <TableCell>{sale.sellerName}</TableCell>
                           <TableCell className="text-right">{formatCurrency(sale.totalValue)}</TableCell>
@@ -557,7 +609,7 @@ function ReportesPage() {
                         {/* Fila expandible con detalles de cuotas */}
                         {expandedRows.has(sale.id) && (
                           <TableRow>
-                            <TableCell colSpan={10} className="bg-gray-50 p-0">
+                            <TableCell colSpan={11} className="bg-gray-50 p-0">
                               <div className="p-4">
                                 <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
                                   <Calendar className="h-4 w-4" />
