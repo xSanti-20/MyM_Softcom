@@ -19,6 +19,9 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
   const [cedenteSales, setCedenteSales] = useState([])
   const [selectedSale, setSelectedSale] = useState(null)
 
+  // Estados para el tipo de cesionario (nuevo o existente)
+  const [cesionarioType, setCesionarioType] = useState("new") // "new" o "existing"
+  
   // Estados para el nuevo cliente cesionario
   const [cesionarioData, setCesionarioData] = useState({
     names: "",
@@ -27,6 +30,12 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
     phone: "",
     email: "",
   })
+
+  // Estados para buscar cliente cesionario existente
+  const [cesionarioExistingDocument, setCesionarioExistingDocument] = useState("")
+  const [foundCesionario, setFoundCesionario] = useState(null)
+  const [cesionarioSearchLoading, setCesionarioSearchLoading] = useState(false)
+  const [cesionarioSearchError, setCesionarioSearchError] = useState(null)
 
   // Estados para la cesión
   const [cesionData, setCesionData] = useState({
@@ -114,6 +123,52 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
     }
   }, [cedenteDocument, showAlert])
 
+  // Función para buscar cliente cesionario existente
+  const handleSearchCesionario = useCallback(async () => {
+    if (!cesionarioExistingDocument) {
+      setCesionarioSearchError("Por favor, ingrese un número de documento.")
+      setFoundCesionario(null)
+      return
+    }
+
+    const parsedDocument = Number.parseInt(cesionarioExistingDocument, 10)
+    if (isNaN(parsedDocument)) {
+      setCesionarioSearchError("El documento debe ser un número válido.")
+      setFoundCesionario(null)
+      return
+    }
+
+    // Validar que no sea el mismo cliente cedente
+    if (foundCedente && parsedDocument === foundCedente.document) {
+      setCesionarioSearchError("El cesionario no puede ser el mismo que el cedente.")
+      showAlert("error", "El cesionario no puede ser el mismo que el cedente.")
+      return
+    }
+
+    setCesionarioSearchLoading(true)
+    setCesionarioSearchError(null)
+    setFoundCesionario(null)
+
+    try {
+      const response = await axiosInstance.get(`/api/Client/GetByDocument/${parsedDocument}`)
+      if (response.status === 200 && response.data) {
+        setFoundCesionario(response.data)
+        showAlert("success", "Cliente encontrado exitosamente.")
+      }
+    } catch (error) {
+      console.error("Error al buscar cliente cesionario:", error)
+      if (error.response?.status === 404) {
+        setCesionarioSearchError("Cliente no encontrado. Puede crear uno nuevo.")
+        showAlert("warning", "Cliente no encontrado. Puede crear uno nuevo cambiando a 'Crear Nuevo Cliente'.")
+      } else {
+        setCesionarioSearchError("Error al buscar cliente. Intente de nuevo.")
+        showAlert("error", "Error al buscar cliente. Intente de nuevo.")
+      }
+    } finally {
+      setCesionarioSearchLoading(false)
+    }
+  }, [cesionarioExistingDocument, foundCedente, showAlert])
+
   // Función para manejar cambios en el formulario del cesionario
   const handleCesionarioChange = (e) => {
     const { name, value } = e.target
@@ -134,10 +189,9 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
 
   // Función para procesar la cesión
   const handleProcessCesion = async () => {
-    // Validar datos del cesionario
-    const { names, surnames, document, phone, email } = cesionarioData
-    if (!names || !surnames || !document) {
-      showAlert("error", "Los campos nombres, apellidos y documento del cesionario son obligatorios.")
+    // Validar que se haya seleccionado una venta
+    if (!selectedSale) {
+      showAlert("error", "Debe seleccionar una venta para ceder.")
       return
     }
 
@@ -147,27 +201,58 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
       return
     }
 
-    // Validar que se haya seleccionado una venta
-    if (!selectedSale) {
-      showAlert("error", "Debe seleccionar una venta para ceder.")
-      return
+    let cesionRequest
+
+    // Si es cliente nuevo
+    if (cesionarioType === "new") {
+      const { names, surnames, document, phone, email } = cesionarioData
+      if (!names || !surnames || !document) {
+        showAlert("error", "Los campos nombres, apellidos y documento del cesionario son obligatorios.")
+        return
+      }
+
+      cesionRequest = {
+        nuevoCliente: {
+          names: names.trim(),
+          surnames: surnames.trim(),
+          document: Number.parseInt(document, 10),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+        },
+        documentoCedente: foundCedente.document,
+        idVentaACeder: selectedSale.id_Sales,
+        motivoCesion: cesionData.reason.trim(),
+        costoCesion: 0,
+        observaciones: cesionData.observations.trim() || null,
+        idUsuario: 1,
+      }
+    } 
+    // Si es cliente existente
+    else if (cesionarioType === "existing") {
+      if (!foundCesionario) {
+        showAlert("error", "Debe buscar y seleccionar un cliente existente.")
+        return
+      }
+
+      // El backend siempre requiere nuevoCliente, pero detectará que ya existe por el documento
+      cesionRequest = {
+        nuevoCliente: {
+          names: foundCesionario.names,
+          surnames: foundCesionario.surnames,
+          document: foundCesionario.document,
+          phone: foundCesionario.phone || null,
+          email: foundCesionario.email || null,
+        },
+        documentoCedente: foundCedente.document,
+        idVentaACeder: selectedSale.id_Sales,
+        motivoCesion: cesionData.reason.trim(),
+        costoCesion: 0,
+        observaciones: cesionData.observations.trim() || null,
+        idUsuario: 1,
+      }
     }
 
-    const cesionRequest = {
-      nuevoCliente: {
-        names: names.trim(),
-        surnames: surnames.trim(),
-        document: Number.parseInt(document, 10),
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-      },
-      documentoCedente: foundCedente.document,
-      idVentaACeder: selectedSale.id_Sales,
-      motivoCesion: cesionData.reason.trim(),
-      costoCesion: 0,
-      observaciones: cesionData.observations.trim() || null,
-      idUsuario: 1,
-    }
+    console.log("📤 Cesión Request:", cesionRequest)
 
     try {
       setLoading(true)
@@ -181,6 +266,7 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
         setFoundCedente(null)
         setCedenteSales([])
         setSelectedSale(null)
+        setCesionarioType("new")
         setCesionarioData({
           names: "",
           surnames: "",
@@ -188,6 +274,8 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
           phone: "",
           email: "",
         })
+        setCesionarioExistingDocument("")
+        setFoundCesionario(null)
         setCesionData({
           reason: "",
           observations: "",
@@ -199,9 +287,16 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
         if (closeModal) closeModal()
       }
     } catch (error) {
-      console.error("Error al procesar cesión:", error)
-      const errorMessage = error.response?.data?.message || "Error al procesar la cesión"
-      showAlert("error", errorMessage)
+      console.error("❌ Error al procesar cesión:", error)
+      console.error("📥 Response data:", error.response?.data)
+      console.error("📥 Response status:", error.response?.status)
+      console.error("📥 Full error response:", error.response)
+      
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          error.response?.data || 
+                          "Error al procesar la cesión"
+      showAlert("error", `Error: ${JSON.stringify(errorMessage)}`)
     } finally {
       setLoading(false)
     }
@@ -409,12 +504,12 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
         </div>
       )}
 
-      {/* Paso 2: Crear Nuevo Cliente Cesionario */}
+      {/* Paso 2: Crear Nuevo Cliente Cesionario O Seleccionar Existente */}
       {step === 2 && (
         <div className="space-y-6">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-green-800 mb-2">Paso 2: Crear Nuevo Cliente (Cesionario)</h3>
-            <p className="text-green-700 text-sm">Ingrese los datos del nuevo cliente que recibirá el lote.</p>
+            <h3 className="text-lg font-semibold text-green-800 mb-2">Paso 2: Cliente Cesionario</h3>
+            <p className="text-green-700 text-sm">Seleccione si desea crear un nuevo cliente o elegir uno existente.</p>
           </div>
 
           {/* Resumen de la venta seleccionada */}
@@ -437,88 +532,204 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-700">Información Personal</h4>
-
-              <div>
-                <Label htmlFor="names" className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombres *
-                </Label>
-                <Input
-                  type="text"
-                  id="names"
-                  name="names"
-                  placeholder="Nombres del cesionario"
-                  value={cesionarioData.names}
-                  onChange={handleCesionarioChange}
-                  required
+          {/* Selector de tipo de cesionario */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <Label className="block text-sm font-medium text-gray-700 mb-3">
+              Tipo de Cliente Cesionario *
+            </Label>
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="cesionarioType"
+                  value="new"
+                  checked={cesionarioType === "new"}
+                  onChange={(e) => {
+                    setCesionarioType(e.target.value)
+                    setFoundCesionario(null)
+                    setCesionarioExistingDocument("")
+                    setCesionarioSearchError(null)
+                  }}
+                  className="mr-2"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="surnames" className="block text-sm font-medium text-gray-700 mb-1">
-                  Apellidos *
-                </Label>
-                <Input
-                  type="text"
-                  id="surnames"
-                  name="surnames"
-                  placeholder="Apellidos del cesionario"
-                  value={cesionarioData.surnames}
-                  onChange={handleCesionarioChange}
-                  required
+                <span className="text-sm font-medium">Crear Nuevo Cliente</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="cesionarioType"
+                  value="existing"
+                  checked={cesionarioType === "existing"}
+                  onChange={(e) => {
+                    setCesionarioType(e.target.value)
+                    setCesionarioData({
+                      names: "",
+                      surnames: "",
+                      document: "",
+                      phone: "",
+                      email: "",
+                    })
+                  }}
+                  className="mr-2"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="document" className="block text-sm font-medium text-gray-700 mb-1">
-                  Documento *
-                </Label>
-                <Input
-                  type="number"
-                  id="document"
-                  name="document"
-                  placeholder="Número de documento"
-                  value={cesionarioData.document}
-                  onChange={handleCesionarioChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-700">Información de Contacto</h4>
-
-              <div>
-                <Label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                  Teléfono
-                </Label>
-                <Input
-                  type="text"
-                  id="phone"
-                  name="phone"
-                  placeholder="Número de teléfono"
-                  value={cesionarioData.phone}
-                  onChange={handleCesionarioChange}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </Label>
-                <Input
-                  type="email"
-                  id="email"
-                  name="email"
-                  placeholder="Correo electrónico"
-                  value={cesionarioData.email}
-                  onChange={handleCesionarioChange}
-                />
-              </div>
+                <span className="text-sm font-medium">Seleccionar Cliente Existente</span>
+              </label>
             </div>
           </div>
+
+          {/* Formulario para NUEVO cliente */}
+          {cesionarioType === "new" && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-700">Información Personal</h4>
+
+                  <div>
+                    <Label htmlFor="names" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombres *
+                    </Label>
+                    <Input
+                      type="text"
+                      id="names"
+                      name="names"
+                      placeholder="Nombres del cesionario"
+                      value={cesionarioData.names}
+                      onChange={handleCesionarioChange}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="surnames" className="block text-sm font-medium text-gray-700 mb-1">
+                      Apellidos *
+                    </Label>
+                    <Input
+                      type="text"
+                      id="surnames"
+                      name="surnames"
+                      placeholder="Apellidos del cesionario"
+                      value={cesionarioData.surnames}
+                      onChange={handleCesionarioChange}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="document" className="block text-sm font-medium text-gray-700 mb-1">
+                      Documento *
+                    </Label>
+                    <Input
+                      type="number"
+                      id="document"
+                      name="document"
+                      placeholder="Número de documento"
+                      value={cesionarioData.document}
+                      onChange={handleCesionarioChange}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-700">Información de Contacto</h4>
+
+                  <div>
+                    <Label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Teléfono
+                    </Label>
+                    <Input
+                      type="text"
+                      id="phone"
+                      name="phone"
+                      placeholder="Número de teléfono"
+                      value={cesionarioData.phone}
+                      onChange={handleCesionarioChange}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </Label>
+                    <Input
+                      type="email"
+                      id="email"
+                      name="email"
+                      placeholder="Correo electrónico"
+                      value={cesionarioData.email}
+                      onChange={handleCesionarioChange}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Formulario para CLIENTE EXISTENTE */}
+          {cesionarioType === "existing" && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="cesionario_document" className="block text-sm font-medium text-gray-700 mb-1">
+                  Documento del Cliente Cesionario *
+                </Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type="number"
+                      id="cesionario_document"
+                      name="cesionario_document"
+                      placeholder="Documento del cliente que recibirá el lote"
+                      value={cesionarioExistingDocument}
+                      onChange={(e) => setCesionarioExistingDocument(e.target.value)}
+                      required
+                      className="w-full pr-10"
+                      disabled={cesionarioSearchLoading}
+                    />
+                    <User className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleSearchCesionario}
+                    disabled={cesionarioSearchLoading}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {cesionarioSearchLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="mr-2 h-4 w-4" />
+                    )}
+                    {cesionarioSearchLoading ? "Buscando..." : "Buscar"}
+                  </Button>
+                </div>
+                {cesionarioSearchError && <p className="text-red-500 text-sm mt-1">{cesionarioSearchError}</p>}
+              </div>
+
+              {/* Cliente encontrado */}
+              {foundCesionario && (
+                <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-800 mb-2">Cliente Encontrado:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p>
+                        <strong>Nombre:</strong> {foundCesionario.names} {foundCesionario.surnames}
+                      </p>
+                      <p>
+                        <strong>Documento:</strong> {foundCesionario.document}
+                      </p>
+                    </div>
+                    <div>
+                      <p>
+                        <strong>Teléfono:</strong> {foundCesionario.phone || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {foundCesionario.email || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-4">
             <h4 className="font-semibold text-gray-700">Detalles de la Cesión</h4>
@@ -557,7 +768,25 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
             <Button type="button" onClick={() => setStep(1)} variant="outline">
               Volver
             </Button>
-            <Button type="button" onClick={() => setStep(3)} className="bg-green-600 hover:bg-green-700">
+            <Button
+              type="button"
+              onClick={() => {
+                // Validar antes de continuar
+                if (cesionarioType === "existing" && !foundCesionario) {
+                  showAlert("error", "Debe buscar y seleccionar un cliente existente antes de continuar.")
+                  return
+                }
+                if (cesionarioType === "new") {
+                  const { names, surnames, document } = cesionarioData
+                  if (!names || !surnames || !document) {
+                    showAlert("error", "Complete los campos obligatorios del nuevo cliente.")
+                    return
+                  }
+                }
+                setStep(3)
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               Continuar
             </Button>
@@ -594,16 +823,25 @@ function CesionForm({ refreshData, closeModal, showAlert }) {
 
             {/* Cliente Cesionario */}
             <div className="border border-green-200 bg-green-50 rounded-lg p-4">
-              <h4 className="font-semibold text-green-800 mb-3">Cliente Cesionario (Nuevo)</h4>
+              <h4 className="font-semibold text-green-800 mb-3">
+                Cliente Cesionario {cesionarioType === "new" ? "(Nuevo)" : "(Existente)"}
+              </h4>
               <div className="space-y-2 text-sm">
                 <p>
-                  <strong>Nombre:</strong> {cesionarioData.names} {cesionarioData.surnames}
+                  <strong>Nombre:</strong>{" "}
+                  {cesionarioType === "new"
+                    ? `${cesionarioData.names} ${cesionarioData.surnames}`
+                    : `${foundCesionario?.names} ${foundCesionario?.surnames}`}
                 </p>
                 <p>
-                  <strong>Documento:</strong> {cesionarioData.document}
+                  <strong>Documento:</strong>{" "}
+                  {cesionarioType === "new" ? cesionarioData.document : foundCesionario?.document}
                 </p>
                 <p>
-                  <strong>Teléfono:</strong> {cesionarioData.phone || "N/A"}
+                  <strong>Teléfono:</strong>{" "}
+                  {cesionarioType === "new"
+                    ? cesionarioData.phone || "N/A"
+                    : foundCesionario?.phone || "N/A"}
                 </p>
               </div>
             </div>

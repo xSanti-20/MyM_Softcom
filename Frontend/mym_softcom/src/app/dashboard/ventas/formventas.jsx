@@ -30,6 +30,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   
   // Ref para rastrear si ya se cargaron los datos de edición
   const editDataLoadedRef = useRef(false)
+  
+  // Ref para evitar limpiezas durante la carga inicial
+  const isInitialLoadRef = useRef(false)
 
   // Estados para búsqueda de cliente
   const [clientDocument, setClientDocument] = useState("")
@@ -190,8 +193,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   // Función para cargar proyectos
   const fetchProjects = useCallback(async () => {
     try {
+      console.log("🏗️ [PROJECTS] Iniciando carga de proyectos...")
       // Obtener todos los lotes para extraer los proyectos únicos
       const response = await axiosInstance.get("/api/Lot/GetAllLot")
+      console.log("🏗️ [PROJECTS] Respuesta recibida:", response.status, "Lotes:", response.data?.length || 0)
+      
       if (response.data && Array.isArray(response.data)) {
         // Extraer proyectos únicos de los lotes
         const uniqueProjects = []
@@ -214,11 +220,18 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         )
 
         setProjects(activeProjects)
-        console.log("Proyectos cargados:", activeProjects)
+        console.log("✅ [PROJECTS] Proyectos activos cargados:", activeProjects.length, activeProjects)
       }
     } catch (error) {
-      console.error("Error al cargar proyectos:", error)
-      showAlert("error", "No se pudieron cargar los proyectos.")
+      console.error("❌ [PROJECTS] Error al cargar proyectos:", error)
+      console.error("❌ [PROJECTS] Status:", error.response?.status)
+      console.error("❌ [PROJECTS] Message:", error.response?.data?.message || error.response?.data)
+      
+      if (error.response?.status === 403) {
+        showAlert("error", "No tiene permisos para cargar los proyectos. Contacte al administrador.")
+      } else {
+        showAlert("error", "No se pudieron cargar los proyectos.")
+      }
     }
   }, [showAlert])
 
@@ -350,6 +363,15 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función para limpiar selección de lote
   const handleClearLotSelection = () => {
+    console.log("🗑️ [CLEAR LOT] Iniciando limpieza. isEditing:", isEditing, "editDataLoaded:", editDataLoadedRef.current, "isInitialLoad:", isInitialLoadRef.current)
+    
+    // No limpiar durante la carga inicial en modo edición
+    if (isEditing && isInitialLoadRef.current) {
+      console.log("⏸️ [CLEAR LOT] Carga inicial en progreso, cancelando limpieza")
+      return
+    }
+    
+    console.log("✅ [CLEAR LOT] Procediendo con limpieza")
     setSelectedLot(null)
     setFormData((prev) => ({ ...prev, id_Lots: "" }))
     setLotSearchTerm("")
@@ -360,9 +382,36 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función para manejar cambio de proyecto
   const handleProjectChange = (projectId) => {
+    console.log("🔄 [PROJECT CHANGE] Cambio de proyecto solicitado:", projectId, "anterior:", selectedProject, "isEditing:", isEditing, "isInitialLoad:", isInitialLoadRef.current)
+    
+    // Ignorar cambios a undefined o vacío durante la carga inicial
+    if (!projectId && isInitialLoadRef.current) {
+      console.log("⏸️ [PROJECT CHANGE] Ignorando cambio a vacío durante carga inicial")
+      return
+    }
+    
+    // Si es carga inicial y en modo edición, solo actualizar el proyecto sin limpiar
+    if (isEditing && isInitialLoadRef.current) {
+      console.log("⏩ [PROJECT CHANGE] Carga inicial - Solo actualizando proyecto, NO limpiando lote")
+      setSelectedProject(projectId)
+      return
+    }
+    
+    const previousProject = selectedProject
+    
+    // Actualizar el proyecto
     setSelectedProject(projectId)
-    // Limpiar selección de lote al cambiar proyecto
-    handleClearLotSelection()
+    
+    // Solo limpiar si el proyecto cambió realmente y no es la primera vez que se establece
+    if (previousProject && projectId !== previousProject) {
+      console.log("🗑️ [PROJECT CHANGE] Usuario cambió proyecto de", previousProject, "a", projectId, "- limpiando lote")
+      handleClearLotSelection()
+    } else if (!projectId && previousProject) {
+      console.log("🗑️ [PROJECT CHANGE] Proyecto deseleccionado, limpiando lote")
+      handleClearLotSelection()
+    } else {
+      console.log("✅ [PROJECT CHANGE] Proyecto establecido sin limpiar lote")
+    }
   }
 
   // Cargar datos iniciales
@@ -374,34 +423,58 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
           axiosInstance.get("/api/Plan/GetAllPlans"),
         ])
 
+        console.log("📊 [FORM INIT] Usuarios recibidos:", usersRes.data?.length || 0)
+        console.log("📊 [FORM INIT] Planes recibidos:", plansRes.data?.length || 0)
+
         setUsers(usersRes.data.filter((user) => user.status !== "Inactivo"))
         setPlans(plansRes.data)
 
         // NO establecer fecha actual automáticamente
         // Dejar que el usuario seleccione la fecha que desee
       } catch (error) {
-        console.error("Error al cargar datos para los selectores:", error)
-        showAlert("error", "No se pudieron cargar las opciones necesarias para el formulario de ventas.")
+        console.error("❌ [FORM INIT] Error al cargar datos para los selectores:", error)
+        console.error("❌ [FORM INIT] Status:", error.response?.status)
+        console.error("❌ [FORM INIT] Message:", error.response?.data?.message)
+        
+        // Si es un error de permisos, mostrar un mensaje más específico
+        if (error.response?.status === 403) {
+          showAlert("error", "No tiene permisos para cargar la lista de usuarios. Contacte al administrador.")
+        } else {
+          showAlert("error", "No se pudieron cargar las opciones necesarias para el formulario de ventas.")
+        }
       }
     }
 
     fetchDataForSelects()
     fetchProjects()
-  }, [isEditing, showAlert, fetchProjects])
+  }, [showAlert, fetchProjects])
 
   // Resetear flag cuando cambia la venta a editar o se cancela la edición
   useEffect(() => {
     if (!isEditing || !saleToEdit) {
       editDataLoadedRef.current = false
+      isInitialLoadRef.current = false
     }
   }, [isEditing, saleToEdit])
 
   // Poblar formulario para edición
   useEffect(() => {
-    // ⚠️ IMPORTANTE: Solo cargar si users y plans ya están disponibles y no se ha cargado antes
-    if (isEditing && saleToEdit && users.length > 0 && plans.length > 0 && !editDataLoadedRef.current) {
+    // ⚠️ IMPORTANTE: Solo cargar si no se ha cargado antes
+    // Ya no requerimos que users y plans estén cargados para poblar el formulario
+    if (isEditing && saleToEdit && !editDataLoadedRef.current) {
       console.log("🔧 [EDIT MODE] Cargando datos de venta:", saleToEdit)
-      editDataLoadedRef.current = true // Marcar como cargado
+      console.log("🔧 [EDIT MODE] Users disponibles:", users.length)
+      console.log("🔧 [EDIT MODE] Plans disponibles:", plans.length)
+      
+      // ✅ IMPORTANTE: Marcar como cargado INMEDIATAMENTE para evitar re-ejecuciones
+      editDataLoadedRef.current = true
+      isInitialLoadRef.current = true // Activar protección de carga inicial
+      
+      // Desactivar protección después de 2 segundos (tiempo suficiente para completar la carga)
+      setTimeout(() => {
+        isInitialLoadRef.current = false
+        console.log("⏰ [EDIT MODE] Protección de carga inicial desactivada")
+      }, 2000)
       
       let customQuotas = []
       if (saleToEdit.customQuotasJson) {
@@ -468,7 +541,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         initial_payment: saleToEdit.initial_payment?.toString() || "",
         initial_payment_method: saleToEdit.initial_payment_method || "Efectivo",
         id_Clients: saleToEdit.id_Clients?.toString() || "",
-        id_Lots: saleToEdit.id_Lots?.toString() || "",
+        id_Lots: saleToEdit.id_Lots?.toString() || "",  // ✅ Ya incluido aquí
         id_Users: saleToEdit.id_Users?.toString() || "",
         id_Plans: saleToEdit.id_Plans?.toString() || "",
         paymentPlanType: saleToEdit.paymentPlanType?.toLowerCase() || "automatic",
@@ -477,45 +550,124 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       }
       
       console.log("📝 [EDIT MODE] Datos del formulario a establecer:", editFormData)
+      
+      // ✅ IMPORTANTE: Establecer PRIMERO el formData completo
       setFormData(editFormData)
 
       // Cargar cliente para edición
       if (saleToEdit.id_Clients) {
-        const fetchClientForEdit = async () => {
-          try {
-            const response = await axiosInstance.get(`/api/Client/${saleToEdit.id_Clients}`)
-            if (response.status === 200 && response.data) {
-              setFoundClient(response.data)
-              setClientDocument(response.data.document?.toString() || "")
+        // Primero intentar usar los datos del cliente si ya vienen en saleToEdit
+        if (saleToEdit.client) {
+          console.log("👤 [EDIT MODE] Usando datos de cliente de saleToEdit:", saleToEdit.client)
+          setFoundClient(saleToEdit.client)
+          setClientDocument(saleToEdit.client.document?.toString() || "")
+        } else {
+          console.log("👤 [EDIT MODE] Cargando datos de cliente desde API...")
+          // Si no vienen, hacer la petición al backend
+          const fetchClientForEdit = async () => {
+            try {
+              const response = await axiosInstance.get(`/api/Client/${saleToEdit.id_Clients}`)
+              if (response.status === 200 && response.data) {
+                console.log("✅ [EDIT MODE] Cliente cargado exitosamente:", response.data)
+                setFoundClient(response.data)
+                setClientDocument(response.data.document?.toString() || "")
+              }
+            } catch (error) {
+              console.error("❌ [EDIT MODE] Error al cargar cliente para edición:", error)
+              console.error("❌ [EDIT MODE] Status:", error.response?.status)
+              setClientSearchError("No se pudo cargar el cliente asociado a esta venta.")
             }
-          } catch (error) {
-            console.error("Error al cargar cliente para edición:", error)
-            setClientSearchError("No se pudo cargar el cliente asociado a esta venta.")
           }
+          fetchClientForEdit()
         }
-        fetchClientForEdit()
       }
 
       // Cargar lote y proyecto para edición
       if (saleToEdit.lot) {
         console.log("🏗️ [EDIT MODE] Cargando lote y proyecto:", saleToEdit.lot)
         const projectId = saleToEdit.lot.project?.id_Projects?.toString() || ""
-        console.log("📍 [EDIT MODE] ID del proyecto:", projectId)
+        const projectName = saleToEdit.lot.project?.name || "Proyecto desconocido"
+        const lotSearchValue = `${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`
         
-        setSelectedLot(saleToEdit.lot)
+        console.log("📍 [EDIT MODE] ID del proyecto:", projectId, "Nombre:", projectName)
+        console.log("📍 [EDIT MODE] Lote a establecer:", lotSearchValue)
+        console.log("📍 [EDIT MODE] Proyectos disponibles en este momento:", projects.length)
+        
+        // PRIMERO: Asegurarse de que el proyecto esté en la lista
+        if (projectId && saleToEdit.lot.project) {
+          setProjects(prevProjects => {
+            const projectExists = prevProjects.some(p => p.id_Projects.toString() === projectId)
+            
+            if (!projectExists) {
+              console.log("⚠️ [EDIT MODE] Proyecto no está en la lista, agregándolo:", projectName)
+              return [...prevProjects, {
+                id_Projects: saleToEdit.lot.project.id_Projects,
+                name: saleToEdit.lot.project.name,
+                status: saleToEdit.lot.project.status || "Activo"
+              }]
+            }
+            
+            console.log("✅ [EDIT MODE] Proyecto ya está en la lista")
+            return prevProjects
+          })
+        }
+        
+        // SEGUNDO: Establecer los estados de proyecto y lote
         setSelectedProject(projectId)
-        setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
+        setSelectedLot(saleToEdit.lot)
+        setLotSearchTerm(lotSearchValue)
+        
+        console.log("✅ [EDIT MODE] Estados de lote establecidos:")
+        console.log("   - selectedProject:", projectId)
+        console.log("   - selectedLot.id_Lots:", saleToEdit.lot.id_Lots)
+        console.log("   - lotSearchTerm:", lotSearchValue)
+        console.log("   - formData.id_Lots ya establecido en:", saleToEdit.id_Lots)
+      } else {
+        console.warn("⚠️ [EDIT MODE] No hay información de lote en saleToEdit")
       }
     }
     // ✅ NOTA: El reset del formulario ahora solo ocurre después de guardar exitosamente o cancelar edición
-  }, [saleToEdit, isEditing, users, plans])
+  }, [saleToEdit, isEditing])
 
-  // Resetear flag cuando cambia la venta a editar o se cancela la edición
+  // useEffect para debuggear cambios en lotSearchTerm y selectedLot
   useEffect(() => {
-    if (!isEditing || !saleToEdit) {
-      editDataLoadedRef.current = false
+    if (isEditing && saleToEdit) {
+      console.log("🔍 [DEBUG LOT] Cambio detectado:")
+      console.log("   - lotSearchTerm:", lotSearchTerm)
+      console.log("   - selectedLot:", selectedLot?.id_Lots || "null")
+      console.log("   - selectedProject:", selectedProject)
+      console.log("   - formData.id_Lots:", formData.id_Lots)
     }
-  }, [isEditing, saleToEdit])
+  }, [lotSearchTerm, selectedLot, selectedProject, formData.id_Lots, isEditing, saleToEdit])
+
+  // useEffect guardián: Si estamos editando y el lote se pierde, restaurarlo
+  useEffect(() => {
+    // Solo actuar si NO estamos en carga inicial
+    if (isEditing && saleToEdit?.lot && editDataLoadedRef.current && !isInitialLoadRef.current && !selectedLot && formData.id_Lots) {
+      console.warn("🔧 [GUARDIAN LOT] Detectado lote perdido después de carga inicial, restaurando...")
+      console.log("   - saleToEdit.lot:", saleToEdit.lot)
+      console.log("   - formData.id_Lots:", formData.id_Lots)
+      
+      setSelectedLot(saleToEdit.lot)
+      setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
+      setSelectedProject(saleToEdit.lot.project?.id_Projects?.toString() || "")
+      
+      console.log("✅ [GUARDIAN LOT] Lote restaurado")
+    }
+  }, [isEditing, saleToEdit, selectedLot, formData.id_Lots, selectedProject])
+
+  // useEffect guardián para el proyecto: asegurarse de que no se pierda durante renders
+  useEffect(() => {
+    if (isEditing && saleToEdit?.lot?.project && editDataLoadedRef.current && !selectedProject && formData.id_Lots) {
+      const correctProjectId = saleToEdit.lot.project.id_Projects?.toString() || ""
+      if (correctProjectId) {
+        console.warn("🔧 [GUARDIAN PROJECT] Detectado proyecto perdido, restaurando...")
+        console.log("   - Proyecto correcto:", correctProjectId, saleToEdit.lot.project.name)
+        setSelectedProject(correctProjectId)
+        console.log("✅ [GUARDIAN PROJECT] Proyecto restaurado")
+      }
+    }
+  }, [isEditing, saleToEdit, selectedProject, formData.id_Lots])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -534,8 +686,11 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función mejorada para cancelar edición
   const handleCancelEdit = () => {
+    console.log("❌ [CANCEL] Cancelando edición")
+    
     // Resetear el flag de carga de datos de edición
     editDataLoadedRef.current = false
+    isInitialLoadRef.current = false
     
     // Limpiar todos los estados del formulario
     setFormData({
@@ -669,6 +824,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
       // Resetear el flag de edición después de guardar
       editDataLoadedRef.current = false
+      isInitialLoadRef.current = false
 
       if (!isEditing || closeModal) {
         setFormData({
@@ -1004,16 +1160,32 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               Proyecto *
             </Label>
             <div className="relative">
-              <Select name="project" value={selectedProject} onValueChange={handleProjectChange} required>
+              <Select 
+                key={`project-${isEditing ? saleToEdit?.id_Sales : 'new'}-${selectedProject}`}
+                name="project" 
+                value={selectedProject || undefined}
+                onValueChange={handleProjectChange} 
+                required
+              >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona un proyecto" />
+                  <SelectValue 
+                    placeholder={
+                      isEditing && saleToEdit?.lot?.project?.name
+                        ? saleToEdit.lot.project.name
+                        : "Selecciona un proyecto"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  {projects.length > 0 ? (
+                    projects.map((project) => (
+                      <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-gray-500">Cargando proyectos...</div>
+                  )}
                 </SelectContent>
               </Select>
               <Building
@@ -1034,15 +1206,23 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                 type="text"
                 id="lot_search"
                 name="lot_search"
-                placeholder={selectedProject ? "Ej: A-28, A28, B-5..." : "Primero seleccione un proyecto"}
+                placeholder={
+                  isEditing && saleToEdit?.lot 
+                    ? `${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}` 
+                    : selectedProject 
+                      ? "Ej: A-28, A28, B-5..." 
+                      : "Primero seleccione un proyecto"
+                }
                 value={lotSearchTerm}
                 onChange={(e) => {
+                  console.log("🔍 [LOT SEARCH] Valor cambiado a:", e.target.value)
                   setLotSearchTerm(e.target.value)
                   if (!e.target.value.trim()) {
                     handleClearLotSelection()
                   }
                 }}
                 onFocus={() => {
+                  console.log("👁️ [LOT SEARCH] Input enfocado. lotSearchTerm:", lotSearchTerm, "selectedLot:", selectedLot?.id_Lots)
                   if (lotSearchResults.length > 0) {
                     setShowLotResults(true)
                   }
@@ -1117,8 +1297,12 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
                   <strong>Lote:</strong> {selectedLot.block || selectedLot.manzana}-
                   {selectedLot.lot_number || selectedLot.numero}
                 </p>
+                
                 <p>
                   <strong>Proyecto:</strong> {selectedLot.project?.name || "N/A"}
+                </p>
+                <p className="text-xs mt-1 text-green-600">
+                  ✓ ID del Lote: {selectedLot.id_Lots}
                 </p>
               </div>
             )}
@@ -1141,14 +1325,24 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               required
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecciona un usuario" />
+                <SelectValue 
+                  placeholder={
+                    isEditing && saleToEdit?.user?.nom_Users 
+                      ? saleToEdit.user.nom_Users 
+                      : "Selecciona un usuario"
+                  } 
+                />
               </SelectTrigger>
               <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user.id_Users} value={user.id_Users.toString()}>
-                    {user.nom_Users}
-                  </SelectItem>
-                ))}
+                {users.length > 0 ? (
+                  users.map((user) => (
+                    <SelectItem key={user.id_Users} value={user.id_Users.toString()}>
+                      {user.nom_Users}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-sm text-gray-500">Cargando usuarios...</div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -1165,14 +1359,24 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               required
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecciona un plan" />
+                <SelectValue 
+                  placeholder={
+                    isEditing && saleToEdit?.plan?.name 
+                      ? saleToEdit.plan.name 
+                      : "Selecciona un plan"
+                  } 
+                />
               </SelectTrigger>
               <SelectContent>
-                {plans.map((plan) => (
-                  <SelectItem key={plan.id_Plans} value={plan.id_Plans.toString()}>
-                    {plan.name} ({plan.number_quotas} cuotas)
-                  </SelectItem>
-                ))}
+                {plans.length > 0 ? (
+                  plans.map((plan) => (
+                    <SelectItem key={plan.id_Plans} value={plan.id_Plans.toString()}>
+                      {plan.name} ({plan.number_quotas} cuotas)
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="p-2 text-sm text-gray-500">Cargando planes...</div>
+                )}
               </SelectContent>
             </Select>
           </div>

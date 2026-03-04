@@ -289,17 +289,34 @@ function SalesPage() {
   const handleUpdate = async (row) => {
     try {
       const saleId = row.id
+      console.log("🔄 [PAGE] Solicitando datos de venta ID:", saleId)
       const response = await axiosInstance.get(`/api/Sale/GetSaleID/${saleId}`)
 
       if (response.status === 200) {
+        console.log("✅ [PAGE] Datos de venta recibidos:", response.data)
+        console.log("✅ [PAGE] Lote incluido:", !!response.data.lot)
+        console.log("✅ [PAGE] Proyecto incluido:", !!response.data.lot?.project)
+        if (response.data.lot) {
+          console.log("📦 [PAGE] Info de lote:", {
+            id: response.data.lot.id_Lots,
+            block: response.data.lot.block,
+            lot_number: response.data.lot.lot_number,
+            project: response.data.lot.project?.name
+          })
+        }
         setEditingSale(response.data)
         setIsModalOpen(true)
       } else {
+        console.warn("⚠️ [PAGE] Respuesta no exitosa, usando row.original")
         setEditingSale(row.original)
         setIsModalOpen(true)
       }
     } catch (error) {
-      console.error("Error al obtener datos completos de la venta:", error)
+      console.error("❌ [PAGE] Error al obtener datos completos de la venta:", error)
+      console.error("❌ [PAGE] Status:", error.response?.status)
+      console.error("❌ [PAGE] Message:", error.response?.data?.message || error.response?.data)
+      console.warn("⚠️ [PAGE] Usando row.original como respaldo")
+      console.log("📦 [PAGE] row.original:", row.original)
       setEditingSale(row.original)
       setIsModalOpen(true)
     }
