@@ -156,9 +156,17 @@ namespace mym_softcom.Services
                 {
                     throw new InvalidOperationException("Solo se pueden procesar desistimientos de ventas activas.");
                 }
-                // Calcular la penalización automáticamente
-                withdrawal.penalty = await CalculatePenalty(withdrawal.id_Sales);
-                Console.WriteLine($"[WithdrawalServices] Penalización calculada: {withdrawal.penalty}");
+                if (withdrawal.penalty == null)
+                {
+                    throw new InvalidOperationException("Debe proporcionar el valor del 10% del contrato.");
+                }
+
+                if (withdrawal.penalty < 0)
+                {
+                    throw new InvalidOperationException("La penalización no puede ser negativa.");
+                }
+
+                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente: {withdrawal.penalty}");
 
                 // Actualizar el total_raised de la venta con el valor de la penalización
                 sale.total_raised = withdrawal.penalty;
@@ -249,11 +257,17 @@ namespace mym_softcom.Services
                 {
                     throw new InvalidOperationException("La venta asociada al desistimiento no existe.");
                 }
-                // Guardar la penalización anterior para ajustar el recaudo del proyecto
-                var previousPenalty = existingWithdrawal.penalty ?? 0;
-                // Recalcular la penalización
-                updatedWithdrawal.penalty = await CalculatePenalty(updatedWithdrawal.id_Sales);
-                Console.WriteLine($"[WithdrawalServices] Penalización recalculada para actualización: {updatedWithdrawal.penalty}");
+                if (updatedWithdrawal.penalty == null)
+                {
+                    throw new InvalidOperationException("Debe proporcionar el valor del 10% del contrato.");
+                }
+
+                if (updatedWithdrawal.penalty < 0)
+                {
+                    throw new InvalidOperationException("La penalización no puede ser negativa.");
+                }
+
+                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente para actualización: {updatedWithdrawal.penalty}");
 
                 // Si también necesitas que el total_raised de la venta se actualice al editar un desistimiento,
                 // puedes añadir la siguiente línea aquí:

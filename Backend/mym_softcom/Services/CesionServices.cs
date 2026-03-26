@@ -53,38 +53,45 @@ namespace mym_softcom.Services
                     };
                 }
 
-                // 3. Validar que el nuevo cliente no existe (por documento)
-                var clienteExistente = await _clientServices.GetClientByDocument(request.NuevoCliente.document);
-                if (clienteExistente != null)
-                {
-                    return new CesionResponse
-                    {
-                        Success = false,
-                        Message = "Ya existe un cliente con el documento especificado",
-                        Errors = { "Cliente cesionario ya existe" }
-                    };
-                }
-
-                // 4. Crear el nuevo cliente (cesionario)
-                var nuevoClienteCreado = await _clientServices.CreateClient(request.NuevoCliente);
-                if (!nuevoClienteCreado)
-                {
-                    return new CesionResponse
-                    {
-                        Success = false,
-                        Message = "Error al crear el nuevo cliente",
-                        Errors = { "Error en creación de cliente" }
-                    };
-                }
-
-                // 5. Obtener el cliente recién creado
+                // 3. ✅ CORREGIDO: Buscar si el cliente cesionario ya existe o crear uno nuevo
                 var clienteCesionario = await _clientServices.GetClientByDocument(request.NuevoCliente.document);
+                bool clienteYaExistia = clienteCesionario != null;
+
                 if (clienteCesionario == null)
                 {
-                    throw new Exception("Error al recuperar el cliente recién creado");
+                    // Cliente no existe, crear uno nuevo
+                    var nuevoClienteCreado = await _clientServices.CreateClient(request.NuevoCliente);
+                    if (!nuevoClienteCreado)
+                    {
+                        return new CesionResponse
+                        {
+                            Success = false,
+                            Message = "Error al crear el nuevo cliente",
+                            Errors = { "Error en creación de cliente" }
+                        };
+                    }
+
+                    // Obtener el cliente recién creado
+                    clienteCesionario = await _clientServices.GetClientByDocument(request.NuevoCliente.document);
+                    if (clienteCesionario == null)
+                    {
+                        throw new Exception("Error al recuperar el cliente recién creado");
+                    }
+                }
+                // Si el cliente ya existe, simplemente lo usamos
+
+                // 4. Validar que cedente y cesionario no sean el mismo
+                if (clienteCedente.id_Clients == clienteCesionario.id_Clients)
+                {
+                    return new CesionResponse
+                    {
+                        Success = false,
+                        Message = "El cliente cedente y cesionario no pueden ser el mismo",
+                        Errors = { "Cliente cedente y cesionario son el mismo" }
+                    };
                 }
 
-                // 6. Crear registro de cesión
+                // 5. Crear registro de cesión
                 var cesion = new Cesion
                 {
                     cesion_date = DateTime.Now,
@@ -103,17 +110,17 @@ namespace mym_softcom.Services
                 _context.Cesions.Add(cesion);
                 await _context.SaveChangesAsync();
 
-                // 7. Transferir la venta al nuevo cliente
+                // 6. Transferir la venta al nuevo cliente
                 ventaCedente.id_Clients = clienteCesionario.id_Clients;
                 _context.Sales.Update(ventaCedente);
 
-                // 8. Verificar si el cliente cedente tiene más ventas activas
+                // 7. Verificar si el cliente cedente tiene más ventas activas
                 var tieneOtrasVentasActivas = await _context.Sales
                     .AnyAsync(s => s.id_Clients == clienteCedente.id_Clients &&
                                   s.status == "Active" &&
                                   s.id_Sales != ventaCedente.id_Sales);
 
-                // 9. Solo cambiar estado del cliente cedente a "Inactivo" si no tiene más ventas activas
+                // 8. Solo cambiar estado del cliente cedente a "Inactivo" si no tiene más ventas activas
                 if (!tieneOtrasVentasActivas)
                 {
                     clienteCedente.status = "Inactivo";
@@ -123,10 +130,14 @@ namespace mym_softcom.Services
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                string mensajeExito = clienteYaExistia
+                    ? $"Cesión completada exitosamente. Lote transferido de {clienteCedente.names} {clienteCedente.surnames} a cliente existente {clienteCesionario.names} {clienteCesionario.surnames}"
+                    : $"Cesión completada exitosamente. Lote transferido de {clienteCedente.names} {clienteCedente.surnames} a {clienteCesionario.names} {clienteCesionario.surnames}";
+
                 return new CesionResponse
                 {
                     Success = true,
-                    Message = $"Cesión completada exitosamente. Lote transferido de {clienteCedente.names} {clienteCedente.surnames} a {clienteCesionario.names} {clienteCesionario.surnames}",
+                    Message = mensajeExito,
                     Cesion = cesion
                 };
             }

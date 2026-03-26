@@ -3,16 +3,48 @@
   "WorkspaceRootPath": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\material.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\material.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\cesionservices.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\cesionservices.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\material.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\material.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\inventory.dtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\inventory.dtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\dbcontext.models.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\dbcontext.models.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:models\\detail.model.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\material.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:controllers\\material.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\payment.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\user.controller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -21,14 +53,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\overduedetectionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:services\\sale.services.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{11D81A69-7CA6-4D5D-BFCD-701C716239BC}|mym_softcom.csproj|c:\\proyecto\\mym_softcom\\backend\\mym_softcom\\controllers\\overduenotificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -59,19 +83,84 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Material.Services.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Material.Services.cs",
+              "RelativeDocumentMoniker": "Services\\Material.Services.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Material.Services.cs",
+              "RelativeToolTip": "Services\\Material.Services.cs",
+              "ViewState": "AgIAANgAAAAAAAAAAAAiwCEBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-11T19:44:56.613Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DbContext.Models.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\DbContext.Models.cs",
+              "RelativeDocumentMoniker": "Models\\DbContext.Models.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\DbContext.Models.cs",
+              "RelativeToolTip": "Models\\DbContext.Models.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-11T19:44:21.423Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Inventory.DTOs.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Inventory.DTOs.cs",
+              "RelativeDocumentMoniker": "Models\\Inventory.DTOs.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Inventory.DTOs.cs",
+              "RelativeToolTip": "Models\\Inventory.DTOs.cs",
+              "ViewState": "AgIAAF8AAAAAAAAAAAAswFsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-11T19:43:57.336Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Material.Model.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Material.Model.cs",
+              "RelativeDocumentMoniker": "Models\\Material.Model.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Material.Model.cs",
+              "RelativeToolTip": "Models\\Material.Model.cs",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAAAAkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-11T19:42:39.433Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CesionServices.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\CesionServices.cs",
+              "RelativeDocumentMoniker": "Services\\CesionServices.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\CesionServices.cs",
+              "RelativeToolTip": "Services\\CesionServices.cs",
+              "ViewState": "AgIAAB0AAAAAAAAAAADwv+QAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-24T19:56:39.295Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAEgAAAAAAAAAAAAAAFwAAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAAEIAAAAAAAAAAAAAAFgAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-02-19T13:36:57.956Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 10,
               "Title": "Payment.Services.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Payment.Services.cs",
               "RelativeDocumentMoniker": "Services\\Payment.Services.cs",
@@ -83,7 +172,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 7,
               "Title": "Detail.Model.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Detail.Model.cs",
               "RelativeDocumentMoniker": "Models\\Detail.Model.cs",
@@ -95,19 +184,44 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "Sale.Services.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
               "RelativeDocumentMoniker": "Services\\Sale.Services.cs",
               "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\Sale.Services.cs",
               "RelativeToolTip": "Services\\Sale.Services.cs",
-              "ViewState": "AgIAAF0BAAAAAAAAAAAiwF0BAAA9AAAAAAAAAA==",
+              "ViewState": "AgIAAF0BAAAAAAAAAAAiwGQBAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-11-27T15:56:23.536Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
+              "RelativeDocumentMoniker": "appsettings.json",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
+              "RelativeToolTip": "appsettings.json",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABkAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-28T21:29:14.238Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Material.Controller.cs",
+              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Material.Controller.cs",
+              "RelativeDocumentMoniker": "Controllers\\Material.Controller.cs",
+              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\Material.Controller.cs",
+              "RelativeToolTip": "Controllers\\Material.Controller.cs",
+              "ViewState": "AgIAAPIAAAAAAAAAAAAUwKQAAABuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-11T19:46:57.917Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
               "Title": "User.Controller.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\User.Controller.cs",
               "RelativeDocumentMoniker": "Controllers\\User.Controller.cs",
@@ -119,7 +233,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 13,
               "Title": "OverdueNotificationController.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Controllers\\OverdueNotificationController.cs",
               "RelativeDocumentMoniker": "Controllers\\OverdueNotificationController.cs",
@@ -131,7 +245,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 12,
               "Title": "OverdueDetectionService.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Services\\OverdueDetectionService.cs",
               "RelativeDocumentMoniker": "Services\\OverdueDetectionService.cs",
@@ -143,7 +257,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 14,
               "Title": "Sale.Model.cs",
               "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\Models\\Sale.Model.cs",
               "RelativeDocumentMoniker": "Models\\Sale.Model.cs",
@@ -152,18 +266,6 @@
               "ViewState": "AgIAAFQAAAAAAAAAAMBbwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-29T21:36:12.826Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
-              "RelativeDocumentMoniker": "appsettings.json",
-              "ToolTip": "C:\\Proyecto\\MyM_Softcom\\Backend\\mym_softcom\\appsettings.json",
-              "RelativeToolTip": "appsettings.json",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAAABkAAAAdAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2025-10-28T21:29:14.238Z"
             }
           ]
         }

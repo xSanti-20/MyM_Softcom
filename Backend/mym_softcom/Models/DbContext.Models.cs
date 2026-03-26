@@ -32,10 +32,30 @@ public class AppDbContext : DbContext
                 .HasDefaultValue(30m);
         });
 
+        modelBuilder.Entity<MaterialMovement>(entity =>
+        {
+            entity.ToTable("material_movements");
+
+            entity.Property(e => e.old_stock).HasColumnType("decimal(15,2)");
+            entity.Property(e => e.new_stock).HasColumnType("decimal(15,2)");
+            entity.Property(e => e.difference).HasColumnType("decimal(15,2)");
+
+            entity.HasOne(e => e.Material)
+                .WithMany()
+                .HasForeignKey(e => e.id_Materials)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Project)
+                .WithMany()
+                .HasForeignKey(e => e.id_Projects)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         base.OnModelCreating(modelBuilder);
     }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    
     public DbSet<Client> Clients { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<Lot> Lots { get; set; }
@@ -46,7 +66,10 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<Detail> Details { get; set; }
     public DbSet<Cesion> Cesions { get; set; }
-
+    
+    // ✅ NUEVO: Tabla del módulo de inventario
+    public DbSet<Material> Materials { get; set; }
+    public DbSet<MaterialMovement> MaterialMovements { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

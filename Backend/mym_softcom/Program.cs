@@ -20,7 +20,7 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     // - localhost (127.0.0.1)
     // - Red local (192.168.x.x, 10.x.x.x, etc.)
     // - Internet público (si tienes IP pública y port forwarding configurado)
-    serverOptions.ListenAnyIP(5000);
+    serverOptions.ListenAnyIP(5001);
     
     // Si quieres HTTPS también (recomendado para producción)
     // serverOptions.ListenAnyIP(5001, listenOptions =>
@@ -93,6 +93,9 @@ builder.Services.AddScoped<WithdrawalServices>();
 builder.Services.AddScoped<DetailServices>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<CesionServices>();
+
+// ✅ NUEVO: Servicio del módulo de inventario
+builder.Services.AddScoped<MaterialServices>();
 
 // 5. Configuración de EMAIL
 builder.Services.AddSingleton<ConfigServer>(provider =>
@@ -222,15 +225,15 @@ app.Lifetime.ApplicationStarted.Register(() =>
 
         logger.LogInformation("🚀 ===== SERVIDOR INICIADO =====");
         logger.LogInformation("📡 ACCESO LOCAL:");
-        logger.LogInformation("   • http://localhost:5000");
-        logger.LogInformation("   • http://127.0.0.1:5000");
+        logger.LogInformation("   • http://localhost:5001");
+        logger.LogInformation("   • http://127.0.0.1:5001");
         
         if (!string.IsNullOrEmpty(privateIP))
         {
             logger.LogInformation("");
             logger.LogInformation("🏠 ACCESO DESDE RED LOCAL (LAN):");
-            logger.LogInformation("   • http://{LocalIP}:5000", privateIP);
-            logger.LogInformation("   • http://{LocalIP}:5000/swagger", privateIP);
+            logger.LogInformation("   • http://{LocalIP}:5001", privateIP);
+            logger.LogInformation("   • http://{LocalIP}:5001/swagger", privateIP);
         }
 
         if (allIPs.Any())
@@ -242,7 +245,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
                 var type = (ip?.StartsWith("192.168.") == true || ip?.StartsWith("10.") == true || ip?.StartsWith("172.") == true) 
                     ? "Privada (LAN)" 
                     : "Pública";
-                logger.LogInformation("   • http://{IP}:5000 ({Type})", ip, type);
+                logger.LogInformation("   • http://{IP}:5001 ({Type})", ip, type);
             }
         }
 
@@ -251,17 +254,17 @@ app.Lifetime.ApplicationStarted.Register(() =>
         logger.LogInformation("   1. Conéctate a la misma red WiFi");
         if (!string.IsNullOrEmpty(privateIP))
         {
-            logger.LogInformation("   2. Abre: http://{LocalIP}:5000", privateIP);
+            logger.LogInformation("   2. Abre: http://{LocalIP}:5001", privateIP);
         }
 
         logger.LogInformation("");
         logger.LogInformation("🌍 ACCESO DESDE INTERNET (Requiere configuración adicional):");
-        logger.LogInformation("   1. Configura Port Forwarding en tu router (Puerto 5000)");
-        logger.LogInformation("   2. Usa tu IP pública: http://[TU_IP_PUBLICA]:5000");
+        logger.LogInformation("   1. Configura Port Forwarding en tu router (Puerto 5001)");
+        logger.LogInformation("   2. Usa tu IP pública: http://[TU_IP_PUBLICA]:5001");
         logger.LogInformation("   3. Para obtener tu IP pública: https://whatismyipaddress.com");
 
         logger.LogInformation("");
-        logger.LogInformation("📚 SWAGGER UI: http://localhost:5000/swagger");
+        logger.LogInformation("📚 SWAGGER UI: http://localhost:5001/swagger");
         logger.LogInformation("🔧 Para detener: Ctrl+C");
         logger.LogInformation("🛡️ CORS: Permitiendo TODOS los orígenes (modo desarrollo)");
         logger.LogInformation("===============================");
@@ -269,7 +272,7 @@ app.Lifetime.ApplicationStarted.Register(() =>
     catch (Exception ex)
     {
         logger.LogWarning("No se pudo obtener información de red: {Error}", ex.Message);
-        logger.LogInformation("🚀 Servidor iniciado en http://localhost:5000");
+        logger.LogInformation("🚀 Servidor iniciado en http://localhost:5001");
     }
 });
 

@@ -27,13 +27,29 @@ namespace mym_softcom.Services
         /// </summary>
         public async Task<IEnumerable<Sale>> GetAllSales()
         {
-            return await _context.Sales
+            var sales = await _context.Sales
                                  .Include(s => s.client)
                                  .Include(s => s.lot)
                                  .ThenInclude(l => l.project)
                                  .Include(s => s.user)
                                  .Include(s => s.plan)
                                  .ToListAsync();
+
+            var hasStatusChanges = false;
+            foreach (var sale in sales)
+            {
+                if (ApplyEffectiveSaleStatus(sale))
+                {
+                    hasStatusChanges = true;
+                }
+            }
+
+            if (hasStatusChanges)
+            {
+                await _context.SaveChangesAsync();
+            }
+
+            return sales;
         }
 
         /// <summary>
@@ -123,6 +139,11 @@ namespace mym_softcom.Services
                     }
                 }
 
+                if (ApplyEffectiveSaleStatus(sale))
+                {
+                    needsUpdate = true;
+                }
+
                 if (needsUpdate)
                 {
                     try
@@ -142,6 +163,35 @@ namespace mym_softcom.Services
             }
 
             return sale;
+        }
+
+        private bool ApplyEffectiveSaleStatus(Sale sale)
+        {
+            var currentStatus = sale.status?.Trim();
+            var debt = sale.total_debt ?? 0m;
+            var quota = sale.quota_value ?? 0m;
+
+            var isActiveLike = string.IsNullOrEmpty(currentStatus)
+                               || currentStatus.Equals("Active", StringComparison.OrdinalIgnoreCase)
+                               || currentStatus.Equals("Activa", StringComparison.OrdinalIgnoreCase);
+
+            if (isActiveLike && (debt <= 0m || quota <= 0m))
+            {
+                if (!string.Equals(currentStatus, "Escriturar", StringComparison.OrdinalIgnoreCase))
+                {
+                    sale.status = "Escriturar";
+                    return true;
+                }
+                return false;
+            }
+
+            if (string.Equals(currentStatus, "Escriturar", StringComparison.OrdinalIgnoreCase) && debt > 0m && quota > 0m)
+            {
+                sale.status = "Active";
+                return true;
+            }
+
+            return false;
         }
 
 
