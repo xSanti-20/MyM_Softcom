@@ -38,7 +38,8 @@ function NavPrivada({ children, title }) {
     { title: "Detalles", path: "/dashboard/detalles", icon: "ℹ️" },
     { title: "Reportes", path: "/dashboard/reportes", icon: "📋" },
     { title: "Correos", path: "/dashboard/correos", icon: "📧" },
-    { title: "Backups", path: "/dashboard/backups", icon: "💾" }
+    { title: "Backups", path: "/dashboard/backups", icon: "💾" },
+    { title: "Inventario", path: "/dashboard/inventario", icon: "🔨" }
 
   ]
 

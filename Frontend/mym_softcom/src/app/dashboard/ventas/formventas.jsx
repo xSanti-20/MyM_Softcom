@@ -669,6 +669,26 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     }
   }, [isEditing, saleToEdit, selectedProject, formData.id_Lots])
 
+  // useEffect guardián para el usuario: asegurarse de que no se pierda durante renders
+  useEffect(() => {
+    if (isEditing && saleToEdit && editDataLoadedRef.current && !formData.id_Users && saleToEdit.id_Users) {
+      console.warn("🔧 [GUARDIAN USER] Detectado usuario perdido, restaurando...")
+      console.log("   - Usuario correcto:", saleToEdit.id_Users, saleToEdit.user?.nom_Users)
+      setFormData(prev => ({ ...prev, id_Users: saleToEdit.id_Users.toString() }))
+      console.log("✅ [GUARDIAN USER] Usuario restaurado")
+    }
+  }, [isEditing, saleToEdit, formData.id_Users])
+
+  // useEffect guardián para el plan: asegurarse de que no se pierda durante renders
+  useEffect(() => {
+    if (isEditing && saleToEdit && editDataLoadedRef.current && !formData.id_Plans && saleToEdit.id_Plans) {
+      console.warn("🔧 [GUARDIAN PLAN] Detectado plan perdido, restaurando...")
+      console.log("   - Plan correcto:", saleToEdit.id_Plans, saleToEdit.plan?.name)
+      setFormData(prev => ({ ...prev, id_Plans: saleToEdit.id_Plans.toString() }))
+      console.log("✅ [GUARDIAN PLAN] Plan restaurado")
+    }
+  }, [isEditing, saleToEdit, formData.id_Plans])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({
@@ -810,6 +830,43 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       let response
       if (isEditing) {
         response = await axiosInstance.put(`/api/Sale/UpdateSale/${body.id_Sales}`, body)
+        
+        // 💰 Actualizar el pago inicial si el monto cambió
+        const initialPaymentChanged = parsedInitialPayment !== saleToEdit.initial_payment
+        if (initialPaymentChanged) {
+          console.log("💰 [PAYMENT UPDATE] Cuota inicial cambió de", saleToEdit.initial_payment, "a", parsedInitialPayment)
+          try {
+            // Obtener todos los pagos
+            const paymentsResponse = await axiosInstance.get("/api/Payment/GetAllPayments")
+            if (paymentsResponse.data && Array.isArray(paymentsResponse.data)) {
+              // Filtrar pagos de esta venta
+              const salePayments = paymentsResponse.data.filter(p => p.id_Sales === body.id_Sales)
+              
+              if (salePayments.length > 0) {
+                // Ordenar por fecha y obtener el primer pago (el más antiguo)
+                const firstPayment = salePayments.sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))[0]
+                console.log("💰 [PAYMENT UPDATE] Primer pago encontrado:", firstPayment)
+                
+                // Actualizar el primer pago con el nuevo monto
+                const updatePaymentBody = {
+                  id_Payments: firstPayment.id_Payments,
+                  amount: parsedInitialPayment,
+                  payment_date: firstPayment.payment_date,
+                  payment_method: formData.initial_payment_method,
+                  id_Sales: body.id_Sales
+                }
+                
+                await axiosInstance.put(`/api/Payment/UpdatePayment/${firstPayment.id_Payments}`, updatePaymentBody)
+                console.log("✅ [PAYMENT UPDATE] Pago actualizado exitosamente")
+              } else {
+                console.warn("⚠️ [PAYMENT UPDATE] No se encontraron pagos para esta venta")
+              }
+            }
+          } catch (paymentError) {
+            console.error("❌ [PAYMENT UPDATE] Error al actualizar el pago:", paymentError)
+            // No lanzamos el error para no interrumpir el flujo principal
+          }
+        }
       } else {
         response = await axiosInstance.post("/api/Sale/CreateSale", body)
       }
@@ -1319,8 +1376,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               Usuario *
             </Label>
             <Select
+              key={`user-${isEditing ? saleToEdit?.id_Sales : 'new'}-${formData.id_Users}`}
               name="id_Users"
-              value={formData.id_Users}
+              value={formData.id_Users || undefined}
               onValueChange={(value) => handleSelectChange("id_Users", value)}
               required
             >
@@ -1353,8 +1411,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               Plan *
             </Label>
             <Select
+              key={`plan-${isEditing ? saleToEdit?.id_Sales : 'new'}-${formData.id_Plans}`}
               name="id_Plans"
-              value={formData.id_Plans}
+              value={formData.id_Plans || undefined}
               onValueChange={(value) => handleSelectChange("id_Plans", value)}
               required
             >

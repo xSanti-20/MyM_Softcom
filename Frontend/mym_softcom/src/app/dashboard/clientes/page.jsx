@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge"
 function ClientPage() {
   const TitlePage = "Clientes"
   const [clientData, setClientData] = useState([])
+  const [apiClientCount, setApiClientCount] = useState(0)
+  const [visibleClientCount, setVisibleClientCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [editingClient, setEditingClient] = useState(null)
@@ -117,6 +119,8 @@ function ClientPage() {
       const response = await axiosInstance.get("/api/Client/GetClientsWithSalesSummary")
 
       if (response.status === 200) {
+        setApiClientCount(response.data.length)
+
         const data = response.data.map((client) => {
           return {
             id: client.id_Clients,
@@ -137,7 +141,12 @@ function ClientPage() {
 
         // Filtrar por estado si es necesario
         const filteredData = showInactiveRecords ? data : data.filter((client) => client.isActive)
+        setVisibleClientCount(filteredData.length)
         setClientData(filteredData)
+
+        console.log("[CLIENTES] Registros devueltos por API:", response.data.length)
+        console.log("[CLIENTES] Registros mostrados en tabla:", filteredData.length)
+        console.log("[CLIENTES] Inactivos detectados:", data.filter((client) => !client.isActive).length)
       }
     } catch (error) {
       setError("No se pudieron cargar los datos de los clientes.")
@@ -196,6 +205,15 @@ function ClientPage() {
     title: "Clientes",
     button: (
       <div className="flex items-center space-x-3">
+        <div className="hidden md:flex items-center gap-2">
+          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+            API: {apiClientCount}
+          </Badge>
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+            Mostrados: {visibleClientCount}
+          </Badge>
+        </div>
+
         <Button
           onClick={() => setShowInactiveRecords(!showInactiveRecords)}
           variant="outline"

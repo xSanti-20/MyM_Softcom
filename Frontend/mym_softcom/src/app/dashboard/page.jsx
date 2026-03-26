@@ -353,29 +353,272 @@ export default function Dashboard() {
     return date.toLocaleString("es-ES", { month: "long" })
   }
 
+  // Calcular cuotas en mora para una venta (misma lógica que reportes)
+  const calculateOverdueQuotas = useCallback((sale, paymentDetails) => {
+    const totalDebt = Number.parseFloat(sale?.total_debt) || 0
+
+    if (!sale || !sale.plan || totalDebt <= 0) {
+      return { count: 0, details: [], totalOverdue: 0 }
+    }
+
+    const totalQuotas = sale.plan.number_quotas || 0
+    const quotaValue = sale.quota_value || 0
+    const saleDate = new Date(sale.sale_date)
+    const currentDate = new Date()
+
+    // Procesar customQuotas si existen
+    let customQuotas = null
+    const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
+    const customQuotasJson = sale.customQuotasJson || sale.CustomQuotasJson
+    
+    if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+      try {
+        customQuotas = JSON.parse(customQuotasJson)
+      } catch (error) {
+        console.error("Error parsing custom quotas JSON:", error)
+      }
+    }
+
+    const parseAmount = (value) => {
+      const parsed = Number.parseFloat(value)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+
+    // Agrupar pagos por cuota
+    const aggregatedQuotas = new Map()
+    const uniquePayments = new Map()
+
+    if (paymentDetails && Array.isArray(paymentDetails)) {
+      paymentDetails.forEach((detail) => {
+        const payment = detail?.payment || detail?.Payment || null
+        const paymentId =
+          payment?.id_Payments ||
+          payment?.Id_Payments ||
+          detail?.id_Payments ||
+          detail?.Id_Payments
+        const paymentAmount = parseAmount(
+          payment?.amount ?? payment?.Amount ?? detail?.payment_amount ?? detail?.Payment_Amount,
+        )
+        const paymentDate =
+          payment?.payment_date ||
+          payment?.Payment_Date ||
+          detail?.payment_date ||
+          detail?.Payment_Date
+        const quotaNumber = Number.parseInt(
+          detail?.number_quota ?? detail?.Number_Quota ?? detail?.quotaNumber,
+          10,
+        )
+        const coveredAmount = parseAmount(
+          detail?.covered_amount ?? detail?.Covered_Amount ?? detail?.coveredAmount,
+        )
+
+        if (Number.isNaN(quotaNumber) || quotaNumber <= 0 || coveredAmount <= 0) {
+          return
+        }
+
+        if (paymentId) {
+          if (!uniquePayments.has(paymentId)) {
+            uniquePayments.set(paymentId, {
+              amount: paymentAmount,
+              date: paymentDate,
+              details: [],
+            })
+          }
+
+          uniquePayments.get(paymentId).details.push({
+            quotaNumber,
+            coveredAmount,
+            paymentDate,
+          })
+          return
+        }
+
+        const current = aggregatedQuotas.get(quotaNumber) || { covered: 0, paymentDates: [] }
+        current.covered += coveredAmount
+        if (paymentDate) {
+          const normalizedDate = new Date(paymentDate)
+          if (!Number.isNaN(normalizedDate.getTime())) {
+            current.paymentDates.push(normalizedDate)
+          }
+        }
+        aggregatedQuotas.set(quotaNumber, current)
+      })
+
+      uniquePayments.forEach((payment) => {
+        const detailsForPayment = payment.details
+        const totalCovered = detailsForPayment.reduce((sum, d) => sum + parseAmount(d.coveredAmount), 0)
+        
+        detailsForPayment.forEach((detail) => {
+          if (detail.quotaNumber > 0) {
+            const current = aggregatedQuotas.get(detail.quotaNumber) || { covered: 0, paymentDates: [] }
+            
+            let amountToAdd = parseAmount(detail.coveredAmount)
+            if (Math.abs(totalCovered - payment.amount) > 0.01 && totalCovered > 0) {
+              const proportion = parseAmount(detail.coveredAmount) / totalCovered
+              amountToAdd = payment.amount * proportion
+            }
+            
+            current.covered += amountToAdd
+            if (payment.date) {
+              const normalizedDate = new Date(payment.date)
+              if (
+                !Number.isNaN(normalizedDate.getTime()) &&
+                !current.paymentDates.some((d) => d.getTime() === normalizedDate.getTime())
+              ) {
+                current.paymentDates.push(normalizedDate)
+              }
+            }
+            aggregatedQuotas.set(detail.quotaNumber, current)
+          }
+        })
+      })
+    }
+
+    const overdueQuotas = []
+    let totalOverdueAmount = 0
+
+    for (let i = 1; i <= totalQuotas; i++) {
+      const coveredInfo = aggregatedQuotas.get(i)
+      const coveredAmount = coveredInfo?.covered || 0
+
+      // Calcular fecha de vencimiento
+      let dueDate
+      if (customQuotas && customQuotas.length > 0) {
+        const customQuota = customQuotas.find((q) => q.QuotaNumber === i)
+        if (customQuota && customQuota.DueDate) {
+          const [year, month, day] = customQuota.DueDate.split('-').map(Number)
+          dueDate = new Date(year, month - 1, day)
+        } else {
+          dueDate = new Date(saleDate)
+          const targetMonth = saleDate.getMonth() + i
+          const targetDay = saleDate.getDate()
+          dueDate.setMonth(targetMonth)
+          const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
+          dueDate.setDate(Math.min(targetDay, maxDayInMonth))
+        }
+      } else {
+        dueDate = new Date(saleDate)
+        const targetMonth = saleDate.getMonth() + i
+        const targetDay = saleDate.getDate()
+        dueDate.setMonth(targetMonth)
+        const maxDayInMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate()
+        dueDate.setDate(Math.min(targetDay, maxDayInMonth))
+      }
+
+      // Determinar valor de la cuota
+      let adjustedQuotaValue
+      if (customQuotas && customQuotas.length > 0) {
+        const customQuota = customQuotas.find((q) => q.QuotaNumber === i)
+        adjustedQuotaValue = customQuota ? customQuota.Amount : quotaValue
+      } else {
+        adjustedQuotaValue = quotaValue
+      }
+
+      // Verificar si está en mora
+      const isOverdue = dueDate < currentDate && coveredAmount < adjustedQuotaValue
+
+      if (isOverdue) {
+        const overdueAmount = adjustedQuotaValue - coveredAmount
+        const daysOverdue = Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24))
+        
+        overdueQuotas.push({
+          quotaNumber: i,
+          dueDate: dueDate,
+          expectedAmount: adjustedQuotaValue,
+          coveredAmount: coveredAmount,
+          overdueAmount: overdueAmount,
+          daysOverdue: daysOverdue
+        })
+        
+        totalOverdueAmount += overdueAmount
+      }
+    }
+
+    return {
+      count: overdueQuotas.length,
+      details: overdueQuotas,
+      totalOverdue: Math.min(totalOverdueAmount, totalDebt),
+    }
+  }, [])
+
   // Función para cargar todos los datos del dashboard
   const loadAllData = useCallback(async () => {
     setDataLoading(true)
     const newErrors = {}
 
     try {
-      // Cargar estadísticas principales
+      // Cargar estadísticas principales calculadas igual que reportes
       try {
-        const response = await axiosInstance.get("/api/Dashboard/GetMainStats")
-        console.log("=== DATOS DE MORA DEL BACKEND ===")
-        console.log("Main stats data:", response.data)
-        console.log("Clientes en mora:", response.data?.overdueClients)
-        console.log("Total adeudado:", response.data?.totalOwed)
-        console.log("==================================")
+        // Obtener clientes activos directamente del endpoint de clientes (igual que el módulo de clientes)
+        const [salesResponse, clientsResponse] = await Promise.all([
+          axiosInstance.get("/api/Sale/GetAllSales"),
+          axiosInstance.get("/api/Client/GetClientsWithSalesSummary"),
+        ])
 
-        if (response.data && typeof response.data === "object") {
+        // Contar clientes activos desde el endpoint de clientes (fuente de verdad)
+        // Se excluyen solo los explícitamente "inactivo" — igual que el módulo de clientes
+        const totalActiveClients = Array.isArray(clientsResponse.data)
+          ? clientsResponse.data.filter(c => {
+              const s = (c.status || "").toLowerCase()
+              return s !== "inactivo" && s !== "inactive"
+            }).length
+          : 0
+
+        if (salesResponse.status === 200) {
+          const activeSales = salesResponse.data.filter(
+            sale => sale.status?.toLowerCase() === "active" || sale.status?.toLowerCase() === "activa"
+          )
+
+          // Obtener payment details para cada venta
+          const detailsPromises = activeSales.map(sale =>
+            axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
+              .then(response => ({ saleId: sale.id_Sales, details: response.data }))
+              .catch(() => ({ saleId: sale.id_Sales, details: [] }))
+          )
+
+          const allDetails = await Promise.all(detailsPromises)
+          const detailsMap = new Map(allDetails.map(item => [item.saleId, item.details]))
+
+          // Calcular estadísticas de mora (clientes únicos en mora)
+          const clientsInMoraSet = new Set()
+          let totalOwedAmount = 0
+
+          activeSales.forEach(sale => {
+            const clientId = sale.client?.id_Clients || sale.id_Sales
+
+            const salePaymentDetails = detailsMap.get(sale.id_Sales) || []
+            const moraInfo = calculateOverdueQuotas(sale, salePaymentDetails)
+
+            if (moraInfo.count > 0) {
+              clientsInMoraSet.add(clientId)
+              totalOwedAmount += moraInfo.totalOverdue
+            }
+          })
+
+          const clientsInMora = clientsInMoraSet.size
+
+          console.log("=== DATOS DE MORA CALCULADOS (MISMA LÓGICA QUE REPORTES) ===")
+          console.log("Total ventas activas:", activeSales.length)
+          console.log("Total clientes activos (desde API clientes):", totalActiveClients)
+          console.log("Clientes en mora:", clientsInMora)
+          console.log("Total adeudado (mora):", totalOwedAmount)
+          console.log("============================================================")
+
+          // Obtener desistimientos del mes actual
+          const currentMonth = new Date().getMonth()
+          const currentYear = new Date().getFullYear()
+          const withdrawalsThisMonth = salesResponse.data.filter(sale => {
+            if (sale.status?.toLowerCase() !== "withdrawals") return false
+            const saleDate = new Date(sale.sale_date)
+            return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
+          }).length
+
           setStats((prevStats) => ({
             ...prevStats,
-            activeClients: response.data.activeClients || 0,
-            overdueClients: response.data.overdueClients || 0,
-            totalOwed: response.data.totalOwed || 0,
-            cancellations: response.data.withdrawalsThisMonth || 0,
-            monthlyRevenue: response.data.monthlyRevenue || 0, // Recaudo mensual de pagos (del mes actual)
+            activeClients: totalActiveClients,
+            overdueClients: clientsInMora,
+            totalOwed: totalOwedAmount,
+            cancellations: withdrawalsThisMonth,
           }))
         }
       } catch (error) {
@@ -544,7 +787,7 @@ export default function Dashboard() {
     } finally {
       setDataLoading(false)
     }
-  }, [formatRelativeTime])
+  }, [formatRelativeTime, calculateOverdueQuotas])
 
   // Efecto para cargar datos iniciales
   useEffect(() => {
@@ -731,7 +974,7 @@ export default function Dashboard() {
                       icon={UserCheck}
                       title="Clientes Activos"
                       value={stats.activeClients.toString()}
-                      description="Clientes al día con sus pagos"
+                      description="Total de clientes con ventas activas"
                       color="green"
                     />
                     <StatCard
@@ -853,7 +1096,7 @@ export default function Dashboard() {
                         icon={Info}
                         color="blue"
                         messages={[
-                          `${stats.activeClients} clientes activos`,
+                          `${stats.activeClients} clientes con ventas activas`,  
                           `${formatCurrency(stats.totalCurrentMonthProjectRevenue)} recaudado por proyectos este mes`, // Mensaje actualizado
                           `${formatCurrency(stats.totalOwed)} pendiente de cobro`,
                           `${stats.cancellations} desistimientos este mes`,

@@ -215,7 +215,13 @@ function DataTable({
           const isExporting = saleId ? exportingPDF.has(saleId) : false
 
           const allFields = Object.keys(row)
-            .filter((key) => key !== "original" && key !== "searchableIdentifier" && key !== "isActive")
+            .filter(
+              (key) =>
+                key !== "original" &&
+                key !== "searchableIdentifier" &&
+                key !== "isActive" &&
+                key !== "statusText",
+            )
             .map((key, index) => ({
               title: TitlesTable[index] || key,
               value: row[key],
@@ -430,7 +436,11 @@ function DataTable({
                     )}
                     {TitlesTable.map((title, cellIndex) => {
                       const key = Object.keys(row).filter(
-                        (k) => k !== "original" && k !== "searchableIdentifier" && k !== "isActive",
+                        (k) =>
+                          k !== "original" &&
+                          k !== "searchableIdentifier" &&
+                          k !== "isActive" &&
+                          k !== "statusText",
                       )[cellIndex]
                       const value = row[key]
                       return (

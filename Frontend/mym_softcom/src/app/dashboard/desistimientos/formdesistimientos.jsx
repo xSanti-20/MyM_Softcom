@@ -28,13 +28,24 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
   const [salesLoading, setSalesLoading] = useState(false)
 
   // Estados para cálculo de penalización
-  const [calculatedPenalty, setCalculatedPenalty] = useState(null)
-  const [penaltyLoading, setPenaltyLoading] = useState(false)
-
-  const [remainingAmount, setRemainingAmount] = useState(null)
+  const [manualTenPercentValue, setManualTenPercentValue] = useState("")
+  const [amountToReturn, setAmountToReturn] = useState(null)
 
   const [loading, setLoading] = useState(false)
   const isEditing = !!withdrawalToEdit
+
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "$0"
+    }
+
+    const numericValue = Number(value)
+    if (Number.isNaN(numericValue)) {
+      return "$0"
+    }
+
+    return numericValue.toLocaleString("es-CO", { style: "currency", currency: "COP" })
+  }
 
   // Función auxiliar para obtener el nombre del proyecto
   const getProjectName = (sale) => {
@@ -58,8 +69,8 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       setFoundClient(null)
       setClientSales([])
       setSelectedSale(null)
-      setCalculatedPenalty(null)
-      setRemainingAmount(null)
+      setManualTenPercentValue("")
+      setAmountToReturn(null)
       setFormData((prev) => ({ ...prev, id_Sales: "" }))
       return
     }
@@ -70,8 +81,8 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       setFoundClient(null)
       setClientSales([])
       setSelectedSale(null)
-      setCalculatedPenalty(null)
-      setRemainingAmount(null)
+      setManualTenPercentValue("")
+      setAmountToReturn(null)
       setFormData((prev) => ({ ...prev, id_Sales: "" }))
       return
     }
@@ -81,8 +92,8 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
     setFoundClient(null)
     setClientSales([])
     setSelectedSale(null)
-    setCalculatedPenalty(null)
-    setRemainingAmount(null)
+    setManualTenPercentValue("")
+    setAmountToReturn(null)
     setFormData((prev) => ({ ...prev, id_Sales: "" }))
 
     try {
@@ -129,62 +140,13 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
     }
   }
 
-  // Función para seleccionar una venta y calcular penalización
+  // Función para seleccionar una venta y limpiar cálculos
   const handleSelectSale = async (saleId) => {
     const sale = clientSales.find((s) => s.id_Sales.toString() === saleId)
     setSelectedSale(sale)
     setFormData((prev) => ({ ...prev, id_Sales: saleId }))
-
-    // Calcular penalización automáticamente
-    if (sale) {
-      await calculatePenalty(sale.id_Sales, sale)
-    }
-  }
-
-  // Función para calcular penalización
-  const calculatePenalty = async (saleId, saleData = null) => {
-    setPenaltyLoading(true)
-    try {
-      const response = await axiosInstance.get(`/api/Withdrawal/CalculatePenalty/${saleId}`)
-      if (response.data) {
-        const penalty = response.data.penalty || response.data
-        setCalculatedPenalty(penalty)
-
-        const sale = saleData || selectedSale
-        if (sale) {
-          const totalRaised = sale.total_raised || 0
-          const totalValue = sale.total_value || 0
-          // The remaining amount should be 10% of total value (what client gets back)
-          const remaining = totalValue * 0.1
-          setRemainingAmount(Math.max(0, remaining))
-          console.log("Calculation Debug:", { totalRaised, totalValue, penalty, remaining })
-        }
-      }
-    } catch (error) {
-      console.error("Error al calcular penalización:", error)
-
-      // Si el endpoint no existe, calcular localmente
-      if (error.response?.status === 404) {
-        const sale = saleData || selectedSale
-        if (sale) {
-          const totalRaised = sale.total_raised || 0
-          const totalValue = sale.total_value || 0
-          const penaltyPercentage = totalValue * 0.1
-          const penalty = Math.max(0, totalRaised - penaltyPercentage)
-          setCalculatedPenalty(penalty)
-
-          const remaining = totalValue * 0.1
-          setRemainingAmount(Math.max(0, remaining))
-          console.log("Local Calculation Debug:", { totalRaised, totalValue, penalty, remaining })
-        }
-      } else {
-        showAlert("error", "Error al calcular la penalización.")
-        setCalculatedPenalty(0)
-        setRemainingAmount(0)
-      }
-    } finally {
-      setPenaltyLoading(false)
-    }
+    setManualTenPercentValue("")
+    setAmountToReturn(null)
   }
 
   // Cargar datos iniciales
@@ -214,8 +176,7 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
         setClientDocument(withdrawalToEdit.sale.client.document?.toString() || "")
         setSelectedSale(withdrawalToEdit.sale)
         setClientSales([withdrawalToEdit.sale])
-        setCalculatedPenalty(withdrawalToEdit.penalty)
-        setRemainingAmount(withdrawalToEdit.remainingAmount || 0)
+        setManualTenPercentValue(withdrawalToEdit.penalty ? withdrawalToEdit.penalty.toString() : "")
       }
     } else {
       // Resetear estados
@@ -229,10 +190,26 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       setClientSearchError(null)
       setClientSales([])
       setSelectedSale(null)
-      setCalculatedPenalty(null)
-      setRemainingAmount(null)
+      setManualTenPercentValue("")
+      setAmountToReturn(null)
     }
   }, [withdrawalToEdit, isEditing])
+
+  useEffect(() => {
+    if (!manualTenPercentValue || !selectedSale) {
+      setAmountToReturn(null)
+      return
+    }
+
+    const parsedValue = Number.parseFloat(manualTenPercentValue)
+    if (Number.isNaN(parsedValue)) {
+      setAmountToReturn(null)
+      return
+    }
+
+    const totalRaised = Number(selectedSale.total_raised) || 0
+    setAmountToReturn(Math.max(0, totalRaised - parsedValue))
+  }, [manualTenPercentValue, selectedSale])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -264,18 +241,29 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       return
     }
 
+    if (!manualTenPercentValue) {
+      showAlert("error", "Ingrese el valor equivalente al 10% del contrato.")
+      return
+    }
+
+    const parsedPenalty = Number.parseFloat(manualTenPercentValue)
+    if (Number.isNaN(parsedPenalty) || parsedPenalty < 0) {
+      showAlert("error", "El valor del 10% debe ser un número válido y positivo.")
+      return
+    }
+
     // Construir el cuerpo de la solicitud según si es edición o creación
     const body = {
       reason: reason.trim(),
       withdrawal_date: new Date(withdrawal_date).toISOString(),
       id_Sales: Number.parseInt(id_Sales, 10),
+      penalty: parsedPenalty,
     }
 
     if (isEditing) {
       // Para edición, incluimos el ID del desistimiento y la penalización existente
       body.id_Withdrawals = withdrawalToEdit.id_Withdrawals
-      body.penalty = withdrawalToEdit.penalty || 0 // Mantener la penalización original
-      body.remainingAmount = withdrawalToEdit.remainingAmount || 0 // Mantener el monto restante original
+      body.penalty = parsedPenalty
     }
     // Para creación, no incluimos id_Withdrawals ni penalty, ya que son autoincremental/autocalculado por el backend.
 
@@ -307,8 +295,8 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
         setClientSearchError(null)
         setClientSales([])
         setSelectedSale(null)
-        setCalculatedPenalty(null)
-        setRemainingAmount(null)
+        setManualTenPercentValue("")
+        setAmountToReturn(null)
       }
 
       if (closeModal) closeModal()
@@ -496,38 +484,44 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
               </div>
             )}
 
-            {/* Cálculo de Penalización */}
+            {/* Cálculo manual de devolución */}
             {selectedSale && (
-              <div className="mt-4 p-4 border border-red-200 bg-red-50 rounded-md text-sm">
-                <div className="flex items-center mb-2">
+              <div className="mt-4 p-4 border border-red-200 bg-red-50 rounded-md text-sm space-y-3">
+                <div className="flex items-center">
                   <Calculator className="mr-2 text-red-600" size={16} />
-                  <p className="font-semibold text-red-800">Cálculo de Penalización (10%):</p>
+                  <p className="font-semibold text-red-800">Cálculo manual de devolución</p>
                 </div>
-                {penaltyLoading ? (
-                  <div className="flex items-center text-red-600">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculando penalización...
-                  </div>
-                ) : calculatedPenalty !== null ? (
-                  <div className="text-red-700 space-y-2">
-                    <p>
-                      <strong>Penalización a aplicar:</strong>{" "}
-                      {calculatedPenalty.toLocaleString("es-CO", { style: "currency", currency: "COP" })}
-                    </p>
-                    <p>
-                      <strong>Monto a devolver al cliente:</strong>{" "}
-                      {remainingAmount !== null && remainingAmount > 0
-                        ? remainingAmount.toLocaleString("es-CO", { style: "currency", currency: "COP" })
-                        : "$0"}
-                    </p>
-                    <p className="text-xs mt-1">
-                      Fórmula: Recaudo Total - (Valor Total × 10%) = Penalización | Recaudo Total - Penalización = Monto
-                      a Devolver
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-red-600">Error al calcular la penalización</p>
-                )}
+                <div>
+                  <Label htmlFor="manual_ten_percent" className="block text-sm font-medium text-red-800 mb-1">
+                    Valor equivalente al 10% del contrato *
+                  </Label>
+                  <Input
+                    id="manual_ten_percent"
+                    name="manual_ten_percent"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Ingresa el valor del 10%"
+                    value={manualTenPercentValue}
+                    onChange={(event) => setManualTenPercentValue(event.target.value)}
+                    className="bg-white"
+                    required
+                  />
+                  <p className="text-xs text-red-600 mt-1">
+                    Ingresa manualmente el valor resultante de (Valor total de la venta × 10%).
+                  </p>
+                </div>
+                <div className="bg-white rounded-md border border-red-100 p-3 space-y-1 text-red-800">
+                  <p>
+                    <strong>Recaudo actual:</strong> {formatCurrency(selectedSale.total_raised)}
+                  </p>
+                  <p>
+                    <strong>Total a devolver:</strong> {amountToReturn !== null ? formatCurrency(amountToReturn) : "---"}
+                  </p>
+                  <p className="text-xs">
+                    Fórmula aplicada: Recaudo actual - Valor ingresado = Total a devolver (mínimo 0).
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -589,14 +583,10 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
                 <p className="font-semibold mb-2">Consecuencias del Desistimiento:</p>
                 <ul className="list-disc list-inside space-y-1">
                   <li>
-                    Se aplicará una penalización de{" "}
-                    {calculatedPenalty?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) ||
-                      "calculando..."}
+                    Valor base del 10%: {manualTenPercentValue ? formatCurrency(manualTenPercentValue) : "pendiente"}
                   </li>
                   <li>
-                    Se devolverá al cliente:{" "}
-                    {remainingAmount?.toLocaleString("es-CO", { style: "currency", currency: "COP" }) ||
-                      "calculando..."}
+                    Se devolverá al cliente: {amountToReturn !== null ? formatCurrency(amountToReturn) : "pendiente"}
                   </li>
                   <li>
                     El lote {selectedSale.lot?.block}-{selectedSale.lot?.lot_number} será liberado automáticamente

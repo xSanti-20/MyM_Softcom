@@ -17,7 +17,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { Filter, Plus } from "lucide-react"
+import { Filter, Plus, Download } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 function SalesPage() {
@@ -46,6 +46,7 @@ function SalesPage() {
     "Valor Cuota",
     "Estado",
     "Cliente",
+    "Documento",
     "Lote",
     "Proyecto",
     "Vendedor",
@@ -161,6 +162,17 @@ function SalesPage() {
     return sale.quota_value || 0
   }
 
+  const getEffectiveSaleStatus = (sale) => {
+    const quotaValue = Number.parseFloat(calculateDisplayQuotaValue(sale)) || 0
+    const totalDebt = Number.parseFloat(sale?.total_debt) || 0
+
+    if (quotaValue <= 0 || totalDebt <= 0) {
+      return "Escriturar"
+    }
+
+    return sale?.status || "Active"
+  }
+
   const fetchProjectsForFilter = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/api/Project/GetAllProjects")
@@ -199,7 +211,13 @@ function SalesPage() {
           })
         }
 
-        const data = filteredSales.map((sale) => ({
+        const data = filteredSales.map((sale) => {
+          const effectiveStatus = getEffectiveSaleStatus(sale)
+          const lotBlock = sale.lot?.block || sale.Lot?.block || ""
+          const lotNumber = sale.lot?.lot_number || sale.Lot?.lot_number || ""
+          const lotLabel = lotBlock && lotNumber ? `${lotBlock}-${lotNumber}` : "N/A"
+
+          return ({
           id: sale.id_Sales,
           sale_date: sale.sale_date ? new Date(sale.sale_date).toLocaleDateString() : "N/A",
           total_value: sale.total_value?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
@@ -207,15 +225,18 @@ function SalesPage() {
           total_raised: sale.total_raised?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
           total_debt: sale.total_debt?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
           quota_value: calculateDisplayQuotaValue(sale)?.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "N/A",
-          status: createSaleStatusBadge(sale.status || "Active"),
+          status: createSaleStatusBadge(effectiveStatus),
+          statusText: effectiveStatus,
           client: sale.client ? `${sale.client.names} ${sale.client.surnames}` : "N/A",
-          lot: sale.lot ? `${sale.lot.block}-${sale.lot.lot_number}` : "N/A",
+          clientDocument: sale.client?.document || "N/A",
+          lot: lotLabel,
           project: getProjectName(sale),
           user: sale.user?.nom_Users || "N/A",
           plan: sale.plan?.name || "N/A",
           original: sale,
-          searchableIdentifier: `${sale.id_Sales} ${sale.client?.names} ${sale.client?.surnames} ${sale.lot?.block}-${sale.lot?.lot_number} ${getProjectName(sale)} ${sale.status} ${sale.plan?.name}`,
-        })).sort((a, b) => {
+          searchableIdentifier: `${sale.id_Sales} ${sale.client?.names} ${sale.client?.surnames} ${sale.client?.document || ""} MZ:${lotBlock} MZ: ${lotBlock} LOTE:${lotNumber} LOTE: ${lotNumber} ${lotLabel} ${lotBlock}${lotNumber} PROYECTO:${getProjectName(sale)} ${getProjectName(sale)} ${effectiveStatus} ${sale.plan?.name}`,
+        })
+      }).sort((a, b) => {
           // ✅ Ordenar por manzana y luego por número de lote ascendentemente
           const lotA = a.original.lot
           const lotB = b.original.lot
@@ -248,6 +269,77 @@ function SalesPage() {
   const handleProjectFilterChange = (value) => {
     setSelectedProjectId(value)
     fetchSales(value === "all" ? null : value)
+  }
+
+  const exportSalesToCSV = () => {
+    if (!salesData.length) {
+      showAlert("error", "No hay ventas para exportar con el filtro actual.")
+      return
+    }
+
+    const headers = [
+      "ID",
+      "Fecha Venta",
+      "Valor Total",
+      "Cuota Inicial",
+      "Recaudo Total",
+      "Deuda Total",
+      "Valor Cuota",
+      "Estado",
+      "Cliente",
+      "Documento",
+      "Lote",
+      "Proyecto",
+      "Vendedor",
+      "Plan",
+    ]
+
+    const escapeValue = (value) => {
+      const stringValue = value === null || value === undefined ? "" : String(value)
+      const normalizedValue = stringValue
+        .replace(/\u00A0/g, " ")
+        .replace(/\u202F/g, " ")
+      return `"${normalizedValue.replace(/"/g, '""')}"`
+    }
+
+    const rows = salesData.map((sale) => {
+      const original = sale.original || {}
+      return [
+        sale.id,
+        sale.sale_date,
+        sale.total_value,
+        sale.initial_payment,
+        sale.total_raised,
+        sale.total_debt,
+        sale.quota_value,
+        sale.statusText || original.status || "N/A",
+        sale.client,
+        sale.clientDocument,
+        sale.lot,
+        sale.project,
+        sale.user,
+        sale.plan,
+      ].map(escapeValue)
+    })
+
+    const csvContent = [headers.map(escapeValue).join(","), ...rows.map((row) => row.join(","))].join("\n")
+    const csvWithBom = `\uFEFF${csvContent}`
+    const selectedProject = projects.find((project) => project.id_Projects.toString() === selectedProjectId)
+    const projectLabel = selectedProject ? selectedProject.name : "todos_los_proyectos"
+    const safeProjectLabel = projectLabel.toLowerCase().replace(/\s+/g, "_")
+
+    const blob = new Blob([csvWithBom], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `ventas_${safeProjectLabel}_${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    showAlert("success", "Ventas exportadas correctamente.")
   }
 
   useEffect(() => {
@@ -352,6 +444,14 @@ function SalesPage() {
             </SelectContent>
           </Select>
         </div>
+        <Button
+          onClick={exportSalesToCSV}
+          variant="outline"
+          className="flex items-center justify-center"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          <span className="text-sm">Exportar Ventas</span>
+        </Button>
         <Button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center"

@@ -9,14 +9,15 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Filter, ChevronDown, ChevronUp, AlertTriangle, Calendar, FileText, Download } from "lucide-react"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { Input } from "@/components/ui/input"
+import { Filter, ChevronDown, ChevronUp, AlertTriangle, Calendar, FileText, Download, Search } from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table"
 import {
   Collapsible,
@@ -34,6 +35,9 @@ function ReportesPage() {
   const [selectedProjectId, setSelectedProjectId] = useState("all")
   const [selectedSellerId, setSelectedSellerId] = useState("all")
   const [expandedRows, setExpandedRows] = useState(new Set())
+  const [searchTerm, setSearchTerm] = useState("")
+  const [expectedIncomeStats, setExpectedIncomeStats] = useState([])
+  const [actualPaymentsStats, setActualPaymentsStats] = useState([])
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -78,9 +82,55 @@ function ReportesPage() {
     }
   }
 
+  const normalizeSearchValue = (value) => {
+    if (value === null || value === undefined) {
+      return ""
+    }
+
+    return String(value).toLowerCase().trim()
+  }
+
+  const getQuotaValueForSale = (sale) => {
+    if (!sale) return 0
+
+    const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
+    const customQuotasJson = sale.customQuotasJson || sale.CustomQuotasJson
+
+    if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+      try {
+        const customQuotas = JSON.parse(customQuotasJson)
+        if (Array.isArray(customQuotas) && customQuotas.length > 0) {
+          const amounts = customQuotas.map((q) => q.Amount || 0)
+          const sorted = [...amounts].sort((a, b) => a - b)
+          return sorted[Math.floor(sorted.length / 2)]
+        }
+      } catch (error) {
+        console.error("Error parsing custom quotas JSON:", error)
+      }
+    }
+
+    return Number(sale.quota_value) || 0
+  }
+
+  const getEffectiveSaleStatus = (sale) => {
+    const quotaValue = Number.parseFloat(getQuotaValueForSale(sale)) || 0
+    const totalDebt = Number.parseFloat(sale?.total_debt) || 0
+    const rawStatus = sale?.status || "Active"
+
+    if (quotaValue <= 0 || totalDebt <= 0) {
+      return "Escriturar"
+    }
+
+    return rawStatus
+  }
+
   // Calcular cuotas en mora para una venta
   const calculateOverdueQuotas = (sale, paymentDetails) => {
-    if (!sale || !sale.plan) return { count: 0, details: [], totalOverdue: 0 }
+    const totalDebt = Number.parseFloat(sale?.total_debt) || 0
+
+    if (!sale || !sale.plan || totalDebt <= 0) {
+      return { count: 0, details: [], totalOverdue: 0 }
+    }
 
     const totalQuotas = sale.plan.number_quotas || 0
     const quotaValue = sale.quota_value || 0
@@ -94,13 +144,18 @@ function ReportesPage() {
     let customQuotas = null
     const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
     const customQuotasJson = sale.customQuotasJson || sale.CustomQuotasJson
-    
+
     if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
       try {
         customQuotas = JSON.parse(customQuotasJson)
       } catch (error) {
         console.error("Error parsing custom quotas JSON:", error)
       }
+    }
+
+    const parseAmount = (value) => {
+      const parsed = Number.parseFloat(value)
+      return Number.isFinite(parsed) ? parsed : 0
     }
 
     // Agrupar pagos por cuota
@@ -113,40 +168,87 @@ function ReportesPage() {
         covered: d.covered_amount,
         hasPayment: !!d.payment
       })))
-      
+
       paymentDetails.forEach((detail) => {
-        if (detail.payment?.id_Payments) {
-          const paymentId = detail.payment.id_Payments
+        const payment = detail?.payment || detail?.Payment || null
+        const paymentId =
+          payment?.id_Payments ||
+          payment?.Id_Payments ||
+          detail?.id_Payments ||
+          detail?.Id_Payments
+        const paymentAmount = parseAmount(
+          payment?.amount ?? payment?.Amount ?? detail?.payment_amount ?? detail?.Payment_Amount,
+        )
+        const paymentDate =
+          payment?.payment_date ||
+          payment?.Payment_Date ||
+          detail?.payment_date ||
+          detail?.Payment_Date
+        const quotaNumber = Number.parseInt(
+          detail?.number_quota ?? detail?.Number_Quota ?? detail?.quotaNumber,
+          10,
+        )
+        const coveredAmount = parseAmount(
+          detail?.covered_amount ?? detail?.Covered_Amount ?? detail?.coveredAmount,
+        )
+
+        if (Number.isNaN(quotaNumber) || quotaNumber <= 0 || coveredAmount <= 0) {
+          return
+        }
+
+        if (paymentId) {
           if (!uniquePayments.has(paymentId)) {
             uniquePayments.set(paymentId, {
-              amount: detail.payment.amount || 0,
-              date: detail.payment.payment_date,
-              details: []
+              amount: paymentAmount,
+              date: paymentDate,
+              details: [],
             })
           }
-          uniquePayments.get(paymentId).details.push(detail)
+
+          uniquePayments.get(paymentId).details.push({
+            quotaNumber,
+            coveredAmount,
+            paymentDate,
+          })
+          return
         }
+
+        const current = aggregatedQuotas.get(quotaNumber) || { covered: 0, paymentDates: [] }
+        current.covered += coveredAmount
+        if (paymentDate) {
+          const normalizedDate = new Date(paymentDate)
+          if (!Number.isNaN(normalizedDate.getTime())) {
+            current.paymentDates.push(normalizedDate)
+          }
+        }
+        aggregatedQuotas.set(quotaNumber, current)
       })
 
       uniquePayments.forEach((payment) => {
         const detailsForPayment = payment.details
-        const totalCovered = detailsForPayment.reduce((sum, d) => sum + (d.covered_amount || 0), 0)
-        
+        const totalCovered = detailsForPayment.reduce((sum, d) => sum + parseAmount(d.coveredAmount), 0)
+
         detailsForPayment.forEach((detail) => {
-          if (detail.number_quota > 0) {
-            const current = aggregatedQuotas.get(detail.number_quota) || { covered: 0, paymentDates: [] }
-            
-            let amountToAdd = detail.covered_amount || 0
+          if (detail.quotaNumber > 0) {
+            const current = aggregatedQuotas.get(detail.quotaNumber) || { covered: 0, paymentDates: [] }
+
+            let amountToAdd = parseAmount(detail.coveredAmount)
             if (Math.abs(totalCovered - payment.amount) > 0.01 && totalCovered > 0) {
-              const proportion = (detail.covered_amount || 0) / totalCovered
+              const proportion = parseAmount(detail.coveredAmount) / totalCovered
               amountToAdd = payment.amount * proportion
             }
-            
+
             current.covered += amountToAdd
-            if (payment.date && !current.paymentDates.some(d => d.getTime() === new Date(payment.date).getTime())) {
-              current.paymentDates.push(new Date(payment.date))
+            if (payment.date) {
+              const normalizedDate = new Date(payment.date)
+              if (
+                !Number.isNaN(normalizedDate.getTime()) &&
+                !current.paymentDates.some((d) => d.getTime() === normalizedDate.getTime())
+              ) {
+                current.paymentDates.push(normalizedDate)
+              }
             }
-            aggregatedQuotas.set(detail.number_quota, current)
+            aggregatedQuotas.set(detail.quotaNumber, current)
           }
         })
       })
@@ -198,7 +300,7 @@ function ReportesPage() {
       if (isOverdue) {
         const overdueAmount = adjustedQuotaValue - coveredAmount
         const daysOverdue = Math.floor((currentDate - dueDate) / (1000 * 60 * 60 * 24))
-        
+
         overdueQuotas.push({
           quotaNumber: i,
           dueDate: dueDate,
@@ -207,7 +309,7 @@ function ReportesPage() {
           overdueAmount: overdueAmount,
           daysOverdue: daysOverdue
         })
-        
+
         totalOverdueAmount += overdueAmount
       }
     }
@@ -221,8 +323,93 @@ function ReportesPage() {
     return {
       count: overdueQuotas.length,
       details: overdueQuotas,
-      totalOverdue: totalOverdueAmount
+      totalOverdue: Math.min(totalOverdueAmount, totalDebt),
     }
+  }
+
+  // Sumar valor de cuotas que vencen en el mes actual, agrupado por proyecto
+  const calculateExpectedMonthlyIncome = (allSales, projects) => {
+    // Inicializar estadísticas para todos los proyectos
+    const incomeByProject = {}
+    projects.forEach((project) => {
+      incomeByProject[project.id_Projects] = {
+        projectId: project.id_Projects,
+        projectName: project.name,
+        expectedAmount: 0,
+        clientsCount: 0,
+      }
+    })
+
+    // Sumar 1 valor de cuota por cada venta/lote, agrupado por proyecto
+    allSales.forEach((sale) => {
+      if (!sale) {
+        return
+      }
+
+      const projectId =
+        sale.lot?.project?.id_Projects ||
+        sale.lot?.Project?.id_Projects ||
+        sale.lot?.id_Projects ||
+        sale.Lot?.project?.id_Projects ||
+        sale.Lot?.Project?.id_Projects ||
+        sale.Lot?.id_Projects
+      if (!projectId || !incomeByProject[projectId]) {
+        return
+      }
+
+      const quotaValueForSale = getQuotaValueForSale(sale)
+
+      if (quotaValueForSale > 0) {
+        incomeByProject[projectId].expectedAmount += quotaValueForSale
+        incomeByProject[projectId].clientsCount += 1
+      }
+    })
+
+    return Object.values(incomeByProject)
+  }
+
+  // Calcular pagos recibidos del mes actual por proyecto (unificado)
+  const calculateActualMonthlyPayments = (allPayments, projects) => {
+    const currentDate = new Date()
+    const currentMonth = currentDate.getMonth()
+    const currentYear = currentDate.getFullYear()
+
+    // Inicializar estadísticas para todos los proyectos
+    const paymentsByProject = {}
+    projects.forEach((project) => {
+      paymentsByProject[project.id_Projects] = {
+        projectId: project.id_Projects,
+        projectName: project.name,
+        totalReceived: 0,
+        paymentsCount: 0,
+      }
+    })
+
+    // Filtrar pagos del mes actual
+    const currentMonthPayments = allPayments.filter((payment) => {
+      if (!payment.payment_date) return false
+      const paymentDate = new Date(payment.payment_date)
+      return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear
+    })
+
+    // Agrupar pagos por proyecto
+    currentMonthPayments.forEach((payment) => {
+      const projectId =
+        payment.sale?.lot?.project?.id_Projects ||
+        payment.sale?.lot?.Project?.id_Projects ||
+        payment.sale?.Lot?.project?.id_Projects ||
+        payment.sale?.Lot?.Project?.id_Projects
+
+      if (!projectId || !paymentsByProject[projectId]) {
+        return
+      }
+
+      const amount = payment.amount || 0
+      paymentsByProject[projectId].totalReceived += amount
+      paymentsByProject[projectId].paymentsCount += 1
+    })
+
+    return Object.values(paymentsByProject)
   }
 
   // Cargar proyectos
@@ -267,8 +454,15 @@ function ReportesPage() {
 
       if (salesResponse.status === 200) {
         let filteredSales = salesResponse.data.filter(
-          sale => sale.status?.toLowerCase() === "active" || sale.status?.toLowerCase() === "activa"
+          sale => {
+            const effectiveStatus = getEffectiveSaleStatus(sale).toLowerCase()
+            return effectiveStatus === "active" || effectiveStatus === "activa"
+          }
         )
+
+        // Calcular ingresos esperados del mes con todas las ventas activas
+        const expectedIncome = calculateExpectedMonthlyIncome(salesResponse.data, projects)
+        setExpectedIncomeStats(expectedIncome)
 
         // Obtener payment details para cada venta
         const detailsPromises = filteredSales.map(sale =>
@@ -296,8 +490,19 @@ function ReportesPage() {
             overdueQuotasCount: moraInfo.count,
             overdueQuotasDetails: moraInfo.details,
             totalOverdue: moraInfo.totalOverdue,
-            projectName: sale.lot?.project?.name || sale.lot?.Project?.name || "Sin proyecto",
-            projectId: sale.lot?.project?.id_Projects || sale.lot?.Project?.id_Projects,
+            projectName:
+              sale.lot?.project?.name ||
+              sale.lot?.Project?.name ||
+              sale.Lot?.project?.name ||
+              sale.Lot?.Project?.name ||
+              "Sin proyecto",
+            projectId:
+              sale.lot?.project?.id_Projects ||
+              sale.lot?.Project?.id_Projects ||
+              sale.lot?.id_Projects ||
+              sale.Lot?.project?.id_Projects ||
+              sale.Lot?.Project?.id_Projects ||
+              sale.Lot?.id_Projects,
             sellerName: sale.user?.nom_Users || "N/A",
             sellerId: sale.user?.id_Users,
             saleDate: sale.sale_date,
@@ -319,16 +524,36 @@ function ReportesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [projects])
+
+  // Cargar pagos para calcular estadísticas de pagos recibidos
+  const fetchPayments = useCallback(async () => {
+    try {
+      const paymentsResponse = await axiosInstance.get("/api/Payment/GetAllPayments")
+      if (paymentsResponse.status === 200) {
+        const actualPayments = calculateActualMonthlyPayments(paymentsResponse.data, projects)
+        setActualPaymentsStats(actualPayments)
+      }
+    } catch (error) {
+      console.error("Error al cargar pagos:", error)
+      showAlert("error", "No se pudieron cargar los datos de pagos.")
+    }
+  }, [projects])
 
   useEffect(() => {
     const loadData = async () => {
       await fetchProjects()
       await fetchSellers()
-      await fetchSalesWithOverdue()
     }
     loadData()
-  }, [fetchProjects, fetchSellers, fetchSalesWithOverdue])
+  }, [fetchProjects, fetchSellers])
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      fetchSalesWithOverdue()
+      fetchPayments()
+    }
+  }, [projects, fetchSalesWithOverdue, fetchPayments])
 
   // Filtrar datos según los filtros seleccionados
   const getFilteredSales = () => {
@@ -346,20 +571,35 @@ function ReportesPage() {
       filtered = filtered.filter(sale => sale.sellerId === targetSellerId)
     }
 
+    // Filtrar por término de búsqueda
+    if (searchTerm && searchTerm.trim() !== "") {
+      const term = normalizeSearchValue(searchTerm)
+      filtered = filtered.filter((sale) =>
+        [
+          sale.clientName,
+          sale.clientDocument,
+          sale.projectName,
+          sale.sellerName,
+          sale.block,
+          sale.lotNumber,
+        ].some((value) => normalizeSearchValue(value).includes(term))
+      )
+    }
+
     // Ordenar por manzana y lote
     filtered.sort((a, b) => {
       // Obtener manzanas
       const blockA = a.block || ""
       const blockB = b.block || ""
-      
+
       // Verificar si son números o letras
       const isNumberA = /^\d+$/.test(blockA)
       const isNumberB = /^\d+$/.test(blockB)
-      
+
       // Las letras van antes que los números
       if (!isNumberA && isNumberB) return -1
       if (isNumberA && !isNumberB) return 1
-      
+
       // Si ambos son números, comparar numéricamente
       if (isNumberA && isNumberB) {
         const numA = parseInt(blockA)
@@ -370,7 +610,7 @@ function ReportesPage() {
         const blockComparison = blockA.localeCompare(blockB)
         if (blockComparison !== 0) return blockComparison
       }
-      
+
       // Si las manzanas son iguales, ordenar por número de lote
       const lotNumA = parseInt(a.lotNumber) || 0
       const lotNumB = parseInt(b.lotNumber) || 0
@@ -393,9 +633,10 @@ function ReportesPage() {
     setExpandedRows(newExpanded)
   }
 
-  // Calcular estadísticas
-  const calculateStats = () => {
-    const totalClients = filteredSales.length
+  // Calcular estadísticas según los filtros aplicados
+  const calculateGeneralStats = () => {
+    const uniqueClientIds = new Set(filteredSales.map(sale => sale.clientDocument))
+    const totalClients = uniqueClientIds.size
     const totalOverdueQuotas = filteredSales.reduce((sum, sale) => sum + sale.overdueQuotasCount, 0)
     const totalOverdueAmount = filteredSales.reduce((sum, sale) => sum + sale.totalOverdue, 0)
     const totalDebt = filteredSales.reduce((sum, sale) => sum + sale.totalDebt, 0)
@@ -403,12 +644,12 @@ function ReportesPage() {
     return { totalClients, totalOverdueQuotas, totalOverdueAmount, totalDebt }
   }
 
-  const stats = calculateStats()
+  const generalStats = calculateGeneralStats()
 
   // Exportar a CSV
   const exportToCSV = () => {
     const headers = ["Cliente", "Cédula", "Valor Total Lote", "Deuda Total", "Cuotas en Mora", "Monto en Mora", "Proyecto", "Vendedor", "Manzana", "Lote"]
-    
+
     const csvData = filteredSales.map(sale => [
       sale.clientName,
       sale.clientDocument,
@@ -458,30 +699,92 @@ function ReportesPage() {
           </div>
         </div>
 
-        {/* Estadísticas */}
+        {/* Panel de Ingresos Esperados vs Recibidos del Mes por Proyecto */}
+        {(expectedIncomeStats.length > 0 || actualPaymentsStats.length > 0) && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Ingresos del Mes Actual por Proyecto</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {projects.map((project) => {
+                const expected = expectedIncomeStats.find(s => s.projectId === project.id_Projects)
+                const actual = actualPaymentsStats.find(s => s.projectId === project.id_Projects)
+                const expectedAmount = expected?.expectedAmount || 0
+                const actualAmount = actual?.totalReceived || 0
+                const difference = actualAmount - expectedAmount
+                const percentage = expectedAmount > 0 ? (actualAmount / expectedAmount) * 100 : 0
+
+                // Solo mostrar proyectos con datos
+                if (expectedAmount === 0 && actualAmount === 0) return null
+
+                return (
+                  <Card key={project.id_Projects}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base">{project.name}</CardTitle>
+                      <CardDescription>Comparación del mes</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Esperado:</span>
+                        <span className="text-sm font-semibold text-purple-700">
+                          {formatCurrency(expectedAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Recibido:</span>
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {formatCurrency(actualAmount)}
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-700">Diferencia:</span>
+                          <span className={`text-sm font-bold ${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
+                          </span>
+                        </div>
+                        <div className="mt-1">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${percentage >= 100 ? 'bg-green-500' : percentage >= 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 text-right">
+                            {percentage.toFixed(0)}% recaudado
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Estadísticas de Mora*/}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Clientes en Mora</CardDescription>
-              <CardTitle className="text-3xl">{stats.totalClients}</CardTitle>
+              <CardTitle className="text-3xl">{generalStats.totalClients}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Cuotas Vencidas</CardDescription>
-              <CardTitle className="text-3xl text-red-600">{stats.totalOverdueQuotas}</CardTitle>
+              <CardTitle className="text-3xl text-red-600">{generalStats.totalOverdueQuotas}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Monto Total en Mora</CardDescription>
-              <CardTitle className="text-2xl text-red-600">{formatCurrency(stats.totalOverdueAmount)}</CardTitle>
+              <CardTitle className="text-2xl text-red-600">{formatCurrency(generalStats.totalOverdueAmount)}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Deuda Total</CardDescription>
-              <CardTitle className="text-2xl">{formatCurrency(stats.totalDebt)}</CardTitle>
+              <CardTitle className="text-2xl">{formatCurrency(generalStats.totalDebt)}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -540,17 +843,33 @@ function ReportesPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Clientes en Mora ({filteredSales.length})
+              Clientes en Mora ({generalStats.totalClients})
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Barra de búsqueda */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Buscar por cliente, cédula, proyecto, vendedor, manzana o lote..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
             {isLoading ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">Cargando datos...</p>
               </div>
             ) : filteredSales.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500">No se encontraron clientes con cuotas en mora</p>
+                <p className="text-gray-500">
+                  {searchTerm ? 'No se encontraron resultados para tu búsqueda' : 'No se encontraron clientes con cuotas en mora'}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -605,7 +924,7 @@ function ReportesPage() {
                             {formatCurrency(sale.totalOverdue)}
                           </TableCell>
                         </TableRow>
-                        
+
                         {/* Fila expandible con detalles de cuotas */}
                         {expandedRows.has(sale.id) && (
                           <TableRow>
