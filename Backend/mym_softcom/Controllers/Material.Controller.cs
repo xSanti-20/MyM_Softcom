@@ -17,6 +17,54 @@ namespace mym_softcom.Controllers
    _materialServices = materialServices;
         }
 
+  [HttpGet("GetCategories")]
+  public async Task<ActionResult<IEnumerable<MaterialCategory>>> GetCategories()
+  {
+    try
+    {
+      var categories = await _materialServices.GetCategories();
+      return Ok(categories);
+    }
+    catch (Exception ex)
+    {
+      return StatusCode(500, new { message = "Error al obtener las categorías", error = ex.Message });
+    }
+  }
+
+  [HttpPost("CreateCategory")]
+  public async Task<ActionResult<MaterialCategoryResponse>> CreateCategory([FromBody] MaterialCategoryRequest request)
+  {
+    try
+    {
+      if (!ModelState.IsValid)
+      {
+        return BadRequest(new MaterialCategoryResponse
+        {
+          Success = false,
+          Message = "Datos de entrada inválidos",
+          Errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList()
+        });
+      }
+
+      var result = await _materialServices.CreateCategory(request);
+      if (result.Success)
+      {
+        return Ok(result);
+      }
+
+      return BadRequest(result);
+    }
+    catch (Exception ex)
+    {
+      return StatusCode(500, new MaterialCategoryResponse
+      {
+        Success = false,
+        Message = "Error interno del servidor",
+        Errors = { ex.Message }
+      });
+    }
+  }
+
   /// <summary>
         /// Obtiene todos los materiales
   /// GET: api/Material/GetAll

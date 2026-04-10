@@ -51,6 +51,21 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+              modelBuilder.Entity<MaterialCategory>(entity =>
+              {
+                entity.ToTable("material_categories");
+                entity.Property(e => e.name)
+                    .HasMaxLength(120)
+                    .IsRequired();
+                entity.Property(e => e.description)
+                    .HasMaxLength(250);
+                entity.Property(e => e.status)
+                    .HasMaxLength(20)
+                    .HasDefaultValue("Activo");
+                entity.HasIndex(e => e.name)
+                    .IsUnique();
+              });
+
         base.OnModelCreating(modelBuilder);
     }
 
@@ -70,6 +85,7 @@ public class AppDbContext : DbContext
     // ✅ NUEVO: Tabla del módulo de inventario
     public DbSet<Material> Materials { get; set; }
     public DbSet<MaterialMovement> MaterialMovements { get; set; }
+    public DbSet<MaterialCategory> MaterialCategories { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

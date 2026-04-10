@@ -28,7 +28,8 @@ import {
   XCircle,
   History,
   ArrowUpCircle,
-  ArrowDownCircle
+  ArrowDownCircle,
+  Tag
 } from "lucide-react"
 import { 
   Table, 
@@ -62,6 +63,7 @@ function InventarioPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isStockModalOpen, setIsStockModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [movementHistory, setMovementHistory] = useState([])
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
@@ -98,6 +100,9 @@ function InventarioPage() {
     supplier: "",
     projectId: ""
   })
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [categoryOptions, setCategoryOptions] = useState([])
+  const [isCategorySubmitting, setIsCategorySubmitting] = useState(false)
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
@@ -108,11 +113,6 @@ function InventarioPage() {
 
   const unitOfMeasureOptions = [
     "Bulto", "Metro³", "Unidad", "Kilo", "Litro", "Metro", "Galón", "Otro"
-  ]
-  
-  const categoryOptions = [
-    "Cemento", "Agregados", "Hierro", "Mampostería", "Amarres", 
-    "Madera", "Plomería", "Eléctrico", "Pintura", "Otro"
   ]
 
   const showAlert = (type, message) => {
@@ -183,11 +183,40 @@ function InventarioPage() {
     }
   }, [])
 
+  const mergeCategories = useCallback((incoming = []) => {
+    setCategoryOptions((prev) => {
+      const merged = [...prev]
+      incoming.forEach((cat) => {
+        if (!cat) return
+        const normalized = cat.trim()
+        if (!normalized) return
+        if (!merged.some((existing) => existing.toLowerCase() === normalized.toLowerCase())) {
+          merged.push(normalized)
+        }
+        
+      })
+      return merged
+    })
+  }, [])
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get("/api/Material/GetCategories")
+      if (response.status === 200 && Array.isArray(response.data)) {
+        const names = response.data.map((category) => category.name || category.Nombre || "")
+        mergeCategories(names)
+      }
+    } catch (error) {
+      console.error("Error al cargar categorías:", error)
+    }
+  }, [mergeCategories])
+
   useEffect(() => {
     fetchMaterials()
     fetchRestockMaterials()
     fetchProjects()
-  }, [fetchMaterials, fetchRestockMaterials, fetchProjects])
+    fetchCategories()
+  }, [fetchMaterials, fetchRestockMaterials, fetchProjects, fetchCategories])
 
   const getFilteredMaterials = () => {
     let filtered = [...materials]
@@ -277,6 +306,42 @@ function InventarioPage() {
       showAlert("error", errorMessage)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleAddCategory = async () => {
+    const trimmedName = newCategoryName.trim()
+
+    if (!trimmedName) {
+      showAlert("error", "Ingresa un nombre válido para la categoría.")
+      return
+    }
+
+    const alreadyExists = categoryOptions.some(
+      (category) => category.toLowerCase() === trimmedName.toLowerCase(),
+    )
+
+    if (alreadyExists) {
+      showAlert("error", "Esa categoría ya existe en la lista.")
+      return
+    }
+
+    try {
+      setIsCategorySubmitting(true)
+      const payload = { name: trimmedName }
+      const response = await axiosInstance.post("/api/Material/CreateCategory", payload)
+      const createdName = response.data?.category?.name || trimmedName
+      mergeCategories([createdName])
+      setNewCategoryName("")
+      setIsCategoryModalOpen(false)
+      const successMessage = response.data?.message || "Categoría creada correctamente."
+      showAlert("success", successMessage)
+    } catch (error) {
+      console.error("Error al crear categoría:", error)
+      const errorMessage = error.response?.data?.message || "No se pudo crear la categoría."
+      showAlert("error", errorMessage)
+    } finally {
+      setIsCategorySubmitting(false)
     }
   }
 
@@ -634,6 +699,14 @@ function InventarioPage() {
               <p className="text-gray-600 mt-2">Gestión de materiales y control de stock</p>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Tag className="h-4 w-4" />
+                Nueva Categoría
+              </Button>
               <Button 
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -981,6 +1054,61 @@ function InventarioPage() {
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {isSubmitting ? "Creando..." : "Crear Material"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isCategoryModalOpen}
+          onOpenChange={(open) => {
+            setIsCategoryModalOpen(open)
+            if (!open) setNewCategoryName("")
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Crear nueva categoría
+              </DialogTitle>
+              <DialogDescription>
+                Define categorías personalizadas para clasificarlas en el inventario.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-3">
+              <div>
+                <Label htmlFor="category-name">
+                  Nombre de la categoría <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="category-name"
+                  value={newCategoryName}
+                  onChange={(event) => setNewCategoryName(event.target.value)}
+                  placeholder="Ej: Seguridad industrial"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Se añadirá a los filtros y formularios de materiales. No se permiten duplicados.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCategoryModalOpen(false)
+                  setNewCategoryName("")
+                }}
+                disabled={isCategorySubmitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleAddCategory}
+                className="bg-blue-600 hover:bg-blue-700"
+                disabled={isCategorySubmitting}
+              >
+                {isCategorySubmitting ? "Guardando..." : "Guardar categoría"}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -63,7 +63,8 @@
         .firmas-section {
             margin-top: 35px;
             /* Separación moderada del último párrafo */
-            page-break-inside: avoid;
+            page-break-inside: auto;
+            break-inside: auto;
         }
 
         .firmas-container {
@@ -73,7 +74,8 @@
             margin-bottom: 15px;
             margin-top: 10px;
             gap: 30px;
-            page-break-inside: avoid;
+            page-break-inside: auto;
+            break-inside: auto;
         }
 
         .firma-vendedor {
@@ -84,7 +86,9 @@
             flex-direction: column;
             align-items: center;
             /* Altura fija para alineación perfecta con primer comprador */
-            min-height: 140px;
+            min-height: 0;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
         }
 
         .compradores-section {
@@ -92,16 +96,18 @@
             max-width: 50%;
             display: flex;
             flex-direction: column;
-            gap: 40px;
+            gap: 18px;
             /* Compradores uno encima del otro con más espacio para firma y huella */
         }
 
         .firma-comprador {
             text-align: center;
-            min-height: 140px;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
         }
 
         .linea-firma {
@@ -142,7 +148,7 @@
         }
 
         .espacio-firma {
-            height: 50px;
+            height: 30px;
             /* Espacio en blanco para firma manual */
             width: 100%;
             margin-bottom: 3px;
@@ -152,7 +158,7 @@
             text-align: center;
             margin: 0 0 10px 0;
             padding: 0;
-            height: 60px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -160,7 +166,7 @@
 
         .firma-digital img {
             max-width: 250px;
-            max-height: 60px;
+            max-height: 40px;
             height: auto;
             width: auto;
             object-fit: contain;
@@ -513,7 +519,7 @@
                 <div class="firma-vendedor">
                     <div class="firma-digital">
                         <!-- Espacio reservado para firma manual -->
-                        <div style="height: 80px;"></div>
+                        <div style="height: 45px;"></div>
                     </div>
                     <div class="linea-firma"></div>
                     <p class="firma-label">EL PROMITENTE VENDEDOR</p>

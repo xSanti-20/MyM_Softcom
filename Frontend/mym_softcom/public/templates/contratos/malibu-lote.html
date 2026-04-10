@@ -2,15 +2,7 @@
 <html lang="es">
 
 <head>
-    <meta charset        .firmas-section {
-            margin-top: 15px;
-            page-break-inside: avoid;
-            page-break-before: avoid;
-            /* Evita cortes de página en toda la sección */
-            margin-bottom: 0;
-            min-height: 150px;
-            /* Altura mínima para asegurar espacio */
-        }-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrato de Arras - Malibu Lote</title>
     <style>
@@ -71,7 +63,8 @@
         .firmas-section {
             margin-top: 35px;
             /* Separación moderada del último párrafo */
-            page-break-inside: avoid;
+            page-break-inside: auto;
+            break-inside: auto;
         }
 
         .firmas-container {
@@ -81,7 +74,8 @@
             margin-bottom: 15px;
             margin-top: 10px;
             gap: 30px;
-            page-break-inside: avoid;
+            page-break-inside: auto;
+            break-inside: auto;
             /* Layout: izquierda vendedor, derecha compradores en columna */
         }
 
@@ -93,7 +87,9 @@
             flex-direction: column;
             align-items: center;
             /* Altura fija para alineación perfecta con primer comprador */
-            min-height: 140px;
+            min-height: 0;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
         }
 
         .compradores-section {
@@ -101,16 +97,18 @@
             max-width: 50%;
             display: flex;
             flex-direction: column;
-            gap: 40px;
+            gap: 18px;
             /* Compradores uno encima del otro con más espacio para firma y huella */
         }
 
         .firma-comprador {
             text-align: center;
-            min-height: 140px;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
+            page-break-inside: avoid;
+            break-inside: avoid-page;
         }
 
         .linea-firma {
@@ -154,7 +152,7 @@
         }
 
         .espacio-firma {
-            height: 50px;
+            height: 30px;
             /* Espacio en blanco para firma manual */
             width: 100%;
             margin-bottom: 3px;
@@ -164,7 +162,7 @@
             text-align: center;
             margin: 0 0 5px 0;
             padding: 0;
-            height: 50px;
+            height: 40px;
             /* Altura más compacta */
             display: flex;
             align-items: center;
@@ -174,7 +172,7 @@
         .firma-digital img {
             max-width: 200px;
             /* Ancho más compacto */
-            max-height: 50px;
+            max-height: 40px;
             /* Altura más compacta */
             height: auto;
             width: auto;
@@ -527,7 +525,7 @@
                 <div class="firma-vendedor">
                     <div class="firma-digital">
                         <!-- Espacio reservado para firma manual -->
-                        <div style="height: 80px;"></div>
+                        <div style="height: 45px;"></div>
                     </div>
                     <div class="linea-firma"></div>
                     <p class="firma-label">EL PROMITENTE VENDEDOR</p>

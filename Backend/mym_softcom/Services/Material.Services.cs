@@ -614,5 +614,74 @@ Status = m.status,
                 _context.Materials.Update(material);
                 await _context.SaveChangesAsync();
               }
+
+        /// <summary>
+        /// Obtiene todas las categorías de materiales
+        /// </summary>
+        public async Task<IEnumerable<MaterialCategory>> GetCategories()
+        {
+            return await _context.MaterialCategories
+                                 .OrderBy(c => c.name)
+                                 .ToListAsync();
+        }
+
+        /// <summary>
+        /// Crea una nueva categoría de material
+        /// </summary>
+        public async Task<MaterialCategoryResponse> CreateCategory(MaterialCategoryRequest request)
+        {
+            try
+            {
+                var trimmedName = request.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(trimmedName))
+                {
+                    return new MaterialCategoryResponse
+                    {
+                        Success = false,
+                        Message = "El nombre de la categoría es obligatorio",
+                        Errors = { "Nombre requerido" }
+                    };
+                }
+
+                var exists = await _context.MaterialCategories
+                                           .AnyAsync(c => c.name.ToLower() == trimmedName.ToLower());
+
+                if (exists)
+                {
+                    return new MaterialCategoryResponse
+                    {
+                        Success = false,
+                        Message = "Ya existe una categoría con ese nombre",
+                        Errors = { "Categoría duplicada" }
+                    };
+                }
+
+                var category = new MaterialCategory
+                {
+                    name = trimmedName,
+                    description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    status = "Activo"
+                };
+
+                _context.MaterialCategories.Add(category);
+                await _context.SaveChangesAsync();
+
+                return new MaterialCategoryResponse
+                {
+                    Success = true,
+                    Message = "Categoría creada exitosamente",
+                    Category = category
+                };
+            }
+            catch (Exception ex)
+            {
+                return new MaterialCategoryResponse
+                {
+                    Success = false,
+                    Message = $"Error al crear la categoría: {ex.Message}",
+                    Errors = { ex.Message }
+                };
+            }
+        }
     }
 }

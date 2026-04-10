@@ -201,7 +201,11 @@ export async function POST(request) {
           <img src="data:image/png;base64,${fs.readFileSync(projectLogoPath).toString("base64")}" style="height:60px;">
         </div>
       `
-      pdfOptions.footerTemplate = `<div></div>`
+      pdfOptions.footerTemplate = `
+        <div style="width:100%;font-size:8pt;color:#000;padding:0 28px 8px 28px;box-sizing:border-box;text-align:right;">
+          <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+        </div>
+      `
     }
 
     const pdfBuffer = await page.pdf(pdfOptions)

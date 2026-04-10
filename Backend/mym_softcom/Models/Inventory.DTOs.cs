@@ -26,6 +26,16 @@ namespace mym_softcom.Models
 public string? Category { get; set; }
     }
 
+   public class MaterialCategoryRequest
+   {
+      [Required(ErrorMessage = "El nombre de la categoría es obligatorio")]
+      [StringLength(120, ErrorMessage = "La categoría no puede superar los 120 caracteres")]
+      public string Name { get; set; } = string.Empty;
+
+      [StringLength(250, ErrorMessage = "La descripción no puede superar los 250 caracteres")]
+      public string? Description { get; set; }
+   }
+
     /// <summary>
     /// Request para actualizar el stock de un material
     /// </summary>
@@ -85,6 +95,11 @@ public string? Category { get; set; }
     {
 public Material? Material { get; set; }
     }
+
+   public class MaterialCategoryResponse : InventoryResponse
+   {
+      public MaterialCategory? Category { get; set; }
+   }
 
  // ============================
 // INFO DTOs (para consultas detalladas)
