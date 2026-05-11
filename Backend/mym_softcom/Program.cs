@@ -63,7 +63,11 @@ builder.Services.AddCors(options =>
 });
 
 // 2. Agregar controladores y Swagger
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -96,6 +100,12 @@ builder.Services.AddScoped<CesionServices>();
 
 // ✅ NUEVO: Servicio del módulo de inventario
 builder.Services.AddScoped<MaterialServices>();
+
+// ✅ NUEVO: Servicio del módulo de descuentos por referidos
+builder.Services.AddScoped<DiscountServices>();
+
+// ✅ NUEVO: Servicio del módulo de traslados de cartera
+builder.Services.AddScoped<TransferService>();
 
 // 5. Configuración de EMAIL
 builder.Services.AddSingleton<ConfigServer>(provider =>

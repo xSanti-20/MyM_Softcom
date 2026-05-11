@@ -1,0 +1,50 @@
+.referidos-container {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.stats-card {
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.discount-badge {
+  animation: slideIn 0.3s ease-out;
+}
+
+.filter-section {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.table-striped tbody tr:nth-child(odd) {
+  background-color: #f9fafb;
+}
+
+.table-striped tbody tr:hover {
+  background-color: #f3f4f6;
+}

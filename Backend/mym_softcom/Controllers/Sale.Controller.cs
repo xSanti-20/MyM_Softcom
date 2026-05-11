@@ -48,6 +48,19 @@ namespace mym_softcom.Controllers
         }
 
         /// <summary>
+        /// Obtiene todas las ventas de un cliente específico.
+        /// </summary>
+        /// <param name="clientId">El ID del cliente.</param>
+        /// <returns>Una lista de ventas del cliente.</returns>
+        // GET: api/Sale/GetByClientId/{clientId}
+        [HttpGet("GetByClientId/{clientId}")]
+        public async Task<ActionResult<IEnumerable<Sale>>> GetByClientId(int clientId)
+        {
+            var sales = await _saleServices.GetSalesByClientId(clientId);
+            return Ok(sales);
+        }
+
+        /// <summary>
         /// Crea una nueva venta en el sistema.
         /// </summary>
         /// <param name="sale">El objeto Sale a crear.</param>

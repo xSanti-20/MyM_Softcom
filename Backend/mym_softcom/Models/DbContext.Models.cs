@@ -66,6 +66,22 @@ public class AppDbContext : DbContext
                     .IsUnique();
               });
 
+        modelBuilder.Entity<Transfer>(entity =>
+        {
+            entity.ToTable("transfers");
+            entity.Property(e => e.type).HasColumnType("enum('Completo','Parcial')");
+            
+            entity.HasMany(e => e.transfer_details)
+                .WithOne(d => d.transfer)
+                .HasForeignKey(d => d.id_Transfers)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TransferDetail>(entity =>
+        {
+            entity.ToTable("transfer_details");
+        });
+
         base.OnModelCreating(modelBuilder);
     }
 
@@ -86,6 +102,13 @@ public class AppDbContext : DbContext
     public DbSet<Material> Materials { get; set; }
     public DbSet<MaterialMovement> MaterialMovements { get; set; }
     public DbSet<MaterialCategory> MaterialCategories { get; set; }
+
+    // ✅ NUEVO: Tabla de descuentos por referidos
+    public DbSet<Discount> Discounts { get; set; }
+
+    // ✅ NUEVO: Tabla de traslados de cartera
+    public DbSet<Transfer> Transfers { get; set; }
+    public DbSet<TransferDetail> TransferDetails { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

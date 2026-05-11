@@ -194,6 +194,30 @@ namespace mym_softcom.Services
             return false;
         }
 
+        /// <summary>
+        /// Obtiene todas las ventas de un cliente específico.
+        /// </summary>
+        public async Task<IEnumerable<Sale>> GetSalesByClientId(int clientId)
+        {
+            try
+            {
+                var sales = await _context.Sales
+                    .Where(s => s.id_Clients == clientId)
+                    .Include(s => s.client)
+                    .Include(s => s.lot)
+                    .ThenInclude(l => l.project)
+                    .Include(s => s.user)
+                    .Include(s => s.plan)
+                    .ToListAsync();
+
+                return sales;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SaleServices] Error al obtener ventas del cliente {clientId}: {ex.Message}");
+                return new List<Sale>();
+            }
+        }
 
         /// <summary>
         /// Crea una nueva venta, calcula el valor de la cuota según el tipo de plan y establece el recaudo inicial.

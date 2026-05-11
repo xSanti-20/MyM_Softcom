@@ -62,6 +62,13 @@ function LoginPage() {
       localStorage.setItem("username", data.username);
       localStorage.setItem("email", data.email);
       localStorage.setItem("role", data.role);
+      
+      // ✅ IMPORTANTE: Guardar ID del usuario para operaciones que lo requieran
+      if (data.id_Users) {
+        localStorage.setItem("id_Users", data.id_Users.toString());
+      } else if (data.idUsuario) {
+        localStorage.setItem("id_Users", data.idUsuario.toString());
+      }
 
       setTimeout(() => router.push("/dashboard/clientes"), 2000);
     } catch (error) {
