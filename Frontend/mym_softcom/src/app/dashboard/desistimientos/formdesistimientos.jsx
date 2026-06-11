@@ -258,14 +258,15 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       withdrawal_date: new Date(withdrawal_date).toISOString(),
       id_Sales: Number.parseInt(id_Sales, 10),
       penalty: parsedPenalty,
+      amount_to_return: amountToReturn,
     }
 
     if (isEditing) {
-      // Para edición, incluimos el ID del desistimiento y la penalización existente
+      // Para edición, incluimos el ID del desistimiento
       body.id_Withdrawals = withdrawalToEdit.id_Withdrawals
       body.penalty = parsedPenalty
+      body.amountToReturn = amountToReturn
     }
-    // Para creación, no incluimos id_Withdrawals ni penalty, ya que son autoincremental/autocalculado por el backend.
 
     console.log("Datos enviados al backend:", body)
 
@@ -302,8 +303,9 @@ function RegisterWithdrawal({ refreshData, withdrawalToEdit, onCancelEdit, close
       if (closeModal) closeModal()
       if (typeof refreshData === "function") refreshData()
     } catch (error) {
-      console.error("Error completo:", error)
-
+      console.log("STATUS:", error.response?.status);
+      console.log("DATA:", error.response?.data);
+      console.log("ERROR:", error);
       // Manejo mejorado de errores
       let errorMessage = "Error desconocido"
 

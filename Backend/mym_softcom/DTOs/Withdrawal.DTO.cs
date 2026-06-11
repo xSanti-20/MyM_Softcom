@@ -14,6 +14,7 @@ namespace mym_softcom.DTOs
         public string Reason { get; set; }
         public DateTime Withdrawal_Date { get; set; }
         public decimal Penalty { get; set; }
+        public decimal AmountToReturn { get; set; }
     }
 
     public class CreateWithdrawalDTO
@@ -26,6 +27,12 @@ namespace mym_softcom.DTOs
 
         [Required(ErrorMessage = "La fecha de desistimiento es obligatoria.")]
         public DateTime Withdrawal_Date { get; set; }
+
+        [Required(ErrorMessage = "El valor de la penalización es obligatorio.")]
+        public decimal Penalty { get; set; }
+
+        [Required(ErrorMessage = "El monto a devolver es obligatorio.")]
+        public decimal AmountToReturn { get; set; }
     }
 
     public class UpdateWithdrawalDTO
@@ -35,5 +42,11 @@ namespace mym_softcom.DTOs
 
         [Required(ErrorMessage = "La fecha de desistimiento es obligatoria.")]
         public DateTime Withdrawal_Date { get; set; }
+
+        [Required(ErrorMessage = "El valor de la penalización es obligatorio.")]
+        public decimal Penalty { get; set; }
+
+        [Required(ErrorMessage = "El monto a devolver es obligatorio.")]
+        public decimal AmountToReturn { get; set; }
     }
 }

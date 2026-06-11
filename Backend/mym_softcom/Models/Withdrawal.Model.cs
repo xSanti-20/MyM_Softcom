@@ -10,6 +10,7 @@ namespace mym_softcom.Models
         public string reason { get; set; }
         public DateTime withdrawal_date { get; set; }
         public decimal? penalty { get; set; }
+        public decimal? amount_to_return { get; set; }
 
         //foránea a la tabla Sales
         public int id_Sales { get; set; }

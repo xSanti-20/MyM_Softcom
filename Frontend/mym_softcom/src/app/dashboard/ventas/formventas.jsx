@@ -867,6 +867,73 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
             // No lanzamos el error para no interrumpir el flujo principal
           }
         }
+
+        // 🔄 Redistribuir pagos si cambió el plan personalizado
+        if (paymentPlanType === "custom") {
+          const oldCustomQuotas = saleToEdit.customQuotasJson ? JSON.parse(saleToEdit.customQuotasJson) : null
+          const newCustomQuotas = formData.customQuotas.length > 0 ? formData.customQuotas : null
+          
+          // Verificar si las cuotas realmente cambiaron
+          const quotasChanged = 
+            (oldCustomQuotas && newCustomQuotas) && 
+            JSON.stringify(oldCustomQuotas) !== JSON.stringify(newCustomQuotas.map(q => ({ QuotaNumber: q.quotaNumber, Amount: q.amount })))
+          
+          if (quotasChanged) {
+            console.log("🔄 [REDISTRIBUTION] Las cuotas personalizadas cambiaron, iniciando redistribución...")
+            try {
+              // Obtener los detalles (pagos) actuales de la venta
+              const detailsResponse = await axiosInstance.get(`/api/Detail/GetByIdSale/${body.id_Sales}`)
+              const paymentDetails = detailsResponse.data || []
+              
+              // Agrupar pagos por cuota
+              const quotaMap = new Map()
+              paymentDetails.forEach(detail => {
+                if (!quotaMap.has(detail.number_quota)) {
+                  quotaMap.set(detail.number_quota, 0)
+                }
+                quotaMap.set(detail.number_quota, quotaMap.get(detail.number_quota) + (detail.covered_amount || 0))
+              })
+              
+              // Calcular cuotas vencidas (usando el promedio de las nuevas cuotas como referencia)
+              const avgNewQuotaValue = newCustomQuotas.reduce((sum, q) => sum + q.amount, 0) / newCustomQuotas.length
+              const overdueQuotas = []
+              let totalOverdueAmount = 0
+              
+              newCustomQuotas.forEach(customQuota => {
+                const coveredAmount = quotaMap.get(customQuota.quotaNumber) || 0
+                const customAmount = customQuota.amount
+                
+                if (coveredAmount < customAmount) {
+                  const remaining = customAmount - coveredAmount
+                  overdueQuotas.push({
+                    QuotaNumber: customQuota.quotaNumber,
+                    RemainingAmount: remaining
+                  })
+                  totalOverdueAmount += remaining
+                }
+              })
+              
+              // Si hay cuotas incompletas, redistribuir
+              if (overdueQuotas.length > 0) {
+                console.log("🔄 [REDISTRIBUTION] Encontradas", overdueQuotas.length, "cuotas con deuda. Total:", totalOverdueAmount)
+                
+                const redistributeBody = {
+                  RedistributionType: "uniform", // Distribuir uniformemente
+                  OverdueQuotas: overdueQuotas
+                }
+                
+                await axiosInstance.post(`/api/Sale/${body.id_Sales}/redistribute-quotas`, redistributeBody)
+                console.log("✅ [REDISTRIBUTION] Pagos redistribuidos exitosamente")
+              } else {
+                console.log("✅ [REDISTRIBUTION] Todas las cuotas están pagadas, no es necesario redistribuir")
+              }
+            } catch (redistributeError) {
+              console.error("⚠️ [REDISTRIBUTION] Error al redistribuir:", redistributeError)
+              // No lanzamos el error para no interrumpir el flujo principal
+              showAlert("warning", "Las cuotas fueron actualizadas pero hubo un problema al redistribuir los pagos. Por favor verifica manualmente.")
+            }
+          }
+        }
       } else {
         response = await axiosInstance.post("/api/Sale/CreateSale", body)
       }

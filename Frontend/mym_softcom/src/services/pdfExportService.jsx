@@ -401,6 +401,7 @@ class SalesPDFService {
               <th style="border: 1px solid #ddd; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;">Valor Cuota</th>
               <th style="border: 1px solid #ddd; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;">Monto Cubierto</th>
               <th style="border: 1px solid #ddd; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;">Saldo</th>
+              <th style="border: 1px solid #ddd; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;">Fecha Vencimiento</th>
               <th style="border: 1px solid #ddd; padding: 12px 10px; text-align: center; font-size: 12px; font-weight: bold; color: #666; text-transform: uppercase;">Estado</th>
             </tr>
           </thead>
@@ -417,23 +418,105 @@ class SalesPDFService {
       })
 
       const numQuotas = saleData.plan?.number_quotas || 0
-      const quotaValue = saleData.quota_value || 0
+      const staticQuotaValue = saleData.quota_value || 0
+      const saleDate = new Date(saleData.sale_date)
+      const currentDate = new Date()
+      
+      // 🔧 Calcular dinámicamente el valor de cuota según el tipo de plan
+      let displayQuotaValue = staticQuotaValue
+      
+      // Para planes personalizados, usar el promedio de las cuotas personalizadas
+      const paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
+      const customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
+      
+      if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+        try {
+          const customQuotas = JSON.parse(customQuotasJson)
+          if (Array.isArray(customQuotas) && customQuotas.length > 0) {
+            const total = customQuotas.reduce((sum, q) => sum + (parseFloat(q.amount || q.Amount) || 0), 0)
+            displayQuotaValue = total / customQuotas.length
+            console.log("[SaleReport] Using custom quota average:", displayQuotaValue)
+          }
+        } catch (error) {
+          console.error("[SaleReport] Error parsing custom quotas:", error)
+          displayQuotaValue = staticQuotaValue
+        }
+      }
+
+      const quotaValue = displayQuotaValue
 
       // Mostrar TODAS las cuotas
       for (let i = 1; i <= numQuotas; i++) {
         const covered = detailsByQuota[i] || 0
-        const remaining = quotaValue - covered
-        const status = covered >= quotaValue ? "✓ Pagada" : "Pendiente"
-        const statusColor = covered >= quotaValue ? "#27ae60" : "#e74c3c"
+        
+        // 🔧 Obtener el valor correcto de cada cuota (personalizado o estándar)
+        let currentQuotaValue = quotaValue
+        let dueDate = null
+        let paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
+        let customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
+        
+        if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+          try {
+            let customQuotas = JSON.parse(customQuotasJson)
+            const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
+            if (customQuota) {
+              currentQuotaValue = parseFloat(customQuota.amount || customQuota.Amount) || quotaValue
+              // Obtener fecha de vencimiento personalizada si existe
+              if (customQuota.dueDate || customQuota.DueDate) {
+                const dueDateStr = customQuota.dueDate || customQuota.DueDate
+                const [year, month, day] = dueDateStr.split('-').map(Number)
+                dueDate = new Date(year, month - 1, day)
+              }
+            }
+          } catch (error) {
+            console.error("[SaleReport] Error parsing custom quota for row", i, ":", error)
+          }
+        }
+        
+        // Si no es personalizada o no tiene fecha, calcular automáticamente
+        if (!dueDate) {
+          const saleDay = saleDate.getDate()
+          const saleMonth = saleDate.getMonth()
+          const saleYear = saleDate.getFullYear()
+          const totalMonths = saleMonth + i
+          const targetYear = saleYear + Math.floor(totalMonths / 12)
+          const targetMonth = ((totalMonths % 12) + 12) % 12
+          const maxDayInMonth = new Date(targetYear, targetMonth + 1, 0).getDate()
+          const finalDay = Math.min(saleDay, maxDayInMonth)
+          dueDate = new Date(targetYear, targetMonth, finalDay)
+        }
+        
+        const remaining = currentQuotaValue - covered
+        const isPaid = covered >= currentQuotaValue
+        const isOverdue = !isPaid && dueDate < currentDate
+        
+        // Determinar estado y color
+        let status, statusColor, bgColor
+        if (isPaid) {
+          status = "✓ PAGADA"
+          statusColor = "#27ae60"
+          bgColor = "#d4edda"
+        } else if (isOverdue) {
+          status = "EN MORA"
+          statusColor = "#c92a2a"
+          bgColor = "#f8d7da"
+        } else {
+          status = "PENDIENTE"
+          statusColor = "#f59f00"
+          bgColor = "#fff3cd"
+        }
+        
+        const formattedDueDate = dueDate.toLocaleDateString("es-CO")
         const rowBg = i % 2 === 0 ? "#fafafa" : "#fff"
 
         quotasTableHTML += `
           <tr style="background-color: ${rowBg};">
             <td style="border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 13px;">${i}</td>
-            <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px;">${formatCurrency(quotaValue)}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px;">${formatCurrency(currentQuotaValue)}</td>
             <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px;">${formatCurrency(covered)}</td>
             <td style="border: 1px solid #ddd; padding: 10px; text-align: right; font-size: 13px;">${formatCurrency(remaining)}</td>
-            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; color: ${statusColor}; font-weight: bold;">${status}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px;">${formattedDueDate}</td>
+            <td style="border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 13px; color: ${statusColor}; font-weight: bold; background-color: ${bgColor};">${status}</td>
           </tr>
         `
       }
@@ -677,10 +760,6 @@ class SalesPDFService {
                       <div class="financial-card">
                         <div class="label">Saldo Pendiente</div>
                         <div class="value">${formatCurrency(saleData.total_debt)}</div>
-                      </div>
-                      <div class="financial-card">
-                        <div class="label">Valor Cuota</div>
-                        <div class="value">${formatCurrency(quotaValue)}</div>
                       </div>
                     </div>
                     
@@ -1150,6 +1229,630 @@ class SalesPDFService {
       return htmlContent
     } catch (error) {
       console.error("[v0] Error loading template:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Genera un PDF de reporte de desistimientos por proyecto
+   */
+  async generateWithdrawalsByProjectReportPDF(projectData, withdrawalsData) {
+    try {
+      console.log("[ProjectWithdrawalReport] Generating withdrawals by project report PDF")
+
+      const formatCurrency = (amount) => {
+        return new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount || 0)
+      }
+
+      const formatDate = (date) => {
+        return new Date(date).toLocaleDateString("es-CO")
+      }
+
+      // Calcular totales
+      const totalRecaudado = withdrawalsData.reduce((sum, w) => sum + (w.sale?.total_raised || 0), 0)
+      const totalPenalizacion = withdrawalsData.reduce((sum, w) => sum + (w.penalty || 0), 0)
+      const totalDevuelto = withdrawalsData.reduce((sum, w) => sum + (w.amount_to_return || 0), 0)
+
+      // Generar filas de la tabla
+      let tableRows = ""
+      withdrawalsData.forEach((withdrawal, index) => {
+        const bgColor = index % 2 === 0 ? "#fafafa" : "#fff"
+        tableRows += `
+          <tr style="background-color: ${bgColor};">
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px;">
+              ${withdrawal.sale?.client?.names} ${withdrawal.sale?.client?.surnames}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: center;">
+              ${withdrawal.sale?.lot?.block || 'N/A'}-${withdrawal.sale?.lot?.lot_number || 'N/A'}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: center;">
+              ${formatDate(withdrawal.withdrawal_date)}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px;">
+              ${withdrawal.reason || 'Sin especificar'}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: right;">
+              ${formatCurrency(withdrawal.sale?.total_raised || 0)}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: right; color: #c2185b; font-weight: bold;">
+              ${formatCurrency(withdrawal.penalty || 0)}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: right; color: #2e7d32; font-weight: bold;">
+              ${formatCurrency(withdrawal.amount_to_return || 0)}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-size: 12px; text-align: center;">
+              <span style="background-color: #ffebee; color: #c2185b; padding: 4px 8px; border-radius: 3px; font-size: 10px; font-weight: bold;">
+                DESISTIDA
+              </span>
+            </td>
+          </tr>
+        `
+      })
+
+      const reportHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Desistimientos - ${projectData.name}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                line-height: 1.6; 
+                color: #333;
+                background-color: #fff;
+              }
+              .container { max-width: 1000px; margin: 0 auto; padding: 30px 20px; }
+              .header { 
+                text-align: center; 
+                border-bottom: 4px solid #e91e63; 
+                padding-bottom: 25px; 
+                margin-bottom: 40px;
+              }
+              .header h1 { 
+                margin: 0 0 8px 0; 
+                color: #2c3e50; 
+                font-size: 32px;
+                font-weight: bold;
+                letter-spacing: 0.5px;
+              }
+              .header .subtitle { 
+                color: #7f8c8d; 
+                font-size: 14px;
+                margin: 5px 0;
+              }
+              .header .project-name { 
+                color: #e91e63; 
+                font-size: 16px;
+                font-weight: bold;
+                margin-top: 10px;
+              }
+              .header .date { 
+                color: #95a5a6; 
+                font-size: 11px;
+                margin-top: 8px;
+              }
+              .section { 
+                margin-bottom: 35px;
+                display: flex;
+              }
+              .sidebar { 
+                width: 10px; 
+                height: auto; 
+                background-color: #e91e63; 
+                margin-right: 0;
+              }
+              .section-content {
+                flex: 1;
+              }
+              .section-title { 
+                background-color: #e91e63; 
+                color: white; 
+                padding: 14px 18px; 
+                font-size: 13px; 
+                font-weight: bold; 
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+              }
+              .section-body { 
+                padding: 20px 18px;
+                background-color: #fafafa;
+              }
+              .table-wrapper {
+                overflow-x: auto;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+              }
+              th {
+                background-color: #e91e63;
+                color: white;
+                padding: 12px;
+                text-align: left;
+                font-size: 11px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+              }
+              td {
+                padding: 12px;
+                border-bottom: 1px solid #e0e0e0;
+              }
+              .summary-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 15px;
+                margin-top: 20px;
+              }
+              .summary-card {
+                background-color: #fff;
+                padding: 16px;
+                border-radius: 3px;
+                text-align: center;
+                border-top: 4px solid #e91e63;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+              }
+              .summary-card .label {
+                font-size: 11px;
+                color: #7f8c8d;
+                text-transform: uppercase;
+                font-weight: bold;
+                letter-spacing: 0.2px;
+                margin-bottom: 8px;
+              }
+              .summary-card .value {
+                font-size: 18px;
+                color: #2c3e50;
+                font-weight: bold;
+              }
+              .footer { 
+                text-align: center; 
+                color: #95a5a6; 
+                font-size: 10px; 
+                margin-top: 25px; 
+                padding-top: 10px;
+              }
+              .footer p { margin: 2px 0; line-height: 1.3; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <!-- Header -->
+              <div class="header">
+                <h1>REPORTE DE DESISTIMIENTOS</h1>
+                <p class="subtitle">Análisis de Retiros de Compra por Proyecto</p>
+                <p class="project-name">PROYECTO: ${projectData.name}</p>
+                <p class="date">Fecha de Generación: ${formatDate(new Date())}</p>
+              </div>
+
+              <!-- Tabla de Desistimientos -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">DESISTIMIENTOS REGISTRADOS</div>
+                  <div class="section-body">
+                    <div class="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Cliente</th>
+                            <th>Lote</th>
+                            <th>Fecha</th>
+                            <th>Motivo</th>
+                            <th>Total Recaudado</th>
+                            <th>Penalización</th>
+                            <th>Monto Devuelto</th>
+                            <th>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${tableRows}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen Financiero -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">RESUMEN FINANCIERO</div>
+                  <div class="section-body">
+                    <div class="summary-grid">
+                      <div class="summary-card">
+                        <div class="label">Total Recaudado</div>
+                        <div class="value">${formatCurrency(totalRecaudado)}</div>
+                      </div>
+                      <div class="summary-card">
+                        <div class="label">Total Penalizaciones</div>
+                        <div class="value">${formatCurrency(totalPenalizacion)}</div>
+                      </div>
+                      <div class="summary-card">
+                        <div class="label">Total a Devolver</div>
+                        <div class="value">${formatCurrency(totalDevuelto)}</div>
+                      </div>
+                    </div>
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff; border-left: 4px solid #e91e63; border-radius: 3px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #2c3e50;">
+                        <span>Total de Desistimientos:</span>
+                        <span style="font-weight: bold; font-size: 16px;">${withdrawalsData.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="footer">
+                <p>Documento generado automáticamente el ${formatDate(new Date())}. Para información adicional, contacte nuestro equipo de atención al cliente.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
+      // Generar nombre del archivo
+      const fileName = `Desistimientos_${projectData.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`
+
+      console.log("[ProjectWithdrawalReport] Sending to API with filename:", fileName)
+
+      const response = await fetch("/api/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          html: reportHTML,
+          filename: fileName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Error generating PDF: ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      console.log("[ProjectWithdrawalReport] PDF generated and downloaded successfully")
+    } catch (error) {
+      console.error("[ProjectWithdrawalReport] Error:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Genera un PDF de reporte de desistimiento
+   */
+  async generateWithdrawalReportPDF(clientData, withdrawal) {
+    try {
+      console.log("[WithdrawalReport] Generating withdrawal report PDF")
+
+      const formatCurrency = (amount) => {
+        return new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount || 0)
+      }
+
+      const formatDate = (date) => {
+        return new Date(date).toLocaleDateString("es-CO")
+      }
+
+      const reportHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Desistimiento - ${clientData.names} ${clientData.surnames}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                line-height: 1.6; 
+                color: #333;
+                background-color: #fff;
+              }
+              .container { max-width: 950px; margin: 0 auto; padding: 30px 20px; }
+              .header { 
+                text-align: center; 
+                border-bottom: 4px solid #e91e63; 
+                padding-bottom: 25px; 
+                margin-bottom: 40px;
+              }
+              .header h1 { 
+                margin: 0 0 8px 0; 
+                color: #2c3e50; 
+                font-size: 32px;
+                font-weight: bold;
+                letter-spacing: 0.5px;
+              }
+              .header .subtitle { 
+                color: #7f8c8d; 
+                font-size: 14px;
+                margin: 5px 0;
+              }
+              .header .date { 
+                color: #95a5a6; 
+                font-size: 11px;
+                margin-top: 8px;
+              }
+              .section { 
+                margin-bottom: 35px;
+                display: flex;
+              }
+              .sidebar { 
+                width: 10px; 
+                height: auto; 
+                background-color: #e91e63; 
+                margin-right: 0;
+              }
+              .section-content {
+                flex: 1;
+              }
+              .section-title { 
+                background-color: #e91e63; 
+                color: white; 
+                padding: 14px 18px; 
+                font-size: 13px; 
+                font-weight: bold; 
+                letter-spacing: 0.5px;
+                text-transform: uppercase;
+              }
+              .section-body { 
+                padding: 20px 18px;
+                background-color: #fafafa;
+              }
+              .info-row { 
+                display: grid; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 30px; 
+                margin-bottom: 18px;
+              }
+              .info-item { }
+              .info-label { 
+                font-weight: bold; 
+                color: #e91e63; 
+                font-size: 10px; 
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                margin-bottom: 4px;
+              }
+              .info-value { 
+                font-size: 14px; 
+                color: #2c3e50;
+                font-weight: 500;
+              }
+              .alert-box {
+                background-color: #fee;
+                border-left: 4px solid #e91e63;
+                padding: 15px 18px;
+                margin-bottom: 20px;
+              }
+              .alert-box .title {
+                color: #c2185b;
+                font-weight: bold;
+                margin-bottom: 8px;
+              }
+              .alert-box .content {
+                color: #c2185b;
+                font-size: 13px;
+                line-height: 1.5;
+              }
+              .financial-summary { 
+                display: grid; 
+                grid-template-columns: 1fr 1fr; 
+                gap: 15px; 
+              }
+              .financial-card { 
+                flex: 1;
+                background-color: #fff; 
+                padding: 16px; 
+                border-radius: 3px;
+                text-align: center; 
+                border-top: 4px solid #e91e63;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+              }
+              .financial-card .label { 
+                font-size: 11px; 
+                color: #7f8c8d; 
+                text-transform: uppercase;
+                font-weight: bold;
+                letter-spacing: 0.2px;
+                margin-bottom: 8px;
+              }
+              .financial-card .value { 
+                font-size: 18px; 
+                color: #2c3e50; 
+                font-weight: bold;
+              }
+              .footer { 
+                text-align: center; 
+                color: #95a5a6; 
+                font-size: 10px; 
+                margin-top: 25px; 
+                padding-top: 10px;
+              }
+              .footer p { margin: 2px 0; line-height: 1.3; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <!-- Header -->
+              <div class="header">
+                <h1>REPORTE DE DESISTIMIENTO</h1>
+                <p class="subtitle">Constancia de Retiro de Compra</p>
+                <p class="date">Fecha de Generación: ${formatDate(new Date())}</p>
+              </div>
+
+              <!-- Alerta de Desistimiento -->
+              <div class="alert-box">
+                <div class="title">⚠️ AVISO IMPORTANTE</div>
+                <div class="content">
+                  Este documento formaliza el desistimiento del contrato de compra. El cliente ha ejercido su derecho de retracto según las políticas establecidas. La penalización del 10% ha sido aplicada según lo dispuesto en los términos y condiciones.
+                </div>
+              </div>
+
+              <!-- Información del Cliente -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
+                  <div class="section-body">
+                    <div class="info-row">
+                      <div class="info-item">
+                        <div class="info-label">Nombre Completo</div>
+                        <div class="info-value">${clientData.names} ${clientData.surnames}</div>
+                      </div>
+                      <div class="info-item">
+                        <div class="info-label">Número de Documento</div>
+                        <div class="info-value">${clientData.document}</div>
+                      </div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-item">
+                        <div class="info-label">Teléfono</div>
+                        <div class="info-value">${clientData.phone || "No registrado"}</div>
+                      </div>
+                      <div class="info-item">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">${clientData.email || "No registrado"}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Información del Desistimiento -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">DETALLES DEL DESISTIMIENTO</div>
+                  <div class="section-body">
+                    <div class="info-row">
+                      <div class="info-item">
+                        <div class="info-label">Fecha de Desistimiento</div>
+                        <div class="info-value">${formatDate(withdrawal.withdrawal_date)}</div>
+                      </div>
+                      <div class="info-item">
+                        <div class="info-label">ID Desistimiento</div>
+                        <div class="info-value">#${withdrawal.id_Withdrawals}</div>
+                      </div>
+                    </div>
+                    <div class="info-row">
+                      <div class="info-item">
+                        <div class="info-label">Proyecto</div>
+                        <div class="info-value">${withdrawal.sale?.lot?.project?.name || "No disponible"}</div>
+                      </div>
+                      <div class="info-item">
+                        <div class="info-label">Lote</div>
+                        <div class="info-value">${withdrawal.sale?.lot?.block || "N/A"}-${withdrawal.sale?.lot?.lot_number || "N/A"}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen Financiero -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">RESUMEN FINANCIERO DEL DESISTIMIENTO</div>
+                  <div class="section-body">
+                    <div class="financial-summary">
+                      <div class="financial-card">
+                        <div class="label">Total Recaudado</div>
+                        <div class="value">${formatCurrency(withdrawal.sale?.total_raised || 0)}</div>
+                      </div>
+                      <div class="financial-card">
+                        <div class="label">Penalización (10%)</div>
+                        <div class="value">${formatCurrency(withdrawal.penalty || 0)}</div>
+                      </div>
+                    </div>
+                    <div style="margin-top: 20px; padding: 15px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 3px;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: bold; color: #2c3e50;">
+                        <span>Monto a Devolver al Cliente:</span>
+                        <span style="color: #e91e63; font-size: 20px;">${formatCurrency(withdrawal.amount_to_return || 0)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Motivo del Desistimiento -->
+              <div class="section">
+                <div class="sidebar"></div>
+                <div class="section-content">
+                  <div class="section-title">MOTIVO DEL DESISTIMIENTO</div>
+                  <div class="section-body">
+                    <div style="padding: 12px; background-color: #fff; border-left: 3px solid #e91e63; line-height: 1.6; color: #2c3e50;">
+                      ${withdrawal.reason || "Sin motivo especificado"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Footer -->
+              <div class="footer">
+                <p>Documento generado automáticamente el ${formatDate(new Date())}. Para información adicional, contacte nuestro equipo de atención al cliente.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
+      // Generar nombre del archivo
+      const sanitizedClientName = `${clientData.names} ${clientData.surnames}`.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')
+      const fileName = `Desistimiento_${sanitizedClientName}_${new Date().getTime()}.pdf`
+
+      console.log("[WithdrawalReport] Sending to API with filename:", fileName)
+
+      const response = await fetch("/api/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          html: reportHTML,
+          filename: fileName,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Error generating PDF: ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      console.log("[WithdrawalReport] PDF generated and downloaded successfully")
+    } catch (error) {
+      console.error("[WithdrawalReport] Error:", error)
       throw error
     }
   }

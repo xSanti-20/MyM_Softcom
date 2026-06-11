@@ -166,11 +166,21 @@ namespace mym_softcom.Services
                     throw new InvalidOperationException("La penalización no puede ser negativa.");
                 }
 
-                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente: {withdrawal.penalty}");
+                if (withdrawal.amount_to_return == null)
+                {
+                    throw new InvalidOperationException("Debe proporcionar el monto a devolver.");
+                }
 
-                // Actualizar el total_raised de la venta con el valor de la penalización
-                sale.total_raised = withdrawal.penalty;
-                Console.WriteLine($"[WithdrawalServices] total_raised de venta {sale.id_Sales} ajustado a la penalización: {sale.total_raised}");
+                if (withdrawal.amount_to_return < 0)
+                {
+                    throw new InvalidOperationException("El monto a devolver no puede ser negativo.");
+                }
+
+                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente: {withdrawal.penalty}");
+                Console.WriteLine($"[WithdrawalServices] Monto a devolver: {withdrawal.amount_to_return}");
+
+                // NO modificar total_raised - solo guardar el monto a devolver en el registro de desistimiento
+                Console.WriteLine($"[WithdrawalServices] total_raised original de venta {sale.id_Sales}: {sale.total_raised} (se mantiene intacto)");
 
                 // 1. Actualizar el estado de la venta a "Desistida"
                 sale.status = "Desistida"; // Usando el valor 'Desistida' del ENUM
@@ -267,12 +277,20 @@ namespace mym_softcom.Services
                     throw new InvalidOperationException("La penalización no puede ser negativa.");
                 }
 
-                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente para actualización: {updatedWithdrawal.penalty}");
+                if (updatedWithdrawal.amount_to_return == null)
+                {
+                    throw new InvalidOperationException("Debe proporcionar el monto a devolver.");
+                }
 
-                // Si también necesitas que el total_raised de la venta se actualice al editar un desistimiento,
-                // puedes añadir la siguiente línea aquí:
-                // sale.total_raised = updatedWithdrawal.penalty;
-                // _context.Sales.Update(sale); // Asegúrate de que la venta también se marque para actualización
+                if (updatedWithdrawal.amount_to_return < 0)
+                {
+                    throw new InvalidOperationException("El monto a devolver no puede ser negativo.");
+                }
+
+                Console.WriteLine($"[WithdrawalServices] Penalización recibida manualmente para actualización: {updatedWithdrawal.penalty}");
+                Console.WriteLine($"[WithdrawalServices] Monto a devolver para actualización: {updatedWithdrawal.amount_to_return}");
+
+                // NO modificar total_raised - mantener el valor original de la venta intacto
 
                 // Asegurarse de que el ID del objeto actualizado coincida con el de la URL
                 updatedWithdrawal.id_Withdrawals = id_Withdrawals;

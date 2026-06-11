@@ -10,8 +10,9 @@ import DataTable from "@/components/utils/DataTable"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter, Plus, AlertTriangle } from "lucide-react"
+import { Filter, Plus, AlertTriangle, FileText, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import salesPdfService from "@/services/pdfExportService"
 
 function WithdrawalsPage() {
   const TitlePage = "Desistimientos"
@@ -20,8 +21,10 @@ function WithdrawalsPage() {
   const [error, setError] = useState(null)
   const [editingWithdrawal, setEditingWithdrawal] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [projects, setProjects] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [generatingPDF, setGeneratingPDF] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -33,6 +36,7 @@ function WithdrawalsPage() {
     "ID",
     "Fecha Desistimiento",
     "Penalización",
+    "Monto Devuelto",
     "Motivo",
     "Cliente",
     "Documento",
@@ -152,6 +156,13 @@ function WithdrawalsPage() {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0,
             }) || "N/A",
+          amount_to_return:
+            withdrawal.amount_to_return?.toLocaleString("es-CO", {
+              style: "currency",
+              currency: "COP",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }) || "N/A",
           reason: withdrawal.reason || "Sin motivo especificado",
           client: withdrawal.sale?.client
             ? `${withdrawal.sale.client.names} ${withdrawal.sale.client.surnames}`
@@ -234,11 +245,76 @@ function WithdrawalsPage() {
     }
   }
 
+  const handlePDFAction = async (row) => {
+    await handleGeneratePDF(row)
+  }
+
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setTimeout(() => {
       setEditingWithdrawal(null)
     }, 300)
+  }
+
+  const handleGeneratePDF = async (withdrawal) => {
+    if (!withdrawal.sale?.client || !withdrawal.original) {
+      showAlert("error", "Información incompleta para generar el reporte")
+      return
+    }
+
+    setGeneratingPDF(true)
+    try {
+      await salesPdfService.generateWithdrawalReportPDF(withdrawal.sale.client, withdrawal.original)
+      console.log("PDF de desistimiento generado exitosamente")
+    } catch (error) {
+      console.error("Error al generar el PDF:", error)
+      showAlert("error", "Error al generar el reporte PDF. Por favor intenta nuevamente.")
+    } finally {
+      setGeneratingPDF(false)
+    }
+  }
+
+  const handleGenerateWithdrawalsReport = async () => {
+    if (!selectedProjectId) {
+      showAlert("error", "Selecciona un proyecto")
+      return
+    }
+
+    setGeneratingPDF(true)
+    try {
+      const selectedProject = projects.find(p => p.id_Projects === parseInt(selectedProjectId))
+      if (!selectedProject) {
+        showAlert("error", "Proyecto no encontrado")
+        return
+      }
+
+      // Obtener desistimientos del proyecto
+      const response = await axiosInstance.get(`/api/Withdrawal/GetAllWithdrawals`)
+      const allWithdrawals = response.data
+
+      // Filtrar desistimientos por proyecto
+      const projectWithdrawals = allWithdrawals.filter(w => 
+        w.sale?.lot?.project?.id_Projects === parseInt(selectedProjectId)
+      )
+
+      if (projectWithdrawals.length === 0) {
+        showAlert("info", "No hay desistimientos para este proyecto")
+        setIsReportModalOpen(false)
+        setSelectedProjectId("")
+        setGeneratingPDF(false)
+        return
+      }
+
+      await salesPdfService.generateWithdrawalsByProjectReportPDF(selectedProject, projectWithdrawals)
+      showAlert("success", "Reporte generado exitosamente")
+      setIsReportModalOpen(false)
+      setSelectedProjectId("")
+    } catch (error) {
+      console.error("Error al generar reporte:", error)
+      showAlert("error", "Error al generar el reporte PDF")
+    } finally {
+      setGeneratingPDF(false)
+    }
   }
 
   // Configuración del header del DataTable
@@ -273,7 +349,14 @@ function WithdrawalsPage() {
           <Plus className="w-4 h-4" />  
           <span>Agregar Desistimiento</span>
         </Button>
-      </div>
+        <Button
+          onClick={() => setIsReportModalOpen(true)}
+          className="text-white flex items-center space-x-2 w-full md:w-auto justify-center"
+          style={{ backgroundColor: "#e91e63" }}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Reporte por Proyecto</span>
+        </Button>      </div>
     ),
   }
 
@@ -319,13 +402,24 @@ function WithdrawalsPage() {
               </Select>
             </div>
 
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2 w-full md:w-auto justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Agregar Desistimiento</span>
-            </Button>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button
+                onClick={() => setIsReportModalOpen(true)}
+                className="text-white flex items-center space-x-2 flex-1 md:flex-none justify-center"
+                style={{ backgroundColor: "#e91e63" }}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Reporte por Proyecto</span>
+              </Button>
+
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2 flex-1 md:flex-none justify-center"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Agregar Desistimiento</span>
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -334,9 +428,10 @@ function WithdrawalsPage() {
               TitlesTable={titlesWithdrawal}
               onDelete={handleDelete}
               onUpdate={handleUpdate}
+              onPDF={handlePDFAction}
               showDeleteButton={true}
               showToggleButton={false}
-              showPdfButton={false}
+              showPdfButton={true}
               headerActions={{ title: TitlePage }} // Ya no se usa botón dentro
             />
           </div>
@@ -352,6 +447,65 @@ function WithdrawalsPage() {
                   closeModal={handleCloseModal}
                   showAlert={showAlert}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Modal Reporte por Proyecto */}
+          {isReportModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg max-w-md w-full mx-4 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">Reporte de Desistimientos</h2>
+                  <button
+                    onClick={() => {
+                      setIsReportModalOpen(false)
+                      setSelectedProjectId("")
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecciona un Proyecto
+                  </label>
+                  <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Elige un proyecto..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleGenerateWithdrawalsReport}
+                    disabled={!selectedProjectId || generatingPDF}
+                    className="flex-1 text-white"
+                    style={{ backgroundColor: "#e91e63" }}
+                  >
+                    {generatingPDF ? "Generando..." : "Generar Reporte"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsReportModalOpen(false)
+                      setSelectedProjectId("")
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             </div>
           )}
