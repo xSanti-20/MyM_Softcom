@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -61,6 +61,10 @@ function DataTable({
 
   const safeData = Array.isArray(Data) ? Data : []
   const itemsPerPage = isMobile ? 3 : isTablet ? 4 : 6
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [safeData])
 
   // Función para renderizar el contenido de una celda
   const renderCellContent = (value) => {

@@ -836,6 +836,144 @@ class SalesPDFService {
   }
 
   /**
+   * Genera el PDF del simulador de cuotas.
+   * @param {object} simulatorData - Datos calculados del simulador.
+   */
+  async generateSimulatorPDF(simulatorData) {
+    try {
+      console.log("[SimulatorReport] Generating simulator PDF", simulatorData)
+
+      const formatCurrency = (amount) =>
+        new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount || 0)
+
+      const formatDate = (date) => new Date(date).toLocaleDateString("es-CO")
+
+      const scheduleRows = (simulatorData.schedule || [])
+        .map(
+          (item, index) => `
+            <tr style="background-color: ${index % 2 === 0 ? "#ffffff" : "#faf7fb"};">
+              <td style="padding: 12px; border-bottom: 1px solid #edd8e7; text-align: center;">${item.quotaNumber}</td>
+              <td style="padding: 12px; border-bottom: 1px solid #edd8e7; text-align: center;">${formatDate(item.dueDate)}</td>
+              <td style="padding: 12px; border-bottom: 1px solid #edd8e7; text-align: right; font-weight: 700;">${formatCurrency(item.amount)}</td>
+            </tr>
+          `,
+        )
+        .join("")
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8" />
+            <title>Simulador de Cuotas</title>
+            <style>
+              * { box-sizing: border-box; }
+              body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1f2937; background: #ffffff; }
+              .page { max-width: 980px; margin: 0 auto; padding: 30px 24px 36px; }
+              .hero {
+                background: linear-gradient(135deg, #db2777 0%, #c026d3 100%);
+                color: #fff;
+                padding: 28px;
+                border-radius: 24px;
+                margin-bottom: 20px;
+                box-shadow: 0 18px 40px rgba(192, 38, 211, 0.18);
+              }
+              .hero h1 { margin: 0; font-size: 28px; }
+              .hero p { margin: 8px 0 0; opacity: 0.92; }
+              .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+              .card {
+                background: #fff;
+                border: 1px solid #f1d5ec;
+                border-radius: 20px;
+                padding: 18px;
+                box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+              }
+              .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #be185d; font-weight: 700; }
+              .value { margin-top: 10px; font-size: 20px; font-weight: 700; color: #0f172a; }
+              table { width: 100%; border-collapse: collapse; overflow: hidden; border: 1px solid #edd8e7; border-radius: 18px; }
+              thead th { background: #fdf2f8; color: #9d174d; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 12px; border-bottom: 1px solid #edd8e7; }
+              .summary { margin-top: 18px; background: #fff7fb; border: 1px solid #f7cde0; border-radius: 18px; padding: 16px 18px; color: #9d174d; font-weight: 600; }
+            </style>
+          </head>
+          <body>
+            <div class="page">
+              <div class="hero">
+                <h1>Simulador de Cuotas</h1>
+                <p>${simulatorData.project || "Proyecto"} - Lote ${simulatorData.lot || "N/A"}</p>
+              </div>
+
+              <div class="cards">
+                <div class="card">
+                  <div class="label">Valor total</div>
+                  <div class="value">${formatCurrency(simulatorData.totalValue)}</div>
+                </div>
+                <div class="card">
+                  <div class="label">Cuotas</div>
+                  <div class="value">${simulatorData.quotas || 0}</div>
+                </div>
+                <div class="card">
+                  <div class="label">Valor cuota</div>
+                  <div class="value">${formatCurrency(simulatorData.monthlyValue)}</div>
+                </div>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cuota</th>
+                    <th>Fecha vencimiento</th>
+                    <th>Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${scheduleRows}
+                </tbody>
+              </table>
+
+              <div class="summary">
+                Plan generado el ${formatDate(new Date())}.
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+
+      const fileName = `Simulador_Cuotas_${(simulatorData.project || "proyecto").replace(/[^a-zA-Z0-9]+/g, "_")}_${Date.now()}.pdf`
+
+      const response = await fetch("/api/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ html, filename: fileName }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error generating PDF: ${response.statusText}`)
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      console.log("[SimulatorReport] PDF generated and downloaded successfully")
+    } catch (error) {
+      console.error("[SimulatorReport] Error:", error)
+      throw error
+    }
+  }
+
+  /**
    * Genera el PDF del contrato según el tipo de venta (lote o casa) usando Puppeteer
    * @param {number|string} saleId - ID de la venta
    * @param {object} saleData - Datos de la venta (puede ser plano o con estructura completa)

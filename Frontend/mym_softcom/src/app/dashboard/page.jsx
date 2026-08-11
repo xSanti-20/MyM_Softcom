@@ -353,6 +353,139 @@ export default function Dashboard() {
     return date.toLocaleString("es-ES", { month: "long" })
   }
 
+  const normalizeProjectName = (name) =>
+    name
+      ?.toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, " ") || ""
+
+  const getPaymentAmount = (payment) => {
+    const numericAmount = Number(payment?.amount)
+    return Number.isFinite(numericAmount) ? numericAmount : 0
+  }
+
+  const getPaymentProjectName = (payment) =>
+    payment?.sale?.lot?.project?.name ||
+    payment?.sale?.lot?.Project?.name ||
+    payment?.sale?.Lot?.project?.name ||
+    payment?.sale?.Lot?.Project?.name ||
+    payment?.sale?.lot?.project_name ||
+    ""
+
+  const calculateProjectRevenueFromPayments = (paymentsList) => {
+    const now = new Date()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
+
+    const summary = {
+      luxuryMonthly: 0,
+      reservasMonthly: 0,
+      malibuMonthly: 0,
+      totalCurrentMonthProjectRevenue: 0,
+    }
+
+    ;(Array.isArray(paymentsList) ? paymentsList : []).forEach((payment) => {
+      if (!payment?.payment_date) return
+
+      const paymentDate = new Date(payment.payment_date)
+      if (paymentDate.getMonth() !== currentMonth || paymentDate.getFullYear() !== currentYear) {
+        return
+      }
+
+      const amount = getPaymentAmount(payment)
+      const normalizedName = normalizeProjectName(getPaymentProjectName(payment))
+
+      if (!normalizedName || amount <= 0) return
+
+      if (normalizedName.includes("luxury") && normalizedName.includes("malibu")) {
+        summary.luxuryMonthly += amount
+      } else if (normalizedName.includes("reservas") && normalizedName.includes("poblado")) {
+        summary.reservasMonthly += amount
+      } else if (normalizedName === "malibu" || (normalizedName.includes("malibu") && !normalizedName.includes("luxury"))) {
+        summary.malibuMonthly += amount
+      }
+    })
+
+    summary.totalCurrentMonthProjectRevenue =
+      summary.luxuryMonthly + summary.reservasMonthly + summary.malibuMonthly
+
+    return summary
+  }
+
+  const calculateAnnualProjectRevenueFromPayments = (paymentsList) => {
+    const currentYear = new Date().getFullYear()
+    const currentMonthIndex = new Date().getMonth()
+    const monthlyRows = Array.from({ length: currentMonthIndex + 1 }, (_, index) => ({
+      monthNumber: index + 1,
+      monthName: `${getMonthName(index + 1)} ${currentYear}`,
+      luxuryMalibu: 0,
+      reservasDelPoblado: 0,
+      malibu: 0,
+    }))
+
+    ;(Array.isArray(paymentsList) ? paymentsList : []).forEach((payment) => {
+      if (!payment?.payment_date) return
+
+      const paymentDate = new Date(payment.payment_date)
+      if (Number.isNaN(paymentDate.getTime()) || paymentDate.getFullYear() !== currentYear) return
+
+      const amount = getPaymentAmount(payment)
+      const normalizedName = normalizeProjectName(getPaymentProjectName(payment))
+      const row = monthlyRows[paymentDate.getMonth()]
+
+      if (!row || amount <= 0 || !normalizedName) return
+
+      if (normalizedName.includes("luxury") && normalizedName.includes("malibu")) {
+        row.luxuryMalibu += amount
+      } else if (normalizedName.includes("reservas") && normalizedName.includes("poblado")) {
+        row.reservasDelPoblado += amount
+      } else if (normalizedName === "malibu" || (normalizedName.includes("malibu") && !normalizedName.includes("luxury"))) {
+        row.malibu += amount
+      }
+    })
+
+    const totalsRow = monthlyRows.reduce(
+      (accumulator, row) => {
+        accumulator.luxuryMalibu += row.luxuryMalibu
+        accumulator.reservasDelPoblado += row.reservasDelPoblado
+        accumulator.malibu += row.malibu
+        return accumulator
+      },
+      {
+        monthName: `TOTAL AÑO ${currentYear}`,
+        luxuryMalibu: 0,
+        reservasDelPoblado: 0,
+        malibu: 0,
+      },
+    )
+
+    return {
+      columns: [
+        { header: "MES", accessor: "monthName" },
+        {
+          header: "LUXURY MALIBU",
+          accessor: "luxuryMalibu",
+          cell: (row) => formatCurrency(row.luxuryMalibu),
+        },
+        {
+          header: "RESERVAS DEL POBLADO",
+          accessor: "reservasDelPoblado",
+          cell: (row) => formatCurrency(row.reservasDelPoblado),
+        },
+        {
+          header: "MALIBU",
+          accessor: "malibu",
+          cell: (row) => formatCurrency(row.malibu),
+        },
+      ],
+      rows: [...monthlyRows].reverse(),
+      totalsRow,
+    }
+  }
+
   // Calcular cuotas en mora para una venta (misma lógica que reportes)
   const calculateOverdueQuotas = useCallback((sale, paymentDetails) => {
     const totalDebt = Number.parseFloat(sale?.total_debt) || 0
@@ -550,9 +683,10 @@ export default function Dashboard() {
       // Cargar estadísticas principales calculadas igual que reportes
       try {
         // Obtener clientes activos directamente del endpoint de clientes (igual que el módulo de clientes)
-        const [salesResponse, clientsResponse] = await Promise.all([
+        const [salesResponse, clientsResponse, paymentsResponse] = await Promise.all([
           axiosInstance.get("/api/Sale/GetAllSales"),
           axiosInstance.get("/api/Client/GetClientsWithSalesSummary"),
+          axiosInstance.get("/api/Payment/GetAllPayments"),
         ])
 
         // Contar clientes activos desde el endpoint de clientes (fuente de verdad)
@@ -604,14 +738,38 @@ export default function Dashboard() {
           console.log("Total adeudado (mora):", totalOwedAmount)
           console.log("============================================================")
 
-          // Obtener desistimientos del mes actual
-          const currentMonth = new Date().getMonth()
-          const currentYear = new Date().getFullYear()
-          const withdrawalsThisMonth = salesResponse.data.filter(sale => {
-            if (sale.status?.toLowerCase() !== "withdrawals") return false
-            const saleDate = new Date(sale.sale_date)
-            return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
-          }).length
+          const allPayments = Array.isArray(paymentsResponse?.data) ? paymentsResponse.data : []
+          setPayments(allPayments)
+
+          const revenueSummary = calculateProjectRevenueFromPayments(allPayments)
+          console.log("=== PAYMENTS REVENUE SUMMARY ===")
+          console.log("Luxury Malibu acumulado:", revenueSummary.luxuryMonthly)
+          console.log("Reservas del Poblado acumulado:", revenueSummary.reservasMonthly)
+          console.log("Malibu acumulado:", revenueSummary.malibuMonthly)
+          console.log("Total acumulado proyectos:", revenueSummary.totalCurrentMonthProjectRevenue)
+          console.log("=================================")
+
+          // Obtener desistimientos del mes actual usando la fecha real del desistimiento
+          let withdrawalsThisMonth = 0
+          try {
+            const withdrawalsResponse = await axiosInstance.get("/api/Withdrawal/GetAllWithdrawals")
+            const currentMonth = new Date().getMonth()
+            const currentYear = new Date().getFullYear()
+
+            withdrawalsThisMonth = Array.isArray(withdrawalsResponse.data)
+              ? withdrawalsResponse.data.filter((withdrawal) => {
+                  if (!withdrawal?.withdrawal_date) return false
+                  const withdrawalDate = new Date(withdrawal.withdrawal_date)
+                  return (
+                    withdrawalDate.getMonth() === currentMonth &&
+                    withdrawalDate.getFullYear() === currentYear
+                  )
+                }).length
+              : 0
+          } catch (withdrawalError) {
+            console.error("Error fetching withdrawals for dashboard stats:", withdrawalError)
+            newErrors.withdrawals = `Error al cargar desistimientos del mes: ${withdrawalError.message || "Error desconocido"}`
+          }
 
           setStats((prevStats) => ({
             ...prevStats,
@@ -619,120 +777,27 @@ export default function Dashboard() {
             overdueClients: clientsInMora,
             totalOwed: totalOwedAmount,
             cancellations: withdrawalsThisMonth,
+            luxuryMonthly: revenueSummary.luxuryMonthly,
+            reservasMonthly: revenueSummary.reservasMonthly,
+            malibuMonthly: revenueSummary.malibuMonthly,
+            totalCurrentMonthProjectRevenue: revenueSummary.totalCurrentMonthProjectRevenue,
           }))
+
+          // Cargar recaudos históricos por proyecto usando los pagos reales del año actual
+          const annualRevenue = calculateAnnualProjectRevenueFromPayments(allPayments)
+
+          console.log("=== HISTORICAL PROJECT REVENUE FROM PAYMENTS ===")
+          console.log("Rows:", annualRevenue.rows)
+          console.log("Totals:", annualRevenue.totalsRow)
+          console.log("===============================================")
+
+          setHistoricalProjectColumns(annualRevenue.columns)
+          setHistoricalProjectRevenue(annualRevenue.rows)
+          setHistoricalProjectTotals(annualRevenue.totalsRow)
         }
       } catch (error) {
         console.error("Error fetching main stats:", error)
         newErrors.mainStats = `Error al cargar estadísticas principales: ${error.message || "Error desconocido"}`
-      }
-
-      // Cargar recaudos por proyecto (del mes actual)
-      try {
-        const response = await axiosInstance.get("/api/Dashboard/GetProjectRevenue")
-        console.log("Current month project revenue data:", response.data)
-
-        const projectRevenues = response.data && Array.isArray(response.data.projects) ? response.data.projects : []
-        const totalCurrentMonthProjectRevenue =
-          response.data && typeof response.data.totalCurrentMonthRevenue === "number"
-            ? response.data.totalCurrentMonthRevenue
-            : 0
-
-        console.log("=== DEBUGGING PROJECT NAMES ===")
-        console.log("Total projects returned:", projectRevenues.length)
-        projectRevenues.forEach((project, index) => {
-          console.log(`Project ${index + 1}:`, {
-            id: project.projectId,
-            name: project.projectName,
-            revenue: project.monthlyRevenue,
-            normalizedName: project.projectName?.toLowerCase().trim().replace(/\s+/g, " "),
-          })
-        })
-        console.log("Total current month revenue:", totalCurrentMonthProjectRevenue)
-        console.log("=== END DEBUGGING ===")
-
-        // Función helper para normalizar nombres (quitar espacios extra, convertir a minúsculas)
-        const normalizeProjectName = (name) => name?.toLowerCase().trim().replace(/\s+/g, " ") || ""
-
-        // Buscar proyectos con matching más flexible
-        const luxuryMalibuProject = projectRevenues.find((p) => {
-          const normalized = normalizeProjectName(p.projectName)
-          return normalized.includes("luxury") && normalized.includes("malibu")
-        })
-
-        const reservasProject = projectRevenues.find((p) => {
-          const normalized = normalizeProjectName(p.projectName)
-          return normalized.includes("reservas") && normalized.includes("poblado")
-        })
-
-        const malibuProject = projectRevenues.find((p) => {
-          const normalized = normalizeProjectName(p.projectName)
-          return normalized === "malibu" || (normalized.includes("malibu") && !normalized.includes("luxury"))
-        })
-
-        console.log("=== PROJECT MATCHING RESULTS ===")
-        console.log("Luxury Malibu project found:", luxuryMalibuProject)
-        console.log("Reservas project found:", reservasProject)
-        console.log("Malibu project found:", malibuProject)
-        console.log("=== END MATCHING RESULTS ===")
-
-        setStats((prevStats) => ({
-          ...prevStats,
-          luxuryMonthly: luxuryMalibuProject?.totalRevenue || 0,
-          reservasMonthly: reservasProject?.totalRevenue || 0,
-          malibuMonthly: malibuProject?.totalRevenue || 0,
-          totalCurrentMonthProjectRevenue: response.data?.totalGeneralRevenue || 0,
-
-        }))
-      } catch (error) {
-        console.error("Error fetching current month project revenue:", error)
-        newErrors.projectRevenue = `Error al cargar recaudos por proyecto del mes actual: ${error.message || "Error desconocido"}`
-      }
-
-      // Cargar recaudos históricos por proyecto (AHORA SOLO PARA EL AÑO ACTUAL)
-      try {
-        const response = await axiosInstance.get("/api/Dashboard/GetHistoricalProjectRevenue") // Ya no se pasa 'months'
-        console.log("Historical project revenue data (current year):", response.data)
-
-        const historicalData =
-          response.data && Array.isArray(response.data.historicalData) ? response.data.historicalData : []
-        const projectNames =
-          response.data && Array.isArray(response.data.projectNames) ? response.data.projectNames : []
-
-        // Preparar columnas dinámicas para la tabla histórica
-        const dynamicColumns = [
-          { header: "MES", accessor: "monthName" },
-          ...projectNames.map((name) => ({
-            header: name.toUpperCase(), // Nombre del proyecto como encabezado
-            accessor: name, // El nombre del proyecto será la clave en los datos de la fila
-            cell: (row) => formatCurrency(row[name]), // Formatear como moneda
-          })),
-        ]
-        setHistoricalProjectColumns(dynamicColumns)
-
-        // Formatear los datos históricos para la tabla
-        const formattedHistoricalData = historicalData.map((item) => {
-          const row = {
-            monthName: `${getMonthName(item.month)} ${item.year}`, // "Enero 2023"
-          }
-          projectNames.forEach((name) => {
-            row[name] = item[name] // Asignar el valor del proyecto
-          })
-          return row
-        })
-        setHistoricalProjectRevenue(formattedHistoricalData)
-
-        // Calcular los totales para la fila de pie de tabla
-        const totalsRow = { monthName: `TOTAL AÑO ${new Date().getFullYear()}` } // Etiqueta para el total anual
-        projectNames.forEach((name) => {
-          totalsRow[name] = formattedHistoricalData.reduce((sum, row) => sum + (row[name] || 0), 0)
-        })
-        setHistoricalProjectTotals(totalsRow)
-      } catch (error) {
-        console.error("Error fetching historical project revenue:", error)
-        newErrors.historicalProjectRevenue = `Error al cargar recaudos históricos por proyecto: ${error.message || "Error desconocido"}`
-        setHistoricalProjectRevenue([])
-        setHistoricalProjectColumns([])
-        setHistoricalProjectTotals(null)
       }
 
       // Cargar actividad reciente
@@ -1006,7 +1071,7 @@ export default function Dashboard() {
                       icon={CreditCard}
                       title="Recaudado Total (Proyectos del Mes)"
                       value={formatCurrency(stats.totalCurrentMonthProjectRevenue)}
-                      description="Dinero total recaudado por proyectos en el mes actual"
+                      description="Dinero total recaudado por Luxury Malibu, Malibu y Reservas en el mes actual"
                       color="teal"
                     />
                   </div>
@@ -1017,21 +1082,21 @@ export default function Dashboard() {
                       icon={Building2}
                       title="Luxury Malibu - Mes Actual"
                       value={formatCurrency(stats.luxuryMonthly)}
-                      description="Recaudo total proyecto Luxury Malibu en el mes actual"
+                      description="Recaudo total del proyecto Luxury Malibu en el mes actual"
                       color="blue"
                     />
                     <StatCard
                       icon={Building2}
                       title="Reservas del Poblado - Mes Actual"
                       value={formatCurrency(stats.reservasMonthly)}
-                      description="Recaudo total proyecto Reservas del Poblado en el mes actual"
+                      description="Recaudo total del proyecto Reservas del Poblado en el mes actual"
                       color="cyan"
                     />
                     <StatCard
                       icon={Building2}
                       title="Malibu - Mes Actual"
                       value={formatCurrency(stats.malibuMonthly)}
-                      description="Recaudo total proyecto Malibu en el mes actual"
+                      description="Recaudo total del proyecto Malibu en el mes actual"
                       color="green"
                     />
                   </div>

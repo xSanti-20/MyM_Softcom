@@ -10,6 +10,7 @@ import DataTable from "@/components/utils/DataTable"
 import Image from 'next/image';
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectTrigger,
@@ -17,8 +18,10 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
-import { Filter, Plus, Download } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Filter, Plus, Download, Calculator } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import salesPdfService from "@/services/pdfExportService"
 
 function SalesPage() {
   const TitlePage = "Ventas"
@@ -29,6 +32,13 @@ function SalesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [projects, setProjects] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [simulatorProjectId, setSimulatorProjectId] = useState("")
+  const [simulatorLotNumber, setSimulatorLotNumber] = useState("")
+  const [simulatorLotValue, setSimulatorLotValue] = useState("")
+  const [simulatorQuotasCount, setSimulatorQuotasCount] = useState(18)
+  const [simulatorResult, setSimulatorResult] = useState(null)
+  const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false)
+  const [isExportingSimulator, setIsExportingSimulator] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -190,6 +200,88 @@ function SalesPage() {
       showAlert("error", "No se pudieron cargar los proyectos para el filtro.")
     }
   }, [])
+
+  const calculateSimulator = () => {
+    const lotValue = Number.parseFloat(simulatorLotValue) || 0
+    const quotas = Number.parseInt(simulatorQuotasCount, 10) || 0
+
+    if (!simulatorProjectId) {
+      showAlert("error", "Selecciona un proyecto para simular.")
+      return
+    }
+
+    if (!simulatorLotNumber) {
+      showAlert("error", "Ingresa el número de lote.")
+      return
+    }
+
+    if (lotValue <= 0) {
+      showAlert("error", "Ingresa un valor de lote válido.")
+      return
+    }
+
+    if (quotas <= 0) {
+      showAlert("error", "Ingresa una cantidad de cuotas válida.")
+      return
+    }
+
+    const projectName = projects.find((project) => project.id_Projects.toString() === simulatorProjectId)?.name || "No disponible"
+    const monthlyValue = lotValue / quotas
+    const schedule = []
+    const startDate = new Date()
+
+    for (let i = 1; i <= quotas; i += 1) {
+      const dueDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, startDate.getDate())
+      schedule.push({
+        quotaNumber: i,
+        dueDate: dueDate.toISOString(),
+        amount: monthlyValue,
+      })
+    }
+
+    setSimulatorResult({
+      project: projectName,
+      lot: simulatorLotNumber,
+      totalValue: lotValue,
+      quotas,
+      monthlyValue,
+      schedule,
+    })
+  }
+
+  const resetSimulator = () => {
+    setSimulatorProjectId("")
+    setSimulatorLotNumber("")
+    setSimulatorLotValue("")
+    setSimulatorQuotasCount(18)
+    setSimulatorResult(null)
+    setIsExportingSimulator(false)
+  }
+
+  const handleSimulatorModalChange = (open) => {
+    setIsSimulatorModalOpen(open)
+    if (!open) {
+      resetSimulator()
+    }
+  }
+
+  const handleExportSimulatorPDF = async () => {
+    if (!simulatorResult) {
+      showAlert("error", "Primero calcula el simulador.")
+      return
+    }
+
+    try {
+      setIsExportingSimulator(true)
+      await salesPdfService.generateSimulatorPDF(simulatorResult)
+      showAlert("success", "Simulador exportado correctamente.")
+    } catch (error) {
+      console.error("Error al exportar el simulador:", error)
+      showAlert("error", "No se pudo generar el PDF del simulador.")
+    } finally {
+      setIsExportingSimulator(false)
+    }
+  }
 
   const fetchSales = useCallback(async (projectId = null) => {
     try {
@@ -449,6 +541,13 @@ function SalesPage() {
           </Select>
         </div>
         <Button
+          onClick={() => setIsSimulatorModalOpen(true)}
+          className="flex items-center justify-center bg-fuchsia-600 text-white hover:bg-fuchsia-700"
+        >
+          <Calculator className="w-4 h-4 mr-2" />
+          <span className="text-sm">Calculadora</span>
+        </Button>
+        <Button
           onClick={exportSalesToCSV}
           variant="outline"
           className="flex items-center justify-center"
@@ -498,6 +597,136 @@ function SalesPage() {
               headerActions={headerActions}
             />
           </div>
+
+          <Dialog open={isSimulatorModalOpen} onOpenChange={handleSimulatorModalChange}>
+            <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain">
+              <DialogHeader>
+                <DialogTitle>Calculadora de Cuotas</DialogTitle>
+                <DialogDescription>
+                  Crea una simulación de pagos para un lote con el proyecto, valor y cantidad de cuotas que ya conocemos.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+                <div>
+                  <Label htmlFor="sim-project" className="text-sm font-semibold text-slate-700">
+                    Proyecto
+                  </Label>
+                  <Select value={simulatorProjectId} onValueChange={setSimulatorProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona proyecto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id_Projects} value={project.id_Projects.toString()}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="sim-lot" className="text-sm font-semibold text-slate-700">
+                    Lote
+                  </Label>
+                  <Input
+                    id="sim-lot"
+                    type="text"
+                    value={simulatorLotNumber}
+                    onChange={(event) => setSimulatorLotNumber(event.target.value)}
+                    placeholder="Ej: 15"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sim-value" className="text-sm font-semibold text-slate-700">
+                    Valor del lote
+                  </Label>
+                  <Input
+                    id="sim-value"
+                    type="number"
+                    value={simulatorLotValue}
+                    onChange={(event) => setSimulatorLotValue(event.target.value)}
+                    placeholder="Ej: 40000000"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sim-quotas" className="text-sm font-semibold text-slate-700">
+                    Cuotas
+                  </Label>
+                  <Input
+                    id="sim-quotas"
+                    type="number"
+                    min={1}
+                    value={simulatorQuotasCount}
+                    onChange={(event) => setSimulatorQuotasCount(event.target.value)}
+                    placeholder="18"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 mt-5 justify-end">
+                <Button variant="secondary" onClick={calculateSimulator} className="w-full sm:w-auto">
+                  Calcular
+                </Button>
+                <Button
+                  onClick={handleExportSimulatorPDF}
+                  disabled={!simulatorResult || isExportingSimulator}
+                  className="w-full sm:w-auto bg-fuchsia-600 text-white hover:bg-fuchsia-700"
+                >
+                  {isExportingSimulator ? "Generando PDF..." : "Exportar PDF"}
+                </Button>
+              </div>
+
+              {simulatorResult && (
+                <div className="mt-6">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-5">
+                      <p className="text-xs uppercase tracking-wide text-fuchsia-700 font-semibold">Proyecto</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-900">{simulatorResult.project}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Valor Total</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-900">
+                        {simulatorResult.totalValue.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                      <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Valor Cuota</p>
+                      <p className="mt-3 text-lg font-semibold text-slate-900">
+                        {simulatorResult.monthlyValue.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Cuota</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Fecha Vencimiento</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Valor Cuota</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {simulatorResult.schedule.map((item) => (
+                          <tr key={item.quotaNumber}>
+                            <td className="px-4 py-3 text-sm text-slate-700">{item.quotaNumber}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{new Date(item.dueDate).toLocaleDateString("es-CO")}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-slate-900">
+                              {item.amount.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

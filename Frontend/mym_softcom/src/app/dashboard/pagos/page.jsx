@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import PrivateNav from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import RegisterPayment from "./formpagos"
@@ -8,6 +8,7 @@ import AlertModal from "@/components/AlertModal"
 import Image from 'next/image';
 import DataTable from "@/components/utils/DataTable"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Filter, Plus, Trash2, CheckSquare, Square } from "lucide-react"
@@ -22,6 +23,10 @@ function Payments() {
   const [editingPayment, setEditingPayment] = useState(null)
   const [projects, setProjects] = useState([])
   const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [paymentDateFrom, setPaymentDateFrom] = useState("")
+  const [paymentDateTo, setPaymentDateTo] = useState("")
+  const [paymentAmountFilter, setPaymentAmountFilter] = useState("")
+  const [methodFilter, setMethodFilter] = useState("all")
   const [selectedPayments, setSelectedPayments] = useState([]) // ← NUEVO: IDs de pagos seleccionados
   const [isDeleting, setIsDeleting] = useState(false) // ← NUEVO: Estado de eliminación masiva
   const [alertInfo, setAlertInfo] = useState({
@@ -64,6 +69,22 @@ function Payments() {
     if (projectId) return `Proyecto #${projectId}`
     return "Sin proyecto"
   }
+
+  const getPaymentAmount = (payment) => Number(payment?.amount) || 0
+
+  const getPaymentDateValue = (payment) => {
+    if (!payment?.payment_date) return null
+    const paymentDate = new Date(payment.payment_date)
+    return Number.isNaN(paymentDate.getTime()) ? null : paymentDate
+  }
+
+  const normalizePaymentMethod = (method) =>
+    method
+      ?.toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim() || ""
 
   const fetchProjectsForFilter = useCallback(async () => {
     try {
@@ -227,6 +248,49 @@ function Payments() {
     setSelectedProjectId(value)
     fetchPayments(value === "all" ? null : value, projects)
   }
+
+  const clearPaymentFilters = () => {
+    setSelectedProjectId("")
+    setPaymentDateFrom("")
+    setPaymentDateTo("")
+    setPaymentAmountFilter("")
+    setMethodFilter("all")
+    fetchPayments(null, projects)
+  }
+
+  const filteredPaymentData = useMemo(() => {
+    const exactAmount = paymentAmountFilter === "" ? null : Number(paymentAmountFilter)
+    const fromDate = paymentDateFrom ? new Date(`${paymentDateFrom}T00:00:00`) : null
+    const toDate = paymentDateTo ? new Date(`${paymentDateTo}T23:59:59.999`) : null
+
+    return paymentData.filter((payment) => {
+      const original = payment.original || {}
+      const paymentAmount = getPaymentAmount(original)
+      const paymentDate = getPaymentDateValue(original)
+      const normalizedMethod = normalizePaymentMethod(original.payment_method)
+
+      if (exactAmount !== null && !Number.isNaN(exactAmount) && paymentAmount !== exactAmount) return false
+      if (fromDate && !paymentDate) return false
+      if (toDate && !paymentDate) return false
+      if (fromDate && paymentDate && paymentDate < fromDate) return false
+      if (toDate && paymentDate && paymentDate > toDate) return false
+
+      if (methodFilter !== "all") {
+        if (methodFilter === "efectivo") {
+          if (!normalizedMethod.includes("efectivo") && !normalizedMethod.includes("cuota inicial") && !normalizedMethod.includes("inicial")) {
+            return false
+          }
+        }
+        if (methodFilter === "banco") {
+          if (!normalizedMethod.includes("banco") && !normalizedMethod.includes("corriente") && !normalizedMethod.includes("ahorro") && !normalizedMethod.includes("transferencia")) {
+            return false
+          }
+        }
+      }
+
+      return true
+    })
+  }, [paymentData, paymentAmountFilter, paymentDateFrom, paymentDateTo, methodFilter])
 
   useEffect(() => {
     const loadData = async () => {
@@ -500,9 +564,75 @@ function Payments() {
             </div>
           )}
 
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <Label htmlFor="filter-date-from" className="text-sm font-medium text-slate-700">
+                    Fecha desde
+                  </Label>
+                  <Input
+                    id="filter-date-from"
+                    type="date"
+                    value={paymentDateFrom}
+                    onChange={(event) => setPaymentDateFrom(event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="filter-date-to" className="text-sm font-medium text-slate-700">
+                    Fecha hasta
+                  </Label>
+                  <Input
+                    id="filter-date-to"
+                    type="date"
+                    value={paymentDateTo}
+                    onChange={(event) => setPaymentDateTo(event.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="filter-amount" className="text-sm font-medium text-slate-700">
+                    Valor
+                  </Label>
+                  <Input
+                    id="filter-amount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={paymentAmountFilter}
+                    onChange={(event) => setPaymentAmountFilter(event.target.value)}
+                    placeholder="Ej: 500000"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="filter-method" className="text-sm font-medium text-slate-700">
+                    Método
+                  </Label>
+                  <Select value={methodFilter} onValueChange={setMethodFilter}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="banco">Banco</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+                <Button variant="outline" onClick={clearPaymentFilters} className="w-full sm:w-auto">
+                  Limpiar filtros
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Tabla de pagos */}
           <DataTable
-            Data={paymentData}
+            Data={filteredPaymentData}
             TitlesTable={titlesPayments}
             onDelete={handleDelete}
             onUpdate={handleUpdate}
