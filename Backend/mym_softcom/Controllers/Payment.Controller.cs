@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using mym_softcom.Models;
 using mym_softcom.Services;
+using mym_softcom.DTOs;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
@@ -26,8 +27,19 @@ namespace mym_softcom.Controllers
         [HttpGet("GetAllPayments")]
         public async Task<ActionResult<IEnumerable<Payment>>> GetAllPayments()
         {
-            var payments = await _paymentServices.GetAllPayments();
-            return Ok(payments);
+            try
+            {
+                Console.WriteLine("🔍 [Payment Controller] GetAllPayments iniciado");
+                var payments = await _paymentServices.GetAllPayments();
+                Console.WriteLine($"✅ [Payment Controller] Se obtuvieron {payments.Count()} pagos");
+                return Ok(payments);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [Payment Controller] Error en GetAllPayments: {ex.Message}");
+                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                return StatusCode(500, new { error = $"Error al obtener pagos: {ex.Message}", details = ex.StackTrace });
+            }
         }
 
         /// <summary>
@@ -63,11 +75,11 @@ namespace mym_softcom.Controllers
         /// <summary>
         /// Crea un nuevo pago en el sistema.
         /// </summary>
-        /// <param name="payment">El objeto Payment a crear.</param>
+        /// <param name="paymentDTO">El DTO con los datos del pago a crear.</param>
         /// <returns>El pago creado con su ID.</returns>
         // POST: api/Payment/CreatePayment
         [HttpPost("CreatePayment")]
-        public async Task<ActionResult<Payment>> CreatePayment(Payment payment)
+        public async Task<ActionResult<Payment>> CreatePayment(CreatePaymentDTO paymentDTO)
         {
             if (!ModelState.IsValid)
             {
@@ -76,11 +88,11 @@ namespace mym_softcom.Controllers
 
             try
             {
-                var success = await _paymentServices.CreatePayment(payment);
+                // ← NUEVO: Pasar el DTO al servicio para que procese PaymentDetails
+                var success = await _paymentServices.CreatePaymentFromDTO(paymentDTO);
                 if (success)
                 {
-                    // Usar el nombre de la acción explícito para CreatedAtAction
-                    return CreatedAtAction(nameof(GetPaymentID), new { id = payment.id_Payments }, payment);
+                    return Ok(new { message = "Pago registrado con éxito.", success = true });
                 }
                 return StatusCode(500, "Error al crear el pago.");
             }
@@ -99,20 +111,15 @@ namespace mym_softcom.Controllers
         }
 
         /// <summary>
-        /// Actualiza un pago existente por su ID.
+        /// Actualiza un pago existente.
         /// </summary>
         /// <param name="id">El ID del pago a actualizar.</param>
-        /// <param name="payment">El objeto Payment con los datos actualizados.</param>
-        /// <returns>NoContent si la actualización es exitosa, de lo contrario, BadRequest o NotFound.</returns>
+        /// <param name="paymentDTO">El DTO con los datos actualizados.</param>
+        /// <returns>NoContent si la actualización es exitosa.</returns>
         // PUT: api/Payment/UpdatePayment/{id}
         [HttpPut("UpdatePayment/{id}")]
-        public async Task<IActionResult> UpdatePayment(int id, Payment payment)
+        public async Task<IActionResult> UpdatePayment(int id, CreatePaymentDTO paymentDTO)
         {
-            if (id != payment.id_Payments)
-            {
-                return BadRequest("El ID del pago en la URL no coincide con el ID del pago en el cuerpo de la solicitud.");
-            }
-
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -120,10 +127,11 @@ namespace mym_softcom.Controllers
 
             try
             {
-                var success = await _paymentServices.UpdatePayment(id, payment);
+                // ← NUEVO: Usar UpdatePaymentFromDTO que respeta KeepOriginalQuotas
+                var success = await _paymentServices.UpdatePaymentFromDTO(id, paymentDTO);
                 if (success)
                 {
-                    return NoContent(); // 204 No Content para una actualización exitosa sin retorno de datos
+                    return Ok(new { message = "Pago actualizado con éxito.", success = true });
                 }
                 return NotFound("Pago no encontrado o error al actualizar.");
             }

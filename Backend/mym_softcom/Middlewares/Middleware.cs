@@ -4,7 +4,6 @@ using mym_softcom.Services;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using mym_softcom.Models;
 
 namespace mym_softcom.Middlewares
 {

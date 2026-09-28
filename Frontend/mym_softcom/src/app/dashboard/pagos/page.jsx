@@ -211,28 +211,37 @@ function Payments() {
         setPaymentStats(stats)
         console.log("Estadísticas de pagos:", stats)
 
-        const data = filteredPayments.map((payment) => ({
-          id: payment.id_Payments,
-          monto:
-            payment.amount != null
-              ? payment.amount.toLocaleString("es-CO", {
-                style: "currency",
-                currency: "COP",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })
-              : "Sin monto",
-          fechaPago: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("es-CO") : "Sin fecha",
-          metodoPago: payment.payment_method || "Sin método",
-          cliente: payment.sale?.client
-            ? `${payment.sale.client.names} ${payment.sale.client.surnames}`
-            : "Sin cliente",
-          documento: payment.sale?.client?.document || "Sin documento",
-          lote: payment.sale?.lot ? `${payment.sale.lot.block}-${payment.sale.lot.lot_number}` : "Sin lote",
-          proyecto: getProjectName(payment),
-          original: payment,
-          searchableIdentifier: `${payment.id_Payments} ${payment.sale?.client?.names} ${payment.sale?.client?.surnames} ${payment.sale?.lot?.block}-${payment.sale.lot?.lot_number} ${getProjectName(payment)} ${payment.payment_method}`,
-        }))
+        const data = filteredPayments.map((payment) => {
+          // ← CORREGIDO: Determinar si el pago puede ser eliminado
+          // Un pago NO puede ser eliminado si es el pago INICIAL de la venta
+          // (no si está asociado a Cuota #1, que es un mes después)
+          // El pago inicial es: sale.initial_payment (enganche, p.ej. 20%)
+          const isInitialPayment = payment.amount === payment.sale?.initial_payment
+          
+          return {
+            id: payment.id_Payments,
+            monto:
+              payment.amount != null
+                ? payment.amount.toLocaleString("es-CO", {
+                  style: "currency",
+                  currency: "COP",
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })
+                : "Sin monto",
+            fechaPago: payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("es-CO") : "Sin fecha",
+            metodoPago: payment.payment_method || "Sin método",
+            cliente: payment.sale?.client
+              ? `${payment.sale.client.names} ${payment.sale.client.surnames}`
+              : "Sin cliente",
+            documento: payment.sale?.client?.document || "Sin documento",
+            lote: payment.sale?.lot ? `${payment.sale.lot.block}-${payment.sale.lot.lot_number}` : "Sin lote",
+            proyecto: getProjectName(payment),
+            original: payment,
+            canDelete: !isInitialPayment, // ← NUEVO: Propiedad para controlar eliminación
+            searchableIdentifier: `${payment.id_Payments} ${payment.sale?.client?.names} ${payment.sale?.client?.surnames} ${payment.sale?.lot?.block}-${payment.sale.lot?.lot_number} ${getProjectName(payment)} ${payment.payment_method}`,
+          }
+        })
         setPaymentData(data)
       }
     } catch (error) {
@@ -418,7 +427,7 @@ function Payments() {
           <Button
             onClick={handleBulkDelete}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2 w-full sm:w-auto"
+            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white flex items-center justify-center gap-2 w-full sm:w-auto shadow-md hover:shadow-lg transition-all duration-300 disabled:opacity-70 font-semibold"
           >
             {isDeleting ? (
               <>
@@ -427,8 +436,8 @@ function Payments() {
               </>
             ) : (
               <>
-                <Trash2 className="w-4 h-4" />
-                <span>Eliminar {selectedPayments.length} Seleccionado(s)</span>
+                <Trash2 className="w-5 h-5" />
+                <span>Eliminar {selectedPayments.length} pago(s)</span>
               </>
             )}
           </Button>
@@ -456,9 +465,9 @@ function Payments() {
 
         <Button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center space-x-2 w-full sm:w-auto"
+          className="bg-gradient-to-r from-pink-600 to-rose-700 hover:from-pink-700 hover:to-rose-800 text-white flex items-center justify-center gap-2 w-full sm:w-auto shadow-md hover:shadow-lg transition-all duration-300 font-semibold"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           <span>Agregar Pago</span>
         </Button>
       </div>
@@ -487,24 +496,24 @@ function Payments() {
         <div className="container mx-auto p-4 sm:p-6">
           {/* Banner informativo sobre eliminación múltiple */}
           {selectedPayments.length > 0 && (
-            <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+            <div className="mb-6 p-4 md:p-5 bg-gradient-to-r from-blue-50 to-blue-50/50 dark:from-blue-900/20 dark:to-blue-900/10 border-l-4 border-l-blue-500 rounded-xl shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-start gap-3">
-                <CheckSquare className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <CheckSquare className="w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <h4 className="font-semibold text-blue-900">
-                    {selectedPayments.length} pago(s) seleccionado(s)
+                  <h4 className="font-bold text-blue-900 dark:text-blue-200">
+                    ✓ {selectedPayments.length} pago(s) seleccionado(s)
                   </h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Puedes eliminar todos los pagos seleccionados a la vez usando el botón rojo "Eliminar Seleccionados"
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Usa el botón "Eliminar Seleccionados" para eliminar múltiples pagos a la vez
                   </p>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedPayments([])}
-                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                 >
-                  Limpiar
+                  ✕ Limpiar
                 </Button>
               </div>
             </div>
@@ -512,46 +521,51 @@ function Payments() {
 
           {/* Panel de estadísticas de pagos del mes */}
           {paymentStats.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {paymentStats.map((stat, index) => (
                 <div
                   key={index}
-                  className="p-4 bg-white rounded-xl shadow-md border border-gray-200"
+                  className="p-5 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300"
                 >
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">{stat.projectName}</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600 flex items-center gap-2">
-                        <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-                        <span className="font-medium">Efectivo:</span>
-                      </p>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">
-                          {stat.totalEfectivo.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-500">{stat.efectivo} pagos</p>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-1 h-6 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">{stat.projectName}</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="p-3 bg-gradient-to-r from-pink-50 to-pink-50/50 dark:from-pink-900/20 dark:to-pink-900/10 rounded-lg border border-pink-100 dark:border-pink-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 bg-pink-500 rounded-full"></div>
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Efectivo</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-pink-600 dark:text-pink-400">
+                            {stat.totalEfectivo.toLocaleString("es-CO", {
+                              style: "currency",
+                              currency: "COP",
+                              minimumFractionDigits: 0,
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{stat.efectivo} pago(s)</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-600 flex items-center gap-2">
-
-                        
-                        <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
-                        <span className="font-medium">Banco:</span>
-                      </p>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-blue-600">
-                          {stat.totalBanco.toLocaleString("es-CO", {
-                            style: "currency",
-                            currency: "COP",
-                            minimumFractionDigits: 0,
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-500">{stat.banco} pagos</p>
+                    <div className="p-3 bg-gradient-to-r from-blue-50 to-blue-50/50 dark:from-blue-900/20 dark:to-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                          <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Banco</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                            {stat.totalBanco.toLocaleString("es-CO", {
+                              style: "currency",
+                              currency: "COP",
+                              minimumFractionDigits: 0,
+                            })}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{stat.banco} pago(s)</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -559,41 +573,41 @@ function Payments() {
               ))}
             </div>
           ) : (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-              <p className="text-yellow-800">No hay pagos registrados en el mes actual.</p>
+            <div className="mb-8 p-5 bg-gradient-to-r from-amber-50 to-amber-50/50 dark:from-amber-900/20 dark:to-amber-900/10 border border-l-4 border-l-amber-500 rounded-lg text-center shadow-sm">
+              <p className="text-amber-900 dark:text-amber-200 font-medium">📊 No hay pagos registrados en el mes actual</p>
             </div>
           )}
 
-          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mb-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div className="grid flex-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <Label htmlFor="filter-date-from" className="text-sm font-medium text-slate-700">
-                    Fecha desde
+                  <Label htmlFor="filter-date-from" className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                    📅 Fecha desde
                   </Label>
                   <Input
                     id="filter-date-from"
                     type="date"
                     value={paymentDateFrom}
                     onChange={(event) => setPaymentDateFrom(event.target.value)}
-                    className="mt-1"
+                    className="mt-2 border-gray-300 dark:border-gray-600 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="filter-date-to" className="text-sm font-medium text-slate-700">
-                    Fecha hasta
+                  <Label htmlFor="filter-date-to" className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                    📅 Fecha hasta
                   </Label>
                   <Input
                     id="filter-date-to"
                     type="date"
                     value={paymentDateTo}
                     onChange={(event) => setPaymentDateTo(event.target.value)}
-                    className="mt-1"
+                    className="mt-2 border-gray-300 dark:border-gray-600 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="filter-amount" className="text-sm font-medium text-slate-700">
-                    Valor
+                  <Label htmlFor="filter-amount" className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                    💰 Valor
                   </Label>
                   <Input
                     id="filter-amount"
@@ -603,28 +617,32 @@ function Payments() {
                     value={paymentAmountFilter}
                     onChange={(event) => setPaymentAmountFilter(event.target.value)}
                     placeholder="Ej: 500000"
-                    className="mt-1"
+                    className="mt-2 border-gray-300 dark:border-gray-600 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white transition-colors"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="filter-method" className="text-sm font-medium text-slate-700">
-                    Método
+                  <Label htmlFor="filter-method" className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                    🔄 Método
                   </Label>
                   <Select value={methodFilter} onValueChange={setMethodFilter}>
-                    <SelectTrigger className="mt-1 w-full">
+                    <SelectTrigger className="mt-2 w-full border-gray-300 dark:border-gray-600 focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="banco">Banco</SelectItem>
+                    <SelectContent className="dark:bg-gray-700">
+                      <SelectItem value="all">✓ Todos</SelectItem>
+                      <SelectItem value="efectivo">💵 Efectivo</SelectItem>
+                      <SelectItem value="banco">🏦 Banco</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
-                <Button variant="outline" onClick={clearPaymentFilters} className="w-full sm:w-auto">
-                  Limpiar filtros
+                <Button 
+                  variant="outline" 
+                  onClick={clearPaymentFilters} 
+                  className="w-full sm:w-auto border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium"
+                >
+                  ✕ Limpiar filtros
                 </Button>
               </div>
             </div>

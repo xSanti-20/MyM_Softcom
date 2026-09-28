@@ -1,0 +1,633 @@
+.backdrop {
+  --ink: #191a2e;
+  --muted: #77798e;
+  --purple: #e91e63;
+  --purple-dark: #c2185b;
+  --line: #fce4ec;
+  --surface: #fff;
+  --success: #4caf50;
+  --error: #f44336;
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  animation: backdropBlur 0.5s ease-out both;
+  z-index: 40;
+  will-change: auto;
+  backface-visibility: hidden;
+  pointer-events: auto;
+}
+
+@keyframes backdropBlur {
+  from {
+    background: rgba(0, 0, 0, 0);
+    backdrop-filter: blur(0px);
+  }
+  to {
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+  }
+}
+
+.modal {
+  --panel-left: 50%;
+  width: min(940px, 100%);
+  height: 610px;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid rgba(233, 30, 99, 0.2);
+  border-radius: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  animation: arrive 0.4s ease-out both;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Lados del modal */
+.form-side,
+.welcome-side {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  transition: transform 0.5s ease-out;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.form-side {
+  left: 0;
+  overflow-y: auto;
+  padding: 42px 54px 34px;
+  background: var(--surface);
+  transform: translateX(0);
+}
+
+.welcome-side {
+  left: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 52px;
+  color: #fff;
+  background: linear-gradient(145deg, #ec407a 0%, #c2185b 55%, #ad1457 100%);
+  position: relative;
+  transform: translateX(0);
+}
+
+/* Cuando está en modo secundario (registro/recuperación), el panel se desliza */
+.modal.is-secondary .form-side {
+  transform: translateX(100%);
+}
+
+.modal.is-secondary .welcome-side {
+  transform: translateX(-100%);
+}
+
+@keyframes welcomeSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+}
+
+@keyframes welcomeSlideInBack {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Decoraciones del panel de bienvenida */
+.welcome-side::before,
+.welcome-side::after {
+  content: "";
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+}
+
+.welcome-side::before {
+  width: 410px;
+  height: 410px;
+  right: -190px;
+  top: -170px;
+}
+
+.welcome-side::after {
+  width: 310px;
+  height: 310px;
+  left: -190px;
+  bottom: -170px;
+}
+
+/* Marca de la aplicación */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin-bottom: 35px;
+  color: var(--purple);
+}
+
+.brand-mark {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: white;
+  background: var(--purple);
+  font-size: 16px;
+}
+
+/* Estilos de texto */
+.eyebrow {
+  margin: 35px 0 9px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  height: 60px;
+}
+
+.title {
+  margin: 0;
+  font-size: 31px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -1.15px;
+  color: var(--ink);
+}
+
+.subheading {
+  margin: 10px 0 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* Vistas del formulario */
+.form-view {
+  display: none;
+  animation: formIn 0.3s ease-out both;
+}
+
+.form-view.active {
+  display: block;
+}
+
+@keyframes formIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Campos del formulario */
+.field {
+  margin: 0 0 18px;
+}
+
+.field-label {
+  display: block;
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  outline: none;
+  color: var(--ink);
+  background: #fafbfc;
+  font: 14px inherit;
+  transition: all 0.3s ease;
+  will-change: border-color, box-shadow, background;
+}
+
+.input-field::placeholder {
+  color: #a8aab8;
+  font-weight: 500;
+}
+
+.input-field:hover {
+  border-color: rgba(233, 30, 99, 0.3);
+  background: #fff;
+}
+
+.input-field:focus {
+  background: #fff;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.12), 0 4px 12px rgba(233, 30, 99, 0.15);
+}
+
+.input-field:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f0f0f5;
+}
+
+.password-input {
+  padding-right: 76px !important;
+}
+
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 6px 8px;
+  color: var(--muted);
+  background: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  letter-spacing: 0.3px;
+}
+
+.toggle-password:hover:not(:disabled) {
+  color: var(--purple);
+}
+
+.toggle-password:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Row con checkbox y link */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 3px 0 18px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.check:hover {
+  color: var(--ink);
+}
+
+.check-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--purple);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform 0.2s ease;
+}
+
+.check-input:hover {
+  transform: scale(1.05);
+}
+
+.check-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.text-link {
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.text-link:hover:not(:disabled) {
+  color: var(--purple-dark);
+  text-decoration: underline;
+}
+
+.text-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Botón primario */
+.primary {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--purple) 0%, var(--purple-dark) 100%);
+  font: 700 14px inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(233, 30, 99, 0.25);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.4px;
+}
+
+.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--purple-dark) 0%, #ad1457 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(233, 30, 99, 0.35);
+}
+
+.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Texto fino */
+.fine-print {
+  margin: 18px 0 0;
+  text-align: center;
+  color: #9a99a8;
+  font-size: 11px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+/* Contenido de bienvenida */
+.welcome-content {
+  position: relative;
+  z-index: 1;
+  max-width: 340px;
+}
+
+.welcome-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.13);
+  font-size: 23px;
+}
+
+.welcome-title {
+  margin: 0 0 13px;
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.9px;
+}
+
+.welcome-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.77);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.welcome-prompt {
+  margin-top: 35px !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 12px !important;
+}
+
+.welcome-link {
+  color: white;
+  font-weight: 700;
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+}
+
+/* Puntos indicadores */
+.dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 31px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.3s ease;
+}
+
+.dot:first-child {
+  width: 20px;
+  background: white;
+}
+
+/* Notificaciones */
+.notice {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 320px;
+  max-width: calc(100% - 48px);
+  display: block;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: slideIn 0.25s ease-out;
+  border-left: 4px solid;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.notice.success {
+  color: #155724;
+  background: #d4edda;
+  border-color: #28a745;
+  border-left-color: #28a745;
+}
+
+.notice.error {
+  color: #721c24;
+  background: #f8d7da;
+  border-color: #f44336;
+  border-left-color: #f44336;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .backdrop {
+    padding: 12px;
+    background: #fff0f5;
+    backdrop-filter: none;
+  }
+
+  .modal {
+    width: min(440px, 100%);
+    height: min(740px, calc(100dvh - 24px));
+    min-height: 590px;
+    border-radius: 20px;
+  }
+
+  .form-side,
+  .welcome-side {
+    width: 100%;
+    height: auto;
+    left: 0;
+    transition: none;
+  }
+
+  .form-side {
+    top: 0;
+    bottom: 165px;
+    padding: 26px 26px 22px;
+  }
+
+  .welcome-side {
+    top: auto;
+    bottom: 0;
+    min-height: 165px;
+    padding: 22px 27px;
+  }
+
+  .modal.is-secondary .form-side {
+    left: 0;
+  }
+
+  .modal.is-secondary .welcome-side {
+    left: 0;
+  }
+
+  .brand {
+    font-size: 17px;
+    margin-bottom: 23px;
+  }
+
+  .eyebrow {
+    margin-top: 23px;
+  }
+
+  .title {
+    font-size: 27px;
+  }
+
+  .subheading {
+    margin-bottom: 18px;
+  }
+
+  .welcome-icon {
+    display: none;
+  }
+
+  .welcome-title {
+    font-size: 21px;
+    margin-bottom: 6px;
+  }
+
+  .welcome-text {
+    font-size: 12px;
+  }
+
+  .welcome-prompt {
+    margin-top: 10px !important;
+  }
+
+  .dots {
+    display: none;
+  }
+
+  .notice {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    font-size: 12px;
+    padding: 12px 14px;
+  }
+
+  .input-field {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .primary {
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* Modo reducido */
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .modal,
+  .form-view,
+  .welcome-side,
+  .notice {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

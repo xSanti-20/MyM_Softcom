@@ -8,6 +8,7 @@ import { ChevronDown, User, LogOut, Menu, X } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
+import ThemeToggle from "@/components/ThemeToggle"
 import axiosInstance from "@/lib/axiosInstance"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -18,6 +19,7 @@ function NavPrivada({ children, title }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
+  const [isDark, setIsDark] = useState(false)
   const router = useRouter()
   const { isMobile, isTablet, isDesktop } = useMobile()
   const [role, setsole] = useState("")
@@ -52,6 +54,18 @@ function NavPrivada({ children, title }) {
     if (storedUsername) setUsername(storedUsername)
     if (storedrole) setsole(storedrole)
     if (storedEmail) setEmail(storedEmail)
+
+    // Detectar dark mode
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'))
+    }
+    checkDarkMode()
+
+    // Observer para cambios de clase dark
+    const observer = new MutationObserver(checkDarkMode)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -124,7 +138,7 @@ function NavPrivada({ children, title }) {
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar desktop */}
         {!isMobile && (
-          <div className={`nav-sidebar transition-all duration-300 relative ${isOpen ? "w-64" : "w-16"} h-full`}>
+          <div className={`nav-sidebar transition-all duration-300 relative ${isOpen ? "w-64" : "w-16"} h-full`} style={{ background: isDark ? "#1f2937" : "white", borderRight: `1px solid ${isDark ? "#374151" : "#e0e7ff"}` }}>
             <div className="h-full flex flex-col relative pt-4 overflow-y-auto hide-scroll">
               <div className="flex justify-center items-center mb-8 pt-2">
                 <Image
@@ -145,7 +159,7 @@ function NavPrivada({ children, title }) {
                   <Link
                     key={index}
                     href={item.path}
-                    className="flex items-center px-4 py-3 text-[#947c4c] hover:bg-white/10 transition-colors font-bold rounded-lg mx-2"
+                    className="flex items-center px-4 py-3 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-gray-800 transition-colors font-bold rounded-lg mx-2"
                     style={{ fontFamily: "Arial, sans-serif", fontSize: "14px", whiteSpace: "nowrap" }}
                   >
                     <span className="text-xl min-w-[24px] text-center">{item.icon}</span>
@@ -161,11 +175,11 @@ function NavPrivada({ children, title }) {
         {isMobile && isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={closeMobileMenu} />
-            <div className="fixed left-0 top-0 h-full w-64 nav-sidebar-mobile z-50 animate-slide-right">
+            <div className="fixed left-0 top-0 h-full w-64 nav-sidebar-mobile z-50 animate-slide-right" style={{ background: isDark ? "#1f2937" : "white" }}>
               <div className="h-full flex flex-col pt-4 overflow-y-auto hide-scroll">
                 <div className="flex justify-between items-center px-4 mb-8">
                   <Image src="/assets/img/mymsoftcom.png" alt="mym" width="50" height="45" />
-                  <Button variant="ghost" size="sm" onClick={closeMobileMenu} className="text-[#947c4c] hover:bg-white/10">
+                  <Button variant="ghost" size="sm" onClick={closeMobileMenu} className="text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-gray-800">
                     <X className="w-6 h-6" />
                   </Button>
                 </div>
@@ -175,7 +189,7 @@ function NavPrivada({ children, title }) {
                       key={index}
                       href={item.path}
                       onClick={closeMobileMenu}
-                      className="flex items-center px-4 py-3 text-[#947c4c] hover:bg-white/10 transition-colors font-bold rounded-lg mb-1"
+                      className="flex items-center px-4 py-3 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-gray-800 transition-colors font-bold rounded-lg mb-1"
                       style={{ fontFamily: "Arial, sans-serif", fontSize: "14px" }}
                     >
                       <span className="text-xl min-w-[24px] text-center mr-3">{item.icon}</span>
@@ -189,26 +203,28 @@ function NavPrivada({ children, title }) {
         )}
 
         {/* Contenido principal */}
-        <div className="flex-col flex-1 overflow-hidden">
-          <nav className="navbar bg-nav-private shadow-lg z-40 h-16 md:h-20 flex items-center">
+        <div className="flex-col flex-1 overflow-hidden" style={{ background: isDark ? "#111827" : "#fff0f5" }}>
+          <nav className="navbar bg-nav-private shadow-lg z-40 h-16 md:h-20 flex items-center" style={{ background: isDark ? "#1f2937" : "white", borderBottom: `1px solid ${isDark ? "#374151" : "#e0e7ff"}` }}>
             <div className="container mx-auto flex items-center justify-between px-4">
               {isMobile && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={toggleMobileMenu}
-                  className="text-[#947c4c] hover:bg-white/10 mr-2"
+                  className="text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-gray-800 mr-2"
                 >
                   <Menu className="w-6 h-6" />
                 </Button>
               )}
-              <h1 className={`text-[#947c4c] font-bold ${isMobile ? "text-lg" : "text-2xl"}`} style={{ fontFamily: "Arial, sans-serif" }}>
+              <h1 className={`text-pink-600 dark:text-pink-400 font-bold ${isMobile ? "text-lg" : "text-2xl"}`} style={{ fontFamily: "Arial, sans-serif" }}>
                 M&M SOFTCOM
               </h1>
-              <div className="relative">
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center text-[#947c4c] hover:bg-white/10 px-2 md:px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-gray-800 px-2 md:px-3 py-2 rounded-lg transition-colors"
                 >
                   <User className="mr-1 md:mr-2" size={isMobile ? 16 : 20} />
                   <span className={`mr-1 md:mr-2 ${isMobile ? "text-sm" : ""}`}>
@@ -219,23 +235,24 @@ function NavPrivada({ children, title }) {
                   <ChevronDown size={isMobile ? 14 : 16} />
                 </button>
                 {isUserMenuOpen && (
-                  <div className={`absolute right-0 mt-2 bg-white rounded-lg shadow-lg py-2 z-50 ${isMobile ? "w-48" : "w-64"}`} style={{ top: "calc(100% + 8px)" }}>
-                    <div className="px-4 py-2 text-gray-700 font-semibold border-b text-sm">
+                  <div className={`absolute right-0 mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50 ${isMobile ? "w-48" : "w-64"}`} style={{ top: "calc(100% + 8px)" }}>
+                    <div className="px-4 py-2 text-gray-700 dark:text-gray-200 font-semibold border-b dark:border-gray-700 text-sm">
                       {username || "Usuario"}
-                      <span className="block text-xs text-gray-500">{email || "email@demo.com"}</span>
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">{email || "email@demo.com"}</span>
                     </div>
-                    <button onClick={handleLogout} className="flex w-full items-center px-4 py-2 text-red-600 hover:bg-gray-100 transition-colors text-sm">
+                    <button onClick={handleLogout} className="flex w-full items-center px-4 py-2 text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm">
                       <LogOut className="mr-2" size={16} />
                       Logout
                     </button>
                   </div>
                 )}
               </div>
+              </div>
             </div>
           </nav>
 
-          <div className="flex-1 overflow-hidden">
-            {title && <div className={`px-2 md:px-4 pt-2 md:pt-4 ${isMobile ? "text-sm" : ""}`}>{title}</div>}
+          <div className="flex-1 overflow-hidden content-area" style={{ background: isDark ? "#111827" : "linear-gradient(135deg, #fff0f5 0%, #fce4ec 100%)" }}>
+            {title && <div className={`px-2 md:px-4 pt-2 md:pt-4 ${isDark ? "text-gray-300" : "text-gray-800"} ${isMobile ? "text-sm" : ""}`}>{title}</div>}
             <ScrollArea
               className={`${isMobile ? "h-[calc(100vh-4rem)]" : "h-[calc(100vh-5rem)]"} overflow-y-scroll hide-scroll`}
               style={{ scrollbarGutter: "stable" }}
@@ -246,14 +263,6 @@ function NavPrivada({ children, title }) {
         </div>
 
         <style jsx>{`
-          .nav-sidebar, .nav-sidebar-mobile {
-            background: black !important;
-          }
-
-          .navbar.bg-nav-private {
-            background: black !important;
-          }
-
           /* Ocultar scrollbar */
           .hide-scroll {
             scrollbar-width: none; /* Firefox */

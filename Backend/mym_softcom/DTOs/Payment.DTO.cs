@@ -38,6 +38,26 @@ namespace mym_softcom.DTOs
         public string? Reference_Month { get; set; }
 
         public string? Observation { get; set; }
+
+        // ← NUEVO: Array de detalles de pago para cuotas específicas (OPCIONAL)
+        // Si se proporciona, el pago se distribuirá SOLO a estas cuotas
+        // Si NO se proporciona, el backend distribuirá automáticamente a cuotas pendientes
+        public List<PaymentDetailRequest>? PaymentDetails { get; set; }
+
+        // ← NUEVO: Flag para indicar que en modo edición, se mantengan las cuotas originales
+        public bool KeepOriginalQuotas { get; set; } = false;
+    }
+
+    // ← NUEVO: DTO para cada detalle de pago por cuota
+    public class PaymentDetailRequest
+    {
+        [Required(ErrorMessage = "El número de cuota es obligatorio.")]
+        [Range(1, int.MaxValue, ErrorMessage = "El número de cuota debe ser mayor a 0.")]
+        public int Number_Quota { get; set; }
+
+        [Required(ErrorMessage = "El monto cubierto es obligatorio.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "El monto cubierto debe ser mayor a 0.")]
+        public decimal Covered_Amount { get; set; }
     }
 
     public class UpdatePaymentDTO

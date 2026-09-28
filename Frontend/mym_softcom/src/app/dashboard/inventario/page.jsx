@@ -719,19 +719,19 @@ function InventarioPage() {
         </div>
 
         <div className="mb-6">
-          <Card className="w-full max-w-sm border border-emerald-200 bg-emerald-50/60">
+          <Card className="w-full max-w-sm border border-pink-200 bg-pink-50/60">
             <CardContent className="py-4 px-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+                  <p className="text-xs font-medium uppercase tracking-wide text-pink-700">
                     Valor Total Inventario
                   </p>
-                  <p className="text-2xl font-bold text-emerald-900 mt-1">
+                  <p className="text-2xl font-bold text-pink-900 mt-1">
                     {formatCurrency(totalInventoryValue)}
                   </p>
                 </div>
-                <div className="rounded-full bg-emerald-100 p-2.5">
-                  <DollarSign className="h-5 w-5 text-emerald-700" />
+                <div className="rounded-full bg-pink-100 p-2.5">
+                  <DollarSign className="h-5 w-5 text-pink-700" />
                 </div>
               </div>
             </CardContent>

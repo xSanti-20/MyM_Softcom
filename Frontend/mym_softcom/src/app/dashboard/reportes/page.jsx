@@ -730,7 +730,7 @@ function ReportesPage() {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Recibido:</span>
-                        <span className="text-sm font-semibold text-emerald-700">
+                        <span className="text-sm font-semibold text-pink-700">
                           {formatCurrency(actualAmount)}
                         </span>
                       </div>

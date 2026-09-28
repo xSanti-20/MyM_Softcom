@@ -1,27 +1,46 @@
-/* Variables Globales */
+/* Variables Globales - Paleta Refinada */
 .root {
-    --color-amarillo: #efb810;
-    --bg-color-blanco: #ffffff;
-    --bg-color-negro: #000000;
-    --bg-color-nav: #ffffff68;
-    --font-family: 'Roboto', sans-serif;
+    /* Colores corporativos */
+    --primary-color: #e91e63;
+    --secondary-color: #ffffff;
+    --accent-color: #e91e63;
+    
+    /* Textos */
+    --text-dark: #2c3e50;
+    --text-light: #ffffff;
+    --text-muted: #7f8c8d;
+    
+    /* Fondos */
+    --bg-page: #fff0f5;
+    --bg-light: #fce4ec;
+    --bg-dark: #1a1a1a;
+    --bg-white: #ffffff;
+    
+    /* Efectos */
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+    --transition: all 0.3s ease;
+    
+    /* Tipografía */
+    --font-family: 'Roboto', 'Segoe UI', sans-serif;
     --font-size-base: 1rem;
     --font-size-lg: 1.25rem;
     --font-size-xl: 1.5rem;
     --font-size-xxl: 2.25rem;
-    --border-radius: 8px;
-    --shadow-light: 0 4px 10px rgba(0, 0, 0, 0.1);
-    --shadow-dark: 0 10px 15px rgba(0, 0, 0, 0.2);
+    
+    /* Espaciado */
+    --border-radius: 12px;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 2rem;
 }
 
 /* Estilo Global */
-
-
 body {
     font-family: var(--font-family);
     line-height: 1.6;
-    background-color: var(--bg-color-blanco);
-    color: #333;
+    background-color: var(--bg-page);
+    color: var(--text-dark);
 }
 
 /* Contenedor Principal */
@@ -30,123 +49,156 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    background: linear-gradient(135deg, var(--bg-page) 0%, var(--bg-light) 100%);
+    min-height: 100vh;
 }
 
-/* Encabezado */
+/* Encabezado - Hero Section */
 .header {
-    background-color: var(--bg-color-primary);
-    color: var(--bg-color-blanco);
-    padding: 5rem 2rem;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #d81b60 100%);
+    color: var(--text-light);
+    padding: 6rem 2rem;
     text-align: center;
-    border-bottom: 2px solid #eee;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
 }
 
 .header h1 {
     font-size: var(--font-size-xxl);
-    font-weight: bold;
+    font-weight: 700;
     margin-bottom: 1rem;
+    letter-spacing: -0.5px;
 }
 
 .header p {
     font-size: var(--font-size-lg);
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.95);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
 }
 
 /* Sección de Bienvenida */
 .welcome-section {
-    padding: 4rem 2rem;
-    background-color: var(--bg-color-blanco);
+    padding: 5rem 2rem;
+    background-color: var(--bg-white);
+    width: 100%;
 }
 
 .welcome-section h2 {
     font-size: var(--font-size-xl);
-    font-weight: bold;
-    margin-bottom: 1rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
     text-align: center;
+    color: var(--text-dark);
 }
 
 .welcome-section p {
-    font-size: var(--font-size-lg);
-    color: #666;
+    font-size: 1.05rem;
+    color: var(--text-muted);
     line-height: 1.8;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .welcome-img {
     width: 100%;
     height: auto;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--bg-light);
 }
 
 /* Sección de Misión y Visión */
 .mission-vision-section {
-    background-color: #f8f8f8;
-    padding: 4rem 2rem;
+    background: linear-gradient(to right, var(--bg-light), var(--bg-white));
+    padding: 5rem 2rem;
+    width: 100%;
 }
 
 .mission-vision-section h2 {
     font-size: var(--font-size-xl);
-    font-weight: bold;
-    margin-bottom: 2rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
     text-align: center;
+    color: var(--primary-color);
 }
 
 .mission-vision-section h3 {
     font-size: var(--font-size-lg);
-    font-weight: bold;
+    font-weight: 700;
     margin-bottom: 1rem;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mission-vision-section h3::before {
+    content: '';
+    width: 4px;
+    height: 24px;
+    background: var(--primary-color);
+    border-radius: 2px;
 }
 
 .mission-vision-section p {
-    font-size: var(--font-size-base);
-    color: #555;
+    font-size: 1rem;
+    color: var(--text-muted);
     line-height: 1.8;
 }
 
 /* Sección de Características Destacadas */
 .features-section {
-    padding: 4rem 2rem;
-    background-color: var(--bg-color-blanco);
+    padding: 5rem 2rem;
+    background-color: var(--bg-white);
+    width: 100%;
 }
 
 .features-section h2 {
     font-size: var(--font-size-xl);
-    font-weight: bold;
-    margin-bottom: 2rem;
+    font-weight: 700;
+    margin-bottom: 3rem;
     text-align: center;
+    color: var(--primary-color);
 }
 
 .feature-card {
-    background-color: var(--bg-color-blanco);
-    padding: 2rem;
+    background: linear-gradient(135deg, var(--bg-white) 0%, var(--bg-light) 100%);
+    padding: 2.5rem;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow-light);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--bg-light);
     text-align: center;
-    transition: transform 0.3s ease-in-out;
+    transition: var(--transition);
+    height: 100%;
 }
 
 .feature-card:hover {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
 }
 
 .feature-card img {
     width: 100%;
-    height: 200px;
+    height: 180px;
     object-fit: cover;
-    border-radius: var(--border-radius);
-    margin-bottom: 1rem;
+    border-radius: calc(var(--border-radius) - 4px);
+    margin-bottom: 1.5rem;
 }
 
 .feature-card h3 {
-    font-size: var(--font-size-lg);
-    font-weight: bold;
-    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--primary-color);
 }
 
 .feature-card p {
-    font-size: var(--font-size-base);
-    color: #666;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
 }
 
 /* Galería */

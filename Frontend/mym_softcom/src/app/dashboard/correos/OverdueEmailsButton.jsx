@@ -118,7 +118,7 @@ export default function OverdueEmailsButton() {
 
       {/* Success Result */}
       {result && !showConfirm && (
-        <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md">
+        <Card className="border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50 shadow-md">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-green-100 rounded-full">

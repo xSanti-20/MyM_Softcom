@@ -463,6 +463,8 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     // Ya no requerimos que users y plans estén cargados para poblar el formulario
     if (isEditing && saleToEdit && !editDataLoadedRef.current) {
       console.log("🔧 [EDIT MODE] Cargando datos de venta:", saleToEdit)
+      console.log("🔧 [EDIT MODE] ¿Tiene customQuotasJson?", !!saleToEdit.customQuotasJson, "Valor:", saleToEdit.customQuotasJson?.substring(0, 50))
+      console.log("🔧 [EDIT MODE] PaymentPlanType:", saleToEdit.paymentPlanType)
       console.log("🔧 [EDIT MODE] Users disponibles:", users.length)
       console.log("🔧 [EDIT MODE] Plans disponibles:", plans.length)
       
@@ -543,16 +545,46 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
         id_Clients: saleToEdit.id_Clients?.toString() || "",
         id_Lots: saleToEdit.id_Lots?.toString() || "",  // ✅ Ya incluido aquí
         id_Users: saleToEdit.id_Users?.toString() || "",
-        id_Plans: saleToEdit.id_Plans?.toString() || "",
-        paymentPlanType: saleToEdit.paymentPlanType?.toLowerCase() || "automatic",
+        id_Plans: saleToEdit.id_Plans ? saleToEdit.id_Plans.toString() : "",
+        // 🔧 IMPORTANTE: Si hay customQuotas, el tipo DEBE ser "custom"
+        paymentPlanType: customQuotas.length > 0 ? "custom" : (saleToEdit.paymentPlanType?.toLowerCase() || "automatic"),
         houseInitialPercentage: saleToEdit.houseInitialPercentage?.toString() || "30",
         customQuotas: customQuotas,
       }
       
       console.log("📝 [EDIT MODE] Datos del formulario a establecer:", editFormData)
+      console.log("📋 [EDIT MODE] Plan ID recibido:", saleToEdit.id_Plans, "Plan nombre:", saleToEdit.plan?.name)
+      console.log("📦 [EDIT MODE] ✅ CONFIRMACIÓN: editFormData.customQuotas.length =", editFormData.customQuotas.length)
+      console.log("🎯 [EDIT MODE] ✅ CONFIRMACIÓN: editFormData.paymentPlanType =", editFormData.paymentPlanType)
+      if (editFormData.customQuotas?.length > 0) {
+        console.log("   ✅ Primeras 3 cuotas en editFormData:", editFormData.customQuotas.slice(0, 3))
+      } else {
+        console.warn("   ⚠️ NO HAY CUOTAS EN editFormData!")
+      }
       
-      // ✅ IMPORTANTE: Establecer PRIMERO el formData completo
+      // ✅ PRIMERO: Agregar el plan a la lista si está en saleToEdit
+      if (saleToEdit.plan) {
+        console.log("🔧 [EDIT MODE] Asegurando que el plan está en la lista:", saleToEdit.plan.name)
+        setPlans(prevPlans => {
+          const exists = prevPlans.some(p => p.id_Plans.toString() === saleToEdit.id_Plans.toString())
+          if (exists) {
+            console.log("✅ [EDIT MODE] Plan ya está en la lista")
+            return prevPlans
+          }
+          console.log("✅ [EDIT MODE] Plan agregado a la lista")
+          return [saleToEdit.plan, ...prevPlans]
+        })
+      }
+      
+      // ✅ SEGUNDO: Establecer el formData
       setFormData(editFormData)
+      
+      // 🔍 Log de verificación INMEDIATO
+      console.log("🔍 [SETFORMDATA] setFormData fue llamado con:", {
+        customQuotasCount: editFormData.customQuotas.length,
+        paymentPlanType: editFormData.paymentPlanType,
+        id_Plans: editFormData.id_Plans
+      })
 
       // Cargar cliente para edición
       if (saleToEdit.id_Clients) {
@@ -629,6 +661,37 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     // ✅ NOTA: El reset del formulario ahora solo ocurre después de guardar exitosamente o cancelar edición
   }, [saleToEdit, isEditing])
 
+  // useEffect para cargar el plan completo si falta (respaldo)
+  useEffect(() => {
+    if (isEditing && saleToEdit?.id_Plans && !saleToEdit?.plan && editDataLoadedRef.current) {
+      console.log("🔧 [PLAN LOADER] Plan faltante detectado, buscando plan ID:", saleToEdit.id_Plans)
+      
+      const loadPlan = async () => {
+        try {
+          const response = await axiosInstance.get(`/api/Plan/GetPlanID/${saleToEdit.id_Plans}`)
+          if (response.status === 200 && response.data) {
+            console.log("✅ [PLAN LOADER] Plan obtenido:", response.data)
+            // Agregar el plan a la lista
+            setPlans(prev => {
+              const exists = prev.some(p => p.id_Plans.toString() === response.data.id_Plans.toString())
+              if (exists) return prev
+              return [response.data, ...prev]
+            })
+            // Establecer el plan en el formulario
+            setFormData(prev => ({ 
+              ...prev, 
+              id_Plans: response.data.id_Plans.toString() 
+            }))
+          }
+        } catch (error) {
+          console.error("❌ [PLAN LOADER] Error al obtener plan:", error)
+        }
+      }
+      
+      loadPlan()
+    }
+  }, [isEditing, saleToEdit, editDataLoadedRef])
+
   // useEffect para debuggear cambios en lotSearchTerm y selectedLot
   useEffect(() => {
     if (isEditing && saleToEdit) {
@@ -679,15 +742,133 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     }
   }, [isEditing, saleToEdit, formData.id_Users])
 
-  // useEffect guardián para el plan: asegurarse de que no se pierda durante renders
+  // useEffect guardián para el plan: sincronizar si se pierde
   useEffect(() => {
-    if (isEditing && saleToEdit && editDataLoadedRef.current && !formData.id_Plans && saleToEdit.id_Plans) {
-      console.warn("🔧 [GUARDIAN PLAN] Detectado plan perdido, restaurando...")
-      console.log("   - Plan correcto:", saleToEdit.id_Plans, saleToEdit.plan?.name)
-      setFormData(prev => ({ ...prev, id_Plans: saleToEdit.id_Plans.toString() }))
-      console.log("✅ [GUARDIAN PLAN] Plan restaurado")
+    if (isEditing && saleToEdit && editDataLoadedRef.current && saleToEdit.id_Plans) {
+      const planFromForm = (formData.id_Plans || "").toString()
+      const planFromSale = saleToEdit.id_Plans.toString()
+      
+      if (planFromForm !== planFromSale) {
+        console.warn("🔧 [GUARDIAN PLAN] Plan no sincronizado, restaurando...")
+        console.log("   - Esperado:", planFromSale, "Actual:", planFromForm)
+        console.log("   - Plan objeto:", saleToEdit.plan?.name)
+        
+        // Asegurar que el plan está en la lista
+        if (saleToEdit.plan) {
+          setPlans(prev => {
+            const exists = prev.some(p => p.id_Plans.toString() === planFromSale)
+            if (!exists) {
+              console.log("   - Agregando plan a la lista:", saleToEdit.plan.name)
+              return [saleToEdit.plan, ...prev]
+            }
+            return prev
+          })
+        }
+        
+        // Restaurar el valor del formulario
+        setFormData(prev => {
+          if ((prev.id_Plans || "").toString() !== planFromSale) {
+            console.log("✅ [GUARDIAN PLAN] Plan restaurado a:", planFromSale)
+            return { ...prev, id_Plans: planFromSale }
+          }
+          return prev
+        })
+      }
     }
-  }, [isEditing, saleToEdit, formData.id_Plans])
+  }, [isEditing, saleToEdit, formData.id_Plans, editDataLoadedRef])
+
+  // useEffect guardián para las cuotas personalizadas: sincronizar si se pierden
+  useEffect(() => {
+    if (isEditing && saleToEdit && editDataLoadedRef.current) {
+      // Si saleToEdit tiene customQuotasJson pero formData.customQuotas está vacío, restaurar
+      if (saleToEdit.customQuotasJson && formData.customQuotas.length === 0) {
+        console.warn("🔧 [GUARDIAN QUOTAS] Cuotas personalizadas detectadas como vacías, restaurando...")
+        console.log("   - saleToEdit.paymentPlanType:", saleToEdit.paymentPlanType)
+        console.log("   - formData.paymentPlanType:", formData.paymentPlanType)
+        
+        try {
+          let customQuotasToRestore = []
+          const parsed = JSON.parse(saleToEdit.customQuotasJson)
+          console.log("📋 [GUARDIAN QUOTAS] Parseando:", parsed.length, "cuotas desde JSON")
+          
+          const saleDate = new Date(saleToEdit.sale_date)
+          
+          customQuotasToRestore = parsed.map((q, index) => {
+            const quotaNumber = q.QuotaNumber || q.quotaNumber
+            const amount = q.Amount || q.amount
+            let dueDate = q.DueDate || q.dueDate || ""
+            
+            if (!dueDate) {
+              const monthsToAdd = quotaNumber
+              const targetDate = new Date(saleDate)
+              targetDate.setMonth(saleDate.getMonth() + monthsToAdd)
+              const targetDay = saleDate.getDate()
+              const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
+              targetDate.setDate(Math.min(targetDay, maxDayInMonth))
+              dueDate = targetDate.toISOString().split('T')[0]
+            }
+            
+            return {
+              quotaNumber,
+              amount,
+              dueDate
+            }
+          })
+          
+          console.log("✅ [GUARDIAN QUOTAS] Restauradas", customQuotasToRestore.length, "cuotas")
+          console.log("   Primeras 3:", customQuotasToRestore.slice(0, 3))
+          
+          setFormData(prev => {
+            const newData = {
+              ...prev, 
+              customQuotas: customQuotasToRestore,
+              // Asegurar que paymentPlanType es "custom" si hay cuotas
+              paymentPlanType: customQuotasToRestore.length > 0 ? "custom" : prev.paymentPlanType
+            }
+            console.log("🔄 [GUARDIAN QUOTAS] Nuevo formData.customQuotas.length:", newData.customQuotas.length)
+            console.log("🔄 [GUARDIAN QUOTAS] Nuevo formData.paymentPlanType:", newData.paymentPlanType)
+            return newData
+          })
+        } catch (error) {
+          console.error("❌ [GUARDIAN QUOTAS] Error al restaurar cuotas:", error)
+        }
+      }
+    }
+  }, [isEditing, saleToEdit, editDataLoadedRef]) // Solo depender de estos, no de formData
+
+  // Guardian secundario: si paymentPlanType es "custom" pero customQuotas está vacío, restaurar
+  useEffect(() => {
+    if (isEditing && saleToEdit && editDataLoadedRef.current && formData.paymentPlanType === "custom" && formData.customQuotas.length === 0 && saleToEdit.customQuotasJson) {
+      console.warn("🔧 [SECONDARY GUARDIAN] PaymentType es 'custom' pero customQuotas vacías, forzando restauración...")
+      
+      try {
+        const parsed = JSON.parse(saleToEdit.customQuotasJson)
+        const saleDate = new Date(saleToEdit.sale_date)
+        
+        const customQuotasToRestore = parsed.map((q) => {
+          const quotaNumber = q.QuotaNumber || q.quotaNumber
+          const amount = q.Amount || q.amount
+          let dueDate = q.DueDate || q.dueDate || ""
+          
+          if (!dueDate) {
+            const targetDate = new Date(saleDate)
+            targetDate.setMonth(saleDate.getMonth() + quotaNumber)
+            const targetDay = saleDate.getDate()
+            const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
+            targetDate.setDate(Math.min(targetDay, maxDayInMonth))
+            dueDate = targetDate.toISOString().split('T')[0]
+          }
+          
+          return { quotaNumber, amount, dueDate }
+        })
+        
+        console.log("✅ [SECONDARY GUARDIAN] Forzando cuotas:", customQuotasToRestore.length)
+        setFormData(prev => ({ ...prev, customQuotas: customQuotasToRestore }))
+      } catch (error) {
+        console.error("❌ [SECONDARY GUARDIAN] Error:", error)
+      }
+    }
+  }, [isEditing, saleToEdit, editDataLoadedRef, formData.paymentPlanType, formData.customQuotas.length])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -1478,17 +1659,22 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
               Plan *
             </Label>
             <Select
-              key={`plan-${isEditing ? saleToEdit?.id_Sales : 'new'}-${formData.id_Plans}`}
+              key={`plan-${isEditing ? saleToEdit?.id_Sales : 'new'}`}
               name="id_Plans"
-              value={formData.id_Plans || undefined}
+              value={formData.id_Plans || ""}
               onValueChange={(value) => handleSelectChange("id_Plans", value)}
               required
             >
               <SelectTrigger className="w-full">
                 <SelectValue 
                   placeholder={
-                    isEditing && saleToEdit?.plan?.name 
-                      ? saleToEdit.plan.name 
+                    formData.id_Plans && saleToEdit?.plan?.name
+                      ? `${saleToEdit.plan.name} (${saleToEdit.plan.number_quotas} cuotas)`
+                      : formData.id_Plans && plans.length > 0
+                      ? (() => {
+                          const plan = plans.find(p => p.id_Plans.toString() === formData.id_Plans.toString())
+                          return plan ? `${plan.name} (${plan.number_quotas} cuotas)` : "Selecciona un plan"
+                        })()
                       : "Selecciona un plan"
                   } 
                 />

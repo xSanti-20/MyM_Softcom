@@ -6,6 +6,7 @@ import { Calendar, CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-rea
 import { useState, useEffect } from "react"
 import QuotaRedistributionModal from "./QuotaRedistributionModal"
 import { Button } from "@/components/ui/button"
+import axiosInstance from "@/lib/axiosInstance"
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat("es-CO", {
@@ -27,6 +28,16 @@ const formatDate = (dateString) => {
   } catch (error) {
     return "N/A"
   }
+}
+
+// ← NUEVO: Tolerancia para redondeos (si falta menos de esto, considera como pagada)
+const ROUNDING_TOLERANCE = 1000 // $1,000 COP
+
+// ← NUEVO: Helper para verificar si una cuota está pagada considerando redondeo
+const isQuotaPaid = (coveredAmount, expectedAmount) => {
+  const difference = expectedAmount - coveredAmount
+  // Considerada pagada si: cubrió el monto completo O si falta menos de la tolerancia
+  return coveredAmount >= expectedAmount - ROUNDING_TOLERANCE
 }
 
 export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
@@ -214,8 +225,10 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
         adjustedQuotaValue = quotaValue
       }
     } else if (isOverdueRedistributed) {
+      // Cuotas vencidas mantienen su valor original
       adjustedQuotaValue = originalQuotaValue
     } else if (redistributedQuotaNumbers.length > 0 && newQuotaValue !== null) {
+      // ← NUEVO: Cuotas que RECIBEN el dinero vencido muestran el NUEVO VALOR
       const pendingQuotas = []
       for (let j = 1; j <= totalQuotas; j++) {
         if (!redistributedQuotaNumbers.includes(j)) {
@@ -225,9 +238,13 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       const isLastPendingQuota = i === Math.max(...pendingQuotas)
 
       if (redistributionType === "lastQuota" && isLastPendingQuota && lastQuotaValue !== null) {
+        // Última cuota recibe TODO el dinero vencido
         adjustedQuotaValue = lastQuotaValue
-      } else {
+      } else if (redistributionType === "custom" || redistributionType === "lastQuota") {
+        // Cuotas que NO fueron vencidas (las que reciben dinero) muestran nuevo valor
         adjustedQuotaValue = newQuotaValue
+      } else {
+        adjustedQuotaValue = quotaValue
       }
     } else {
       adjustedQuotaValue = quotaValue
@@ -238,8 +255,8 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
       console.log(`[DEBUG] Cuota ${i}:`, {
         coveredAmount,
         adjustedQuotaValue,
-        isPaid: coveredAmount >= adjustedQuotaValue,
-        difference: adjustedQuotaValue - coveredAmount,
+        isPaid: isQuotaPaid(coveredAmount, adjustedQuotaValue),
+        difference: Math.max(0, adjustedQuotaValue - coveredAmount), // No mostrar negativo
         dueDate: dueDate.toLocaleDateString(),
         isCustom: customQuotas && customQuotas.length > 0
       })
@@ -250,12 +267,25 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
     let statusIcon = <Clock className="h-4 w-4" />
     let isOverdue = false
 
+    // ← NUEVO: Detectar si esta cuota RECIBE dinero vencido (parte del acuerdo)
+    const isQuotaReceivingRedistribution = 
+      redistributedQuotaNumbers.length > 0 && 
+      !isOverdueRedistributed && 
+      redistributionType && 
+      (redistributionType === "custom" || redistributionType === "lastQuota")
+
     if (isOverdueRedistributed) {
+      // Cuota que FUE vencida
       status = "Distribuida"
       statusColor = "bg-purple-100 text-purple-800"
       statusIcon = <CheckCircle className="h-4 w-4" />
-    } else if (coveredAmount >= adjustedQuotaValue) {
-      // ✅ Cuota pagada completamente - NO importa si se pagó tarde
+    } else if (isQuotaReceivingRedistribution) {
+      // ← NUEVO: Cuota que RECIBE el dinero vencido (parte del acuerdo)
+      status = "Redistribuida"
+      statusColor = "bg-blue-100 text-blue-800"
+      statusIcon = <CheckCircle className="h-4 w-4" />
+    } else if (isQuotaPaid(coveredAmount, adjustedQuotaValue)) {
+      // ✅ Cuota pagada completamente (con tolerancia de redondeo) - NO importa si se pagó tarde
       status = "Pagada"
       statusColor = "bg-green-100 text-green-800"
       statusIcon = <CheckCircle className="h-4 w-4" />
@@ -297,15 +327,18 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
     quotas.push({
       quotaNumber: i,
       expectedAmount: adjustedQuotaValue,
+      originalAmount: quotaValue, // ← NUEVO: Guardar el valor original
       coveredAmount: coveredAmount,
-      remainingAmount: Math.max(0, adjustedQuotaValue - coveredAmount),
+      // ← NUEVO: Si está pagada por tolerancia de redondeo, mostrar remainingAmount como $0
+      remainingAmount: isQuotaPaid(coveredAmount, adjustedQuotaValue) ? 0 : Math.max(0, adjustedQuotaValue - coveredAmount),
       dueDate: dueDate,
       status: status,
       statusColor: statusColor,
       statusIcon: statusIcon,
       isOverdue: isOverdue && !isOverdueRedistributed && coveredAmount < adjustedQuotaValue, // ✅ Solo si tiene saldo pendiente
       daysOverdue: daysOverdue,
-      isRedistributed: isOverdueRedistributed,
+      isRedistributed: isOverdueRedistributed, // Cuota que fue vencida
+      isReceivingRedistribution: isQuotaReceivingRedistribution, // ← NUEVO: Cuota que RECIBE dinero vencido
     })
   }
 
@@ -342,19 +375,12 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
 
       console.log("[v0] Sending redistribution request:", requestData)
 
-      const response = await fetch(`http://localhost:5216/api/Sale/${sale.id_Sales}/redistribute-quotas`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-      })
+      const response = await axiosInstance.post(
+        `/Sale/${sale.id_Sales}/redistribute-quotas`,
+        requestData
+      )
 
-      const responseData = await response.json()
-
-      if (!response.ok) {
-        throw new Error("Error al redistribuir cuotas")
-      }
+      const responseData = response.data
 
       setShowRedistributionModal(false)
 
@@ -369,6 +395,35 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
     } catch (error) {
       console.error("Error:", error)
       alert("Error al redistribuir las cuotas. Por favor intenta nuevamente.")
+    }
+  }
+
+  // ← NUEVO: Función para deshacer redistribución
+  const handleUndoRedistribution = async () => {
+    if (!window.confirm("¿Estás seguro de que deseas deshacer la redistribución de cuotas? Se restaurarán los valores originales.")) {
+      return
+    }
+
+    try {
+      console.log("[UndoRedistribution] Revirtiendo redistribución para venta:", sale.id_Sales)
+
+      const response = await axiosInstance.post(
+        `/Sale/${sale.id_Sales}/undo-redistribution`
+      )
+
+      const responseData = response.data
+
+      setTimeout(() => {
+        console.log("[UndoRedistribution] Redistribución revertida exitosamente")
+        window.dispatchEvent(
+          new CustomEvent("quotaRedistributionComplete", {
+            detail: { sale: responseData.sale, paymentDetails: responseData.paymentDetails },
+          }),
+        )
+      }, 100)
+    } catch (error) {
+      console.error("Error al deshacer redistribución:", error)
+      alert("Error al deshacer la redistribución. Por favor intenta nuevamente.")
     }
   }
 
@@ -406,6 +461,16 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
             {overdueQuotas.length > 0 && remainingQuotas.length > 0 && (
               <Button onClick={() => setShowRedistributionModal(true)} className="bg-blue-600 hover:bg-blue-700">
                 Redistribuir Cuotas
+              </Button>
+            )}
+            {/* ← NUEVO: Botón para revertir redistribución */}
+            {redistributionType && (redistributionType === "custom" || redistributionType === "lastQuota") && (
+              <Button 
+                onClick={handleUndoRedistribution}
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700 ml-2"
+              >
+                Deshacer Redistribución
               </Button>
             )}
           </div>
@@ -447,14 +512,29 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails }) {
                   {quotas.map((quota) => (
                     <tr
                       key={quota.quotaNumber}
-                      className={`hover:bg-gray-50 ${quota.isOverdue ? "bg-red-50" : ""} ${quota.isRedistributed ? "bg-purple-50" : ""}`}
+                      className={`hover:bg-gray-50 ${quota.isOverdue ? "bg-red-50" : ""} ${quota.isRedistributed ? "bg-purple-50" : ""} ${quota.isReceivingRedistribution ? "bg-blue-50" : ""}`}
                     >
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         {quota.quotaNumber}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{formatDate(quota.dueDate)}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {formatCurrency(quota.expectedAmount)}
+                        {quota.isReceivingRedistribution ? (
+                          // ← NUEVO: Mostrar valor original y nuevo cuando recibe dinero vencido
+                          <div className="space-y-1">
+                            <div className="text-gray-400 line-through text-xs">
+                              {formatCurrency(quota.originalAmount)}
+                            </div>
+                            <div className="font-bold text-blue-600">
+                              {formatCurrency(quota.expectedAmount)}
+                            </div>
+                            <div className="text-xs text-blue-500">
+                              +{formatCurrency(quota.expectedAmount - quota.originalAmount)}
+                            </div>
+                          </div>
+                        ) : (
+                          formatCurrency(quota.expectedAmount)
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                         {formatCurrency(quota.coveredAmount)}

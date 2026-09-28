@@ -1,5 +1,6 @@
 ﻿using mym_softcom.Models;
 using mym_softcom;
+using mym_softcom.DTOs;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -25,15 +26,54 @@ namespace mym_softcom.Services
         /// </summary>
         public async Task<IEnumerable<Payment>> GetAllPayments()
         {
-            return await _context.Payments
-                                 .Include(p => p.sale)
-                                 .ThenInclude(s => s.client) // Incluir cliente de la venta
-                                 .Include(p => p.sale)
-                                 .ThenInclude(s => s.lot)    // Incluir lote de la venta
-                                 .ThenInclude(l => l.project) // Incluir proyecto del lote
-                                 .Include(p => p.sale)
-                                 .ThenInclude(s => s.plan)   // Incluir plan de la venta
-                                 .ToListAsync();
+            try
+            {
+                Console.WriteLine("🔍 [PaymentServices] Iniciando GetAllPayments");
+                
+                // Primero, obtener pagos sin Include
+                var payments = await _context.Payments.ToListAsync();
+                Console.WriteLine($"📊 Pagos encontrados sin Include: {payments.Count}");
+                
+                if (payments.Count == 0)
+                {
+                    Console.WriteLine("⚠️ No hay pagos en la BD");
+                    return payments;
+                }
+
+                // Ahora, cargar las relaciones manualmente de forma más segura
+                Console.WriteLine("🔗 Cargando relaciones para cada pago...");
+                
+                foreach (var payment in payments)
+                {
+                    try
+                    {
+                        // Cargar sale y sus relaciones
+                        if (payment.id_Sales > 0 && payment.sale == null)
+                        {
+                            payment.sale = await _context.Sales
+                                .Include(s => s.client)
+                                .Include(s => s.lot)
+                                .ThenInclude(l => l.project)
+                                .Include(s => s.plan)
+                                .FirstOrDefaultAsync(s => s.id_Sales == payment.id_Sales);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Error cargando relaciones para pago {payment.id_Payments}: {ex.Message}");
+                        // Continuar con el siguiente pago
+                    }
+                }
+
+                Console.WriteLine($"✅ GetAllPayments completado: {payments.Count} pagos");
+                return payments;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error crítico en GetAllPayments: {ex.Message}");
+                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -288,6 +328,392 @@ namespace mym_softcom.Services
                 if (ex.InnerException != null)
                 {
                     Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ← NUEVO: Crea un pago desde un DTO, con soporte para PaymentDetails específicos
+        /// Si PaymentDetails se proporciona, distribuye el pago SOLO a esas cuotas
+        /// Si NO se proporciona, usa la distribución automática (modo heredado)
+        /// </summary>
+        public async Task<bool> CreatePaymentFromDTO(mym_softcom.DTOs.CreatePaymentDTO paymentDTO)
+        {
+            try
+            {
+                Console.WriteLine($"[PaymentServices] 📥 CreatePaymentFromDTO - Venta ID: {paymentDTO.Id_Sales}, Monto: {paymentDTO.Amount:C}");
+
+                if (paymentDTO.Amount <= 0)
+                {
+                    throw new ArgumentException("El monto del pago debe ser un valor positivo.");
+                }
+
+                var sale = await _context.Sales
+                    .Include(s => s.plan)
+                    .FirstOrDefaultAsync(s => s.id_Sales == paymentDTO.Id_Sales);
+
+                if (sale == null)
+                {
+                    throw new InvalidOperationException("La venta asociada no existe.");
+                }
+
+                // Crear el objeto Payment desde el DTO
+                var payment = new Payment
+                {
+                    payment_date = paymentDTO.Payment_Date,
+                    amount = paymentDTO.Amount,
+                    payment_method = paymentDTO.Payment_Method,
+                    id_Sales = paymentDTO.Id_Sales
+                };
+
+                // Guardar el pago primero para obtener su ID
+                _context.Payments.Add(payment);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[PaymentServices] ✅ Pago creado con ID: {payment.id_Payments}");
+
+                // ← NUEVO: Si NO hay PaymentDetails especificados, usar distribución automática
+                if (paymentDTO.PaymentDetails == null || paymentDTO.PaymentDetails.Count == 0)
+                {
+                    Console.WriteLine($"[PaymentServices] ℹ️  Sin PaymentDetails - usando distribución automática (heredado)");
+                    // Llamar a la lógica de distribución automática existente
+                    // (Es la misma que estaba en CreatePayment)
+                    await DistributePaymentToQuotas(payment, sale);
+                }
+                else
+                {
+                    // ← NUEVO: Distribuir SOLO a las cuotas especificadas en PaymentDetails
+                    Console.WriteLine($"[PaymentServices] 📌 Distribuyendo a {paymentDTO.PaymentDetails.Count} cuota(s) específica(s)");
+                    
+                    decimal totalDistributed = 0;
+                    
+                    foreach (var detail in paymentDTO.PaymentDetails)
+                    {
+                        if (detail.Covered_Amount <= 0)
+                        {
+                            throw new ArgumentException($"El monto para la cuota #{detail.Number_Quota} debe ser positivo.");
+                        }
+
+                        _context.Details.Add(new Detail
+                        {
+                            id_Payments = payment.id_Payments,
+                            id_Sales = payment.id_Sales,
+                            number_quota = detail.Number_Quota,
+                            covered_amount = detail.Covered_Amount
+                        });
+
+                        totalDistributed += detail.Covered_Amount;
+                        Console.WriteLine($"[PaymentServices]   ✓ Cuota #{detail.Number_Quota}: ${detail.Covered_Amount:F2}");
+                    }
+
+                    // Validar que la suma de los detalles no exceda el monto del pago
+                    if (totalDistributed > payment.amount.Value + 1) // Permitir 1 peso de tolerancia de redondeo
+                    {
+                        throw new ArgumentException($"La suma de PaymentDetails (${totalDistributed:F2}) no puede exceder el monto del pago (${payment.amount.Value:F2}).");
+                    }
+
+                    // Si hay diferencia (por redondeo), se trata como pago adelantado
+                    if (totalDistributed < payment.amount.Value)
+                    {
+                        decimal difference = payment.amount.Value - totalDistributed;
+                        Console.WriteLine($"[PaymentServices] ℹ️  Diferencia de ${difference:F2} se suma al total_raised como adelanto");
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                // Actualizar los totales de la venta (mismo código para ambos casos)
+                sale.total_raised = (sale.total_raised ?? 0) + payment.amount.Value;
+                sale.total_debt = (sale.total_debt ?? 0) - payment.amount.Value;
+
+                if (sale.total_debt < 0.01m)
+                {
+                    sale.total_debt = 0m;
+                }
+
+                if (sale.total_debt == 0)
+                {
+                    sale.status = "Escriturar";
+                    Console.WriteLine($"[PaymentServices] ✅ Venta ID {sale.id_Sales} completamente pagada - estado = Escriturar");
+                }
+                else if (sale.status == "Cancelled" && sale.total_debt > 0)
+                {
+                    sale.status = "Active";
+                }
+
+                _context.Sales.Update(sale);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[PaymentServices] ✅ Pago procesado exitosamente. Total recaudado: ${sale.total_raised:C}, Deuda: ${sale.total_debt:C}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PaymentServices] ❌ Error en CreatePaymentFromDTO: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[PaymentServices] Inner Exception: {ex.InnerException.Message}");
+                }
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// ← NUEVO: Distribuye un pago automáticamente entre cuotas pendientes (lógica heredada)
+        /// Esto se usa cuando NO se especifican PaymentDetails
+        /// </summary>
+        private async Task DistributePaymentToQuotas(Payment payment, Sale sale)
+        {
+            decimal remainingPaymentAmount = payment.amount.Value;
+            decimal baseQuotaValue = sale.quota_value ?? 0;
+            int totalQuotas = sale.plan?.number_quotas ?? 0;
+
+            // ✅ Cargar cuotas personalizadas si el tipo de plan es "custom"
+            Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
+            if (sale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(sale.CustomQuotasJson))
+            {
+                try
+                {
+                    var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(sale.CustomQuotasJson);
+                    if (customQuotas != null && customQuotas.Count > 0)
+                    {
+                        customQuotaData = customQuotas.ToDictionary(
+                            q => q.QuotaNumber,
+                            q => (q.Amount, q.DueDate)
+                        );
+                        totalQuotas = customQuotas.Count;
+                        Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Plan personalizado con {totalQuotas} cuotas detectado.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[PaymentServices] Error deserializando cuotas personalizadas: {ex.Message}");
+                }
+            }
+
+            if ((customQuotaData == null && baseQuotaValue <= 0) || totalQuotas <= 0)
+            {
+                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
+                return;
+            }
+
+            decimal redistributionAmount = sale.RedistributionAmount ?? 0;
+            string redistributionType = sale.RedistributionType;
+            List<int> redistributedQuotaNumbers = new List<int>();
+
+            if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
+            {
+                try
+                {
+                    redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers) ?? new List<int>();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[PaymentServices] Error deserializando cuotas redistribuidas: {ex.Message}");
+                }
+            }
+
+            var existingDetails = await _context.Details
+                .AsNoTracking()
+                .Where(pd => pd.id_Sales == sale.id_Sales)
+                .ToListAsync();
+
+            var coveredAmountsPerQuota = existingDetails
+                .GroupBy(pd => pd.number_quota)
+                .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+
+            var adjustedQuotaValues = new Dictionary<int, decimal>();
+
+            if (customQuotaData != null)
+            {
+                foreach (var kvp in customQuotaData)
+                {
+                    adjustedQuotaValues[kvp.Key] = kvp.Value.Amount;
+                }
+                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Usando valores de cuotas personalizadas.");
+            }
+            else if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
+            {
+                for (int i = 1; i <= totalQuotas; i++)
+                {
+                    decimal adjustedValue = baseQuotaValue;
+
+                    if (!redistributedQuotaNumbers.Contains(i))
+                    {
+                        if (redistributionType == "uniform")
+                        {
+                            int remainingQuotasCount = totalQuotas - redistributedQuotaNumbers.Count;
+                            if (remainingQuotasCount > 0)
+                            {
+                                decimal redistributionPerQuota = redistributionAmount / remainingQuotasCount;
+                                adjustedValue += redistributionPerQuota;
+                            }
+                        }
+                        else if (redistributionType == "lastQuota" && i == totalQuotas)
+                        {
+                            adjustedValue += redistributionAmount;
+                        }
+                    }
+
+                    adjustedQuotaValues[i] = adjustedValue;
+                }
+            }
+            else
+            {
+                for (int i = 1; i <= totalQuotas; i++)
+                {
+                    adjustedQuotaValues[i] = baseQuotaValue;
+                }
+            }
+
+            var sortedQuotas = adjustedQuotaValues.OrderBy(kvp => kvp.Key).ToList();
+
+            foreach (var quotaKvp in sortedQuotas)
+            {
+                if (remainingPaymentAmount <= 0) break;
+
+                int quotaNumber = quotaKvp.Key;
+                decimal quotaValue = quotaKvp.Value;
+
+                if (redistributedQuotaNumbers.Contains(quotaNumber))
+                {
+                    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Saltando cuota #{quotaNumber} (redistribuida)");
+                    continue;
+                }
+
+                decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(quotaNumber, 0);
+                decimal remainingForThisQuota = quotaValue - currentCovered;
+
+                if (remainingForThisQuota > 0)
+                {
+                    decimal amountToApplyToThisQuota = Math.Min(remainingPaymentAmount, remainingForThisQuota);
+
+                    _context.Details.Add(new Detail
+                    {
+                        id_Payments = payment.id_Payments,
+                        id_Sales = sale.id_Sales,
+                        number_quota = quotaNumber,
+                        covered_amount = amountToApplyToThisQuota
+                    });
+
+                    remainingPaymentAmount -= amountToApplyToThisQuota;
+                    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Aplicado {amountToApplyToThisQuota:C} a cuota #{quotaNumber} (valor: {quotaValue:C}). Restante del pago: {remainingPaymentAmount:C}");
+                }
+            }
+
+            if (remainingPaymentAmount > 0)
+            {
+                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Quedan {remainingPaymentAmount:C} después de cubrir todas las cuotas definidas. Esto se sumará al total_raised de la venta.");
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// ← NUEVO: Actualiza un pago desde DTO, respeta KeepOriginalQuotas
+        /// Si KeepOriginalQuotas=true: Solo actualiza Amount, Payment_Date, Payment_Method
+        /// Si KeepOriginalQuotas=false: Redistribuye el pago a todas las cuotas (inteligente)
+        /// </summary>
+        public async Task<bool> UpdatePaymentFromDTO(int id_Payments, mym_softcom.DTOs.CreatePaymentDTO paymentDTO)
+        {
+            try
+            {
+                Console.WriteLine($"[PaymentServices] 📝 UpdatePaymentFromDTO - Pago ID: {id_Payments}, KeepOriginalQuotas: {paymentDTO.KeepOriginalQuotas}");
+
+                var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
+                if (existingPayment == null)
+                {
+                    throw new InvalidOperationException("Pago no encontrado.");
+                }
+
+                var sale = await _context.Sales
+                    .Include(s => s.plan)
+                    .FirstOrDefaultAsync(s => s.id_Sales == paymentDTO.Id_Sales);
+
+                if (sale == null)
+                {
+                    throw new InvalidOperationException("La venta asociada no existe.");
+                }
+
+                // Revertir el pago anterior
+                sale.total_raised = (sale.total_raised ?? 0) - (existingPayment.amount ?? 0);
+                sale.total_debt = (sale.total_debt ?? 0) + (existingPayment.amount ?? 0);
+                if (sale.total_raised < 0) sale.total_raised = 0;
+
+                // ← NUEVO: Si KeepOriginalQuotas=true, no eliminar los Details originales
+                if (!paymentDTO.KeepOriginalQuotas)
+                {
+                    // Eliminar Details antiguos para recrearlos
+                    var oldDetails = await _context.Details
+                        .Where(pd => pd.id_Payments == existingPayment.id_Payments)
+                        .ToListAsync();
+                    _context.Details.RemoveRange(oldDetails);
+                    Console.WriteLine($"[PaymentServices]   Eliminados {oldDetails.Count} Details antiguos");
+                }
+                else
+                {
+                    Console.WriteLine($"[PaymentServices]   Preservando Details originales (KeepOriginalQuotas=true)");
+                }
+
+                // Actualizar datos del pago
+                existingPayment.amount = paymentDTO.Amount;
+                existingPayment.payment_date = paymentDTO.Payment_Date;
+                existingPayment.payment_method = paymentDTO.Payment_Method;
+
+                // Aplicar nuevo monto
+                sale.total_raised = (sale.total_raised ?? 0) + paymentDTO.Amount;
+                sale.total_debt = (sale.total_debt ?? 0) - paymentDTO.Amount;
+
+                if (sale.total_debt < 0.01m) sale.total_debt = 0m;
+
+                // ← NUEVO: Si NO hay KeepOriginalQuotas, redistributir el pago
+                if (!paymentDTO.KeepOriginalQuotas && (paymentDTO.PaymentDetails == null || paymentDTO.PaymentDetails.Count == 0))
+                {
+                    Console.WriteLine($"[PaymentServices]   Redistribuyendo pago inteligentemente (lógica new)");
+                    await DistributePaymentToQuotas(existingPayment, sale);
+                }
+                else if (paymentDTO.PaymentDetails != null && paymentDTO.PaymentDetails.Count > 0)
+                {
+                    // Si se especifican Details, usar esos
+                    Console.WriteLine($"[PaymentServices]   Usando PaymentDetails especificados");
+                    foreach (var detail in paymentDTO.PaymentDetails)
+                    {
+                        _context.Details.Add(new Detail
+                        {
+                            id_Payments = existingPayment.id_Payments,
+                            id_Sales = paymentDTO.Id_Sales,
+                            number_quota = detail.Number_Quota,
+                            covered_amount = detail.Covered_Amount
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
+                // Actualizar estado de venta
+                if (sale.total_debt == 0)
+                {
+                    sale.status = "Escriturar";
+                    Console.WriteLine($"[PaymentServices]   Venta completamente pagada");
+                }
+                else if (sale.status == "Cancelled" && sale.total_debt > 0)
+                {
+                    sale.status = "Active";
+                }
+
+                _context.Payments.Update(existingPayment);
+                _context.Sales.Update(sale);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[PaymentServices] ✅ Pago actualizado. Total recaudado: ${sale.total_raised:C}, Deuda: ${sale.total_debt:C}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PaymentServices] ❌ Error en UpdatePaymentFromDTO: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[PaymentServices] Inner Exception: {ex.InnerException.Message}");
                 }
                 throw;
             }

@@ -75,4 +75,25 @@ namespace mym_softcom.DTOs
         [Required(ErrorMessage = "El ID del plan es obligatorio.")]
         public int Id_Plans { get; set; }
     }
+
+    // ← NUEVO: DTO para solicitud de redistribución de cuotas vencidas
+    public class RedistributeQuotasRequest
+    {
+        [Required(ErrorMessage = "El tipo de redistribución es obligatorio.")]
+        public string RedistributionType { get; set; } // "lastQuota" o "custom"
+
+        [Required(ErrorMessage = "La lista de cuotas vencidas es obligatoria.")]
+        public List<OverdueQuotaInfo> OverdueQuotas { get; set; }
+
+        // Para redistribución custom: rango de cuotas
+        public int? FromQuota { get; set; } // Cuota inicial del rango
+        public int? ToQuota { get; set; } // Cuota final del rango
+    }
+
+    // ← NUEVO: Información sobre una cuota vencida
+    public class OverdueQuotaInfo
+    {
+        public int QuotaNumber { get; set; }
+        public decimal RemainingAmount { get; set; }
+    }
 }

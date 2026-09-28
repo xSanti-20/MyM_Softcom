@@ -78,7 +78,7 @@ function WithdrawalsPage() {
     switch (statusLower) {
       case "active":
       case "activa":
-        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        badgeClass = "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200"
         displayText = "Activa"
         break
       case "desistida":

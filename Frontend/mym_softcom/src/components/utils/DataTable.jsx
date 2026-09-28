@@ -372,8 +372,18 @@ function DataTable({
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              onClick={() => onDelete(row.id)}
-                              className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50"
+                              onClick={() => row.canDelete !== false && onDelete(row.id)}
+                              disabled={row.canDelete === false}
+                              className={`text-sm ${
+                                row.canDelete === false
+                                  ? "text-gray-400 cursor-not-allowed"
+                                  : "text-red-600 focus:text-red-600 focus:bg-red-50"
+                              }`}
+                              title={
+                                row.canDelete === false
+                                  ? "Este pago no puede ser eliminado. Solo se puede editar desde la venta."
+                                  : "Eliminar este pago"
+                              }
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Eliminar
@@ -398,22 +408,22 @@ function DataTable({
     }
 
     return (
-      <div className="rounded-lg border border-slate-200 overflow-hidden bg-white shadow-sm">
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-md hover-lift">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50 hover:bg-slate-50 border-b border-slate-200">
+              <TableRow className="bg-gradient-to-r from-pink-50 to-blue-50 dark:from-pink-900/20 dark:to-blue-900/20 hover:from-pink-100 hover:to-blue-100 border-b border-gray-200 dark:border-gray-700">
                 {showCheckboxes && (
                   <TableHead className="w-12 px-4">
                     {/* ✅ Checkbox de "Seleccionar todos" removido por seguridad */}
                   </TableHead>
                 )}
                 {TitlesTable.map((title, index) => (
-                  <TableHead key={index} className="font-semibold text-slate-900 h-12 px-4">
+                  <TableHead key={index} className="font-bold text-gray-700 dark:text-gray-200 h-12 px-4 text-sm uppercase tracking-wide">
                     {title}
                   </TableHead>
                 ))}
-                <TableHead className="font-semibold text-slate-900 h-12 px-4 text-center">Acciones</TableHead>
+                <TableHead className="font-bold text-gray-700 dark:text-gray-200 h-12 px-4 text-center text-sm uppercase tracking-wide">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -421,12 +431,17 @@ function DataTable({
                 const saleId = row.original?.id || row.id
                 const isExporting = saleId ? exportingPDF.has(saleId) : false
                 const isSelected = selectedItems.includes(row.id)
+                const isEvenRow = rowIndex % 2 === 0
 
                 return (
                   <TableRow
                     key={row.id || `table-${rowIndex}-${Math.random()}`}
-                    className={`transition-colors hover:bg-slate-50 border-b border-slate-100 ${
-                      isSelected ? "bg-blue-50" : ""
+                    className={`transition-all hover:shadow-md border-b border-gray-100 dark:border-gray-800 ${
+                      isEvenRow 
+                        ? "bg-white dark:bg-gray-900/50" 
+                        : "bg-gray-50/50 dark:bg-gray-800/30"
+                    } hover:bg-pink-50/50 dark:hover:bg-pink-900/20 ${
+                      isSelected ? "bg-blue-100 dark:bg-blue-900/40" : ""
                     }`}
                   >
                     {showCheckboxes && (
@@ -450,7 +465,7 @@ function DataTable({
                       return (
                         <TableCell
                           key={`table-${row.id}-${cellIndex}`}
-                          className="px-4 py-3 font-medium text-slate-900"
+                          className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 text-sm"
                         >
                           {renderCellContent(value)}
                         </TableCell>
@@ -458,13 +473,13 @@ function DataTable({
                     })}
 
                     <TableCell className="px-4 py-3">
-                      <div className="flex items-center justify-center space-x-1">
+                      <div className="flex items-center justify-center gap-2">
                         {onUpdate && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => onUpdate(row)}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            className="h-9 w-9 p-0 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors"
                             title="Editar"
                           >
                             <Edit className="w-4 h-4" />
@@ -476,7 +491,7 @@ function DataTable({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleToggleStatus(row)}
-                            className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                            className="h-9 w-9 p-0 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
                             title="Cambiar Estado"
                           >
                             <ToggleLeft className="w-4 h-4" />
@@ -489,11 +504,11 @@ function DataTable({
                             size="sm"
                             onClick={() => handleExportPDF(row)}
                             disabled={isExporting}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                            className="h-9 w-9 p-0 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
                             title="Exportar PDF"
                           >
                             {isExporting ? (
-                              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-red-600 dark:border-red-400 border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <FileText className="w-4 h-4" />
                             )}
@@ -506,7 +521,7 @@ function DataTable({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                                className="h-9 w-9 p-0 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </Button>
@@ -516,7 +531,7 @@ function DataTable({
                                 <DropdownMenuItem
                                   key={index}
                                   onClick={() => action.onClick(row)}
-                                  className="text-sm"
+                                  className="text-sm cursor-pointer"
                                   title={action.tooltip}
                                 >
                                   {action.label}
@@ -530,9 +545,18 @@ function DataTable({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onDelete(row.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
-                            title="Eliminar"
+                            onClick={() => row.canDelete !== false && onDelete(row.id)}
+                            disabled={row.canDelete === false}
+                            className={`h-9 w-9 p-0 transition-colors ${
+                              row.canDelete === false
+                                ? "text-gray-400 dark:text-gray-600 cursor-not-allowed hover:bg-transparent"
+                                : "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                            }`}
+                            title={
+                              row.canDelete === false
+                                ? "Este pago no puede ser eliminado. Solo se puede editar desde la venta."
+                                : "Eliminar"
+                            }
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -551,14 +575,15 @@ function DataTable({
 
   return (
     <>
-      <Card className="w-full shadow-sm border-slate-200">
-        <CardHeader className="pb-4 border-b border-slate-100">
+      <Card className="w-full shadow-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <CardHeader className="pb-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
           <div className="flex flex-col space-y-4">
             {/* Fila superior: Título y botón de acción */}
             {headerActions && (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">{headerActions.title || "Datos"}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{headerActions.title || "Datos"}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona tus registros de manera eficiente</p>
                 </div>
                 <div className="flex-shrink-0">{headerActions.button}</div>
               </div>
@@ -568,21 +593,21 @@ function DataTable({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-2">
                 <div className="relative flex-1 sm:w-80">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-pink-400 w-4 h-4" />
                   <Input
                     type="text"
                     placeholder="Buscar en todos los campos..."
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className="pl-10 h-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 h-10 border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 focus:border-pink-500 focus:ring-pink-500 focus:ring-2 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 text-sm text-slate-600">
-                <Filter className="w-4 h-4" />
-                <span>
-                  {filteredData.length} de {safeData.length} registros
+              <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
+                <Filter className="w-4 h-4 text-pink-500" />
+                <span className="font-medium">
+                  {filteredData.length} de {safeData.length}
                 </span>
               </div>
             </div>
@@ -594,19 +619,19 @@ function DataTable({
         </CardContent>
 
         {totalPages > 1 && filteredData.length > 0 && (
-          <CardFooter className="flex flex-col items-center space-y-4 border-t border-slate-100 bg-slate-50/50">
-            <div className="flex items-center space-x-2">
+          <CardFooter className="flex flex-col items-center space-y-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 py-4">
+            <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
+                className="h-10 px-3 border-gray-300 dark:border-gray-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
 
-              <div className="flex items-center gap-1 flex-wrap max-w-md justify-center">
+              <div className="flex items-center gap-2 flex-wrap max-w-md justify-center">
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((page) => {
                     // ✅ CORRECCIÓN: Mostrar solo páginas cercanas para evitar desbordamiento
@@ -647,15 +672,15 @@ function DataTable({
                 size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="h-9 w-9 p-0 border-slate-200 hover:bg-slate-50"
+                className="h-10 px-3 border-gray-300 dark:border-gray-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-50"
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
 
-            <div className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">
-              Página {currentPage} de {totalPages} • {indexOfFirstItem + 1}-
-              {Math.min(indexOfLastItem, filteredData.length)} de {filteredData.length} resultados
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600">
+              Pág. <span className="font-bold text-pink-600 dark:text-pink-400">{currentPage}</span> de {totalPages} •
+              <span className="font-bold text-pink-600 dark:text-pink-400 ml-1">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)}</span> de {filteredData.length}
             </div>
           </CardFooter>
         )}

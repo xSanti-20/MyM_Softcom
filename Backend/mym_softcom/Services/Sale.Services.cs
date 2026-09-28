@@ -1,4 +1,5 @@
 ﻿using mym_softcom.Models;
+using mym_softcom.DTOs;
 using mym_softcom;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -27,29 +28,69 @@ namespace mym_softcom.Services
         /// </summary>
         public async Task<IEnumerable<Sale>> GetAllSales()
         {
-            var sales = await _context.Sales
-                                 .Include(s => s.client)
-                                 .Include(s => s.lot)
-                                 .ThenInclude(l => l.project)
-                                 .Include(s => s.user)
-                                 .Include(s => s.plan)
-                                 .ToListAsync();
-
-            var hasStatusChanges = false;
-            foreach (var sale in sales)
+            try
             {
-                if (ApplyEffectiveSaleStatus(sale))
+                Console.WriteLine("🔍 [SaleServices] Iniciando GetAllSales");
+                
+                // Primero, obtener ventas sin Include
+                var sales = await _context.Sales.ToListAsync();
+                Console.WriteLine($"📊 Ventas encontradas sin Include: {sales.Count}");
+                
+                if (sales.Count == 0)
                 {
-                    hasStatusChanges = true;
+                    Console.WriteLine("⚠️ No hay ventas en la BD");
+                    return sales;
                 }
-            }
 
-            if (hasStatusChanges)
+                // Ahora, cargar las relaciones manualmente de forma más segura
+                Console.WriteLine("🔗 Cargando relaciones para cada venta...");
+                
+                foreach (var sale in sales)
+                {
+                    try
+                    {
+                        // Cargar client
+                        if (sale.id_Clients > 0 && sale.client == null)
+                        {
+                            sale.client = await _context.Clients.FindAsync(sale.id_Clients);
+                        }
+
+                        // Cargar lot y su proyecto
+                        if (sale.id_Lots > 0 && sale.lot == null)
+                        {
+                            sale.lot = await _context.Lots
+                                .Include(l => l.project)
+                                .FirstOrDefaultAsync(l => l.id_Lots == sale.id_Lots);
+                        }
+
+                        // Cargar user
+                        if (sale.id_Users > 0 && sale.user == null)
+                        {
+                            sale.user = await _context.Users.FindAsync(sale.id_Users);
+                        }
+
+                        // Cargar plan
+                        if (sale.id_Plans > 0 && sale.plan == null)
+                        {
+                            sale.plan = await _context.Plans.FindAsync(sale.id_Plans);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Error cargando relaciones para venta {sale.id_Sales}: {ex.Message}");
+                        // Continuar con la siguiente venta
+                    }
+                }
+
+                Console.WriteLine($"✅ GetAllSales completado: {sales.Count} ventas");
+                return sales;
+            }
+            catch (Exception ex)
             {
-                await _context.SaveChangesAsync();
+                Console.WriteLine($"❌ Error crítico en GetAllSales: {ex.Message}");
+                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                throw;
             }
-
-            return sales;
         }
 
         /// <summary>
@@ -483,86 +524,133 @@ namespace mym_softcom.Services
             }
         }
 
-        public async Task<ServiceResult<string>> RedistributeOverdueQuotas(int saleId, string redistributionType, List<OverdueQuotaInfo> overdueQuotas)
+        /// <summary>
+        /// Mappea el campo enviado desde el frontend a valores estándar para Payment.payment_method.
+        /// Devuelve "Banco" para cualquier tipo de banco, "Efectivo" para efectivo, o el valor original como fallback.
+        /// </summary>
+        private string MapPaymentMethod(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "Cuota Inicial";
+
+            var normalized = input.Trim().ToLowerInvariant();
+            if (normalized.Contains("banco") || normalized.Contains("corriente") || normalized.Contains("ahorro"))
+            {
+                return "Banco";
+            }
+            if (normalized.Contains("efectivo") || normalized.Contains("cash"))
+            {
+                return "Efectivo";
+            }
+
+            // Fallback: si vienen otros textos, devolver el texto original tal y como fue enviado
+            return input.Trim();
+        }
+
+        public async Task<ServiceResult<string>> RedistributeOverdueQuotas(int saleId, RedistributeQuotasRequest request)
         {
             try
             {
-                var sale = await _context.Sales
-                    .Include(s => s.plan)
-                    .FirstOrDefaultAsync(s => s.id_Sales == saleId);
-
+                var sale = await _context.Sales.FindAsync(saleId);
                 if (sale == null)
-                    return new ServiceResult<string> { Success = false, Message = "Venta no encontrada" };
+                    return new ServiceResult<string> { Success = false, Message = "Venta no encontrada." };
 
-                var totalOverdueAmount = overdueQuotas.Sum(q => q.RemainingAmount);
-                var overdueQuotaNumbers = overdueQuotas.Select(q => q.QuotaNumber).ToList();
+                var totalOverdueAmount = request.OverdueQuotas.Sum(q => q.RemainingAmount);
+                var overdueQuotaNumbers = request.OverdueQuotas.Select(q => q.QuotaNumber).ToList();
 
-                if (!sale.OriginalQuotaValue.HasValue)
+                Console.WriteLine($"[RedistributeOverdueQuotas] 🔄 Redistribuyendo {request.RedistributionType} para venta {saleId}");
+                Console.WriteLine($"[RedistributeOverdueQuotas] 📌 Cuotas vencidas: {string.Join(",", overdueQuotaNumbers)}, Monto: {totalOverdueAmount}");
+
+                if (request.RedistributionType == "lastQuota")
                 {
-                    sale.OriginalQuotaValue = sale.quota_value;
-                    Console.WriteLine($"[SaleServices] Preserving original quota value: {sale.OriginalQuotaValue:C}");
+                    sale.RedistributionType = "lastQuota";
+                    sale.RedistributedQuotaNumbers = JsonSerializer.Serialize(overdueQuotaNumbers);
+                    sale.LastQuotaValue = sale.quota_value + totalOverdueAmount;
+                    sale.FromQuotaRange = null;
+                    sale.ToQuotaRange = null;
+                    sale.NewQuotaValue = null;
+
+                    Console.WriteLine($"[RedistributeOverdueQuotas] ✅ Tipo 'lastQuota' configurado. Última cuota: {sale.LastQuotaValue}");
+                }
+                else if (request.RedistributionType == "custom" && request.FromQuota.HasValue && request.ToQuota.HasValue)
+                {
+                    var quotasInRange = Enumerable.Range(request.FromQuota.Value, request.ToQuota.Value - request.FromQuota.Value + 1).ToList();
+                    var hasOverdueInRange = quotasInRange.Any(q => overdueQuotaNumbers.Contains(q));
+                    
+                    if (hasOverdueInRange)
+                        return new ServiceResult<string> { Success = false, Message = "El rango incluye cuotas vencidas. Las cuotas vencidas no pueden recibir dinero redistribuido." };
+
+                    var rangeCount = quotasInRange.Count;
+                    var amountPerQuota = totalOverdueAmount / rangeCount;
+
+                    sale.RedistributionType = "custom";
+                    sale.FromQuotaRange = request.FromQuota.Value;
+                    sale.ToQuotaRange = request.ToQuota.Value;
+                    sale.NewQuotaValue = sale.quota_value + amountPerQuota;
+                    sale.RedistributedQuotaNumbers = JsonSerializer.Serialize(overdueQuotaNumbers);
+                    sale.LastQuotaValue = null;
+
+                    Console.WriteLine($"[RedistributeOverdueQuotas] ✅ Tipo 'custom' configurado. Rango: {request.FromQuota}-{request.ToQuota}, Por cuota: {amountPerQuota}");
+                }
+                else
+                {
+                    return new ServiceResult<string> { Success = false, Message = "Tipo de redistribución inválido o parámetros incompletos." };
                 }
 
-                var originalQuotaValue = sale.OriginalQuotaValue ?? sale.quota_value ?? 0;
-
-                sale.RedistributionAmount = totalOverdueAmount;
-                sale.RedistributionType = redistributionType;
-                sale.RedistributedQuotaNumbers = JsonSerializer.Serialize(overdueQuotaNumbers);
-
-                if (sale.plan?.number_quotas > 0)
-                {
-                    // Calcular cuántas cuotas quedan sin redistribuir
-                    var totalQuotas = sale.plan.number_quotas.Value;
-                    var redistributedQuotasCount = overdueQuotas.Count;
-                    var remainingQuotas = totalQuotas - redistributedQuotasCount;
-
-                    if (remainingQuotas > 0)
-                    {
-                        if (redistributionType == "uniform")
-                        {
-                            // Para distribución uniforme, dividir entre todas las cuotas restantes
-                            var redistributionPerQuota = totalOverdueAmount / remainingQuotas;
-                            var newQuotaValue = originalQuotaValue + redistributionPerQuota;
-
-                            sale.NewQuotaValue = newQuotaValue;
-                            sale.quota_value = newQuotaValue; // Actualizar el valor en la tabla
-
-                            Console.WriteLine($"[SaleServices] Uniform distribution:");
-                            Console.WriteLine($"  - Redistribution per quota: {redistributionPerQuota:C}");
-                            Console.WriteLine($"  - New quota value for all pending quotas: {newQuotaValue:C}");
-                        }
-                        else if (redistributionType == "lastQuota")
-                        {
-                            // Para suma a la última cuota, las cuotas normales mantienen su valor original
-                            // Solo la última cuota recibe todo el monto adicional
-                            sale.NewQuotaValue = originalQuotaValue; // Las cuotas normales no cambian
-                            sale.quota_value = originalQuotaValue; // Mantener el valor original en la tabla
-
-                            // Calculate the value for the last quota specifically
-                            var lastQuotaValue = originalQuotaValue + totalOverdueAmount;
-                            sale.LastQuotaValue = lastQuotaValue; // New property for last quota specific value
-
-                            Console.WriteLine($"[SaleServices] Last quota distribution:");
-                            Console.WriteLine($"  - Normal quotas keep original value: {originalQuotaValue:C}");
-                            Console.WriteLine($"  - Last quota will have value: {lastQuotaValue:C}");
-                            Console.WriteLine($"  - Additional amount for last quota: {totalOverdueAmount:C}");
-                        }
-                    }
-                }
-
+                _context.Sales.Update(sale);
                 await _context.SaveChangesAsync();
 
-                return new ServiceResult<string>
-                {
-                    Success = true,
-                    Message = "Cuotas redistribuidas exitosamente",
-                    Data = $"Se redistribuyó {totalOverdueAmount:C} entre las cuotas restantes. Nuevo valor de cuota: {sale.NewQuotaValue:C}"
-                };
+                Console.WriteLine($"[RedistributeOverdueQuotas] ✅ Redistribución completada para venta {saleId}");
+                return new ServiceResult<string> { Success = true, Message = "Redistribución realizada exitosamente." };
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error en RedistributeOverdueQuotas: {ex.Message}");
-                return new ServiceResult<string> { Success = false, Message = ex.Message };
+                Console.WriteLine($"[RedistributeOverdueQuotas] ❌ Error: {ex.Message}");
+                return new ServiceResult<string> { Success = false, Message = $"Error al redistribuir: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Revierte una redistribución de cuotas vencidas, restaurando los valores originales.
+        /// </summary>
+        public async Task<ServiceResult<string>> UndoRedistribution(int saleId)
+        {
+            try
+            {
+                var sale = await _context.Sales.FindAsync(saleId);
+                if (sale == null)
+                    return new ServiceResult<string> { Success = false, Message = "Venta no encontrada." };
+
+                if (string.IsNullOrEmpty(sale.RedistributionType))
+                    return new ServiceResult<string> { Success = false, Message = "Esta venta no tiene redistribución activa." };
+
+                Console.WriteLine($"[UndoRedistribution] 🔄 Revirtiendo redistribución para venta {saleId}");
+
+                // Limpiar propiedades de redistribución
+                sale.RedistributionType = null;
+                sale.FromQuotaRange = null;
+                sale.ToQuotaRange = null;
+                sale.NewQuotaValue = null;
+                sale.LastQuotaValue = null;
+                sale.RedistributedQuotaNumbers = null;
+
+                Console.WriteLine($"[UndoRedistribution] ✅ Propiedades de redistribución limpiadas:");
+                Console.WriteLine($"  - RedistributionType: null");
+                Console.WriteLine($"  - FromQuotaRange: null");
+                Console.WriteLine($"  - ToQuotaRange: null");
+                Console.WriteLine($"  - NewQuotaValue: null");
+                Console.WriteLine($"  - LastQuotaValue: null");
+                Console.WriteLine($"  - RedistributedQuotaNumbers: null");
+
+                _context.Sales.Update(sale);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"[UndoRedistribution] ✅ Redistribución revertida exitosamente para venta {saleId}");
+                return new ServiceResult<string> { Success = true, Message = "Redistribución revertida exitosamente." };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UndoRedistribution] ❌ Error: {ex.Message}");
+                return new ServiceResult<string> { Success = false, Message = $"Error al revertir: {ex.Message}" };
             }
         }
 
@@ -741,26 +829,5 @@ namespace mym_softcom.Services
             }
         }
 
-        /// <summary>
-        /// Mappea el campo enviado desde el frontend a valores estándar para Payment.payment_method.
-        /// Devuelve "Banco" para cualquier tipo de banco, "Efectivo" para efectivo, o el valor original como fallback.
-        /// </summary>
-        private string MapPaymentMethod(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return "Cuota Inicial";
-
-            var normalized = input.Trim().ToLowerInvariant();
-            if (normalized.Contains("banco") || normalized.Contains("corriente") || normalized.Contains("ahorro"))
-            {
-                return "Banco";
-            }
-            if (normalized.Contains("efectivo") || normalized.Contains("cash"))
-        {
- return "Efectivo";
-      }
-
-      // Fallback: si vienen otros textos, devolver el texto original tal y como fue enviado
-   return input.Trim();
-      }
     }
 }

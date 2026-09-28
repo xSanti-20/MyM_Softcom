@@ -35,47 +35,46 @@ function HomePage() {
   ]
 
   return (
-    <main className="w-full min-h-screen bg-gradient-to-br from-black to-gray-900 text-white">
+    <main className="w-full min-h-screen" style={{ background: "linear-gradient(135deg, #fff0f5 0%, #fce4ec 100%)" }}>
       {/* Hero */}
-      <section className="relative py-16 md:py-24 text-center">
-        <div className="relative container mx-auto px-4 max-w-6xl">
+      <section className="relative py-20 md:py-32">
+        <div className="relative container mx-auto px-4 max-w-6xl text-center">
           <Badge
             variant="outline"
-            className="mb-6 text-lg px-4 py-2"
-            style={{ backgroundColor: "var(--color-amarillo)", color: "#000" }}
+            className="mb-6 text-lg px-6 py-2 border-pink-300"
+            style={{ backgroundColor: "rgba(233, 30, 99, 0.1)", color: "#2c3e50" }}
           >
-            Gestión Comercial Inmobiliaria
+            ✨ Gestión Comercial Inmobiliaria
           </Badge>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight" style={{ color: "var(--color-amarillo)" }}>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6" style={{ color: "#2c3e50" }}>
             M & M Softcom
           </h1>
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mt-6">
-            Plataforma web desarrollada para optimizar los procesos de ventas, recaudo y cartera en proyectos inmobiliarios.
+          <p className="text-lg md:text-xl max-w-3xl mx-auto" style={{ color: "#2c3e50" }}>
+            Plataforma profesional para optimizar ventas, recaudo y cartera en proyectos inmobiliarios
           </p>
         </div>
       </section>
 
       {/* Bienvenida */}
-      <section className="py-16 md:py-20">
+      <section className="py-20 md:py-28">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className={`${isMobile ? "order-2" : "order-1"} space-y-6`}>
               <Badge
-                variant="secondary"
-                className="text-black"
-                style={{ backgroundColor: "var(--color-amarillo)" }}
+                className="text-white"
+                style={{ backgroundColor: "var(--primary-color)" }}
               >
-                M & M Constructora
+                🏢 M & M Constructora
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: "var(--color-amarillo)" }}>
-                Bienvenido a tu sistema de gestión inmobiliaria
+              <h2 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: "var(--text-dark)" }}>
+                Tu Sistema de Gestión Inmobiliaria Completo
               </h2>
-              <p className="text-lg text-gray-300 leading-relaxed">
-                Simplificamos la administración de clientes, proyectos, planes de financiación, ventas y pagos, brindando control total en cada etapa del proceso.
-                Visualiza los abonos, cuotas pendientes y moras de forma clara, con reportes en tiempo real para mejorar tu toma de decisiones.
+              <p className="text-lg leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                Simplificamos la administración de clientes, proyectos, planes de financiación, ventas y pagos. 
+                Visualiza abonos, cuotas pendientes y moras con reportes en tiempo real.
               </p>
             </div>
-            <div className="rounded-lg overflow-hidden shadow-lg">
+            <div className="rounded-xl overflow-hidden shadow-lg" style={{ boxShadow: "var(--shadow-lg)" }}>
               <Image
                 src="/assets/img/mymsoftcom.png"
                 alt="Sistema de Gestión"
@@ -89,13 +88,13 @@ function HomePage() {
       </section>
 
       {/* Funcionalidades */}
-      <section className="py-16">
+      <section className="py-20 md:py-28">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: "var(--color-amarillo)" }}>
-              Funcionalidades Destacadas
+            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: "var(--primary-color)" }}>
+              ✨ Funcionalidades Destacadas
             </h2>
-            <p className="text-lg text-gray-300">Automatización, trazabilidad y eficiencia para tu negocio</p>
+            <p className="text-lg" style={{ color: "var(--text-muted)" }}>Automatización, trazabilidad y eficiencia para tu negocio</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -104,10 +103,13 @@ function HomePage() {
               return (
                 <Card
                   key={index}
-                  className="group shadow-lg border-0 bg-gray-800 hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-2"
+                  className="group shadow-md border border-pink-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 cursor-pointer"
+                  style={{ 
+                    background: "linear-gradient(135deg, white 0%, var(--bg-light) 100%)",
+                  }}
                 >
                   <CardContent className="p-0">
-                    {/* Imagen centrada con tamaño adecuado */}
+                    {/* Imagen */}
                     <div className="w-full flex justify-center pt-6 px-6">
                       <Image
                         src={feature.img || "/placeholder.svg"}
@@ -118,22 +120,25 @@ function HomePage() {
                       />
                     </div>
 
-                    {/* Badge separado debajo de la imagen */}
+                    {/* Badge */}
                     <div className="px-6 pt-4">
-                      <Badge style={{ backgroundColor: "var(--color-amarillo)", color: "#000" }}>
+                      <Badge style={{ 
+                        backgroundColor: "var(--primary-color)", 
+                        color: "white" 
+                      }}>
                         {feature.badge}
                       </Badge>
                     </div>
 
-                    {/* Contenido textual */}
+                    {/* Contenido */}
                     <div className="p-6">
                       <div className="flex items-center gap-3 mb-3">
-                        <IconComponent className="w-6 h-6" style={{ color: "var(--color-amarillo)" }} />
-                        <h3 className="text-xl font-semibold" style={{ color: "var(--color-amarillo)" }}>
+                        <IconComponent className="w-6 h-6" style={{ color: "var(--primary-color)" }} />
+                        <h3 className="text-lg font-bold" style={{ color: "var(--text-dark)" }}>
                           {feature.title}
                         </h3>
                       </div>
-                      <p className="text-gray-300 leading-relaxed">{feature.description}</p>
+                      <p className="leading-relaxed" style={{ color: "var(--text-muted)" }}>{feature.description}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -144,9 +149,12 @@ function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-black py-6 text-center" style={{ color: "var(--color-amarillo)" }}>
+      <footer className="py-8 text-center border-t border-pink-200" style={{ 
+        backgroundColor: "white",
+        color: "#2c3e50"
+      }}>
         <div className="container mx-auto px-4 max-w-6xl">
-          <p className="text-sm">© 2025 M&M Constructora. Todos los derechos reservados.</p>
+          <p className="text-sm opacity-90">© 2025 M&M Constructora. Todos los derechos reservados.</p>
         </div>
       </footer>
     </main>

@@ -94,7 +94,7 @@ function SalesPage() {
     switch (statusLower) {
       case "active":
       case "activa":
-        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        badgeClass = "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200"
         displayText = "Activa"
         break
       case "desistida":
@@ -484,6 +484,8 @@ function SalesPage() {
         console.log("✅ [PAGE] Datos de venta recibidos:", response.data)
         console.log("✅ [PAGE] Lote incluido:", !!response.data.lot)
         console.log("✅ [PAGE] Proyecto incluido:", !!response.data.lot?.project)
+        console.log("✅ [PAGE] Plan incluido:", !!response.data.plan)
+        
         if (response.data.lot) {
           console.log("📦 [PAGE] Info de lote:", {
             id: response.data.lot.id_Lots,
@@ -492,6 +494,21 @@ function SalesPage() {
             project: response.data.lot.project?.name
           })
         }
+        
+        // 🔧 Si falta el plan, intentar cargarlo
+        if (response.data.id_Plans && !response.data.plan) {
+          console.warn("⚠️ [PAGE] Plan faltante, intentando cargarlo...")
+          try {
+            const planResponse = await axiosInstance.get(`/api/Plan/GetPlanID/${response.data.id_Plans}`)
+            if (planResponse.status === 200 && planResponse.data) {
+              response.data.plan = planResponse.data
+              console.log("✅ [PAGE] Plan cargado exitosamente:", planResponse.data)
+            }
+          } catch (planError) {
+            console.error("❌ [PAGE] Error al cargar plan:", planError)
+          }
+        }
+        
         setEditingSale(response.data)
         setIsModalOpen(true)
       } else {

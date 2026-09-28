@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-
-const API_BASE_URL = "http://192.168.1.27:5001/api" 
+import axiosInstance from "@/lib/axiosInstance"
 
 export const useBackup = () => {
   const [loading, setLoading] = useState(false)
@@ -57,35 +56,15 @@ export const useBackup = () => {
 
   const createBackup = async (backupData) => {
     return handleRequest(async () => {
-      const response = await fetch(`${API_BASE_URL}/Backup/create`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        credentials: "include",
-        body: JSON.stringify(backupData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await axiosInstance.post("/Backup/create", backupData)
+      return response.data
     })
   }
 
   const getBackupList = async () => {
     return handleRequest(async () => {
-      const response = await fetch(`${API_BASE_URL}/Backup/list`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        credentials: "include",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const result = await response.json()
+      const response = await axiosInstance.get("/Backup/list")
+      const result = response.data
 
       if (result.success && result.backups) {
         result.backups = result.backups.map((backup) => ({
@@ -100,15 +79,11 @@ export const useBackup = () => {
 
   const downloadBackup = async (fileName) => {
     return handleRequest(async () => {
-      const response = await fetch(`${API_BASE_URL}/Backup/download/${fileName}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        credentials: "include",
+      const response = await axiosInstance.get(`/Backup/download/${fileName}`, {
+        responseType: "blob",
       })
 
-      // Crear blob y descargar
-      const blob = await response.blob()
+      const blob = response.data
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -124,19 +99,8 @@ export const useBackup = () => {
 
   const deleteBackup = async (fileName) => {
     return handleRequest(async () => {
-      const response = await fetch(`${API_BASE_URL}/Backup/delete/${fileName}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        credentials: "include",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await axiosInstance.delete(`/Backup/delete/${fileName}`)
+      return response.data
     })
   }
 
@@ -151,18 +115,8 @@ export const useBackup = () => {
         TablesToRestore: restoreData.tablesToRestore || [],
       }
 
-      const response = await fetch(`${API_BASE_URL}/Backup/restore`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        credentials: "include",
-        body: JSON.stringify(mappedData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      const response = await axiosInstance.post("/Backup/restore", mappedData)
+      return response.data
     })
   }
 
@@ -171,20 +125,13 @@ export const useBackup = () => {
       const formData = new FormData()
       formData.append("file", file)
 
-      const response = await fetch(`${API_BASE_URL}/Backup/upload`, {
-        method: "POST",
+      const response = await axiosInstance.post("/Backup/upload", formData, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "multipart/form-data",
         },
-        credentials: "include",
-        body: formData,
       })
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      return await response.json()
+      return response.data
     })
   }
 

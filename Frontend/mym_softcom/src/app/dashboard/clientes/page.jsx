@@ -61,7 +61,7 @@ function ClientPage() {
 
     switch (statusLower) {
       case "activo":
-        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        badgeClass = "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200"
         displayText = "Activo"
         break
       case "inactivo":
@@ -209,7 +209,7 @@ function ClientPage() {
           <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
             API: {apiClientCount}
           </Badge>
-          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+          <Badge variant="outline" className="border-pink-200 bg-pink-50 text-pink-700">
             Mostrados: {visibleClientCount}
           </Badge>
         </div>

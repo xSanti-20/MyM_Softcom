@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso | Nébula</title>
+  <style>
+    :root{--ink:#191a2e;--muted:#77798e;--purple:#7357e8;--purple-dark:#5d43d1;--line:#e8e7ef;--surface:#fff}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 12% 10%,rgba(164,143,255,.28),transparent 35%),radial-gradient(ellipse at 92% 90%,rgba(102,213,207,.22),transparent 32%),#f4f3fa}
+    .backdrop{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:rgba(28,25,48,.3);backdrop-filter:blur(7px)}
+    .modal{--panel-left:50%;width:min(940px,100%);height:610px;position:relative;overflow:hidden;background:var(--surface);border:1px solid rgba(255,255,255,.8);border-radius:24px;box-shadow:0 30px 90px rgba(37,29,76,.25);animation:arrive .55s cubic-bezier(.2,.8,.2,1) both}
+    @keyframes arrive{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    .form-side,.welcome-side{position:absolute;top:0;width:50%;height:100%;transition:left .65s cubic-bezier(.68,-.05,.27,1.05);}
+    .form-side{left:0;overflow-y:auto;padding:42px 54px 34px}
+    .welcome-side{left:50%;overflow:hidden;display:flex;align-items:center;padding:52px;color:#fff;background:linear-gradient(145deg,#8067ed 0%,#654bd5 55%,#4b3ab6 100%)}
+    .modal.is-secondary .form-side{left:50%}.modal.is-secondary .welcome-side{left:0}
+    .welcome-side:before,.welcome-side:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.16);border-radius:50%}
+    .welcome-side:before{width:410px;height:410px;right:-190px;top:-170px}.welcome-side:after{width:310px;height:310px;left:-190px;bottom:-170px}
+    .brand{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:800;letter-spacing:-.6px}.brand-mark{width:31px;height:31px;display:grid;place-items:center;border-radius:10px;color:white;background:var(--purple);font-size:16px}
+    .eyebrow{margin:35px 0 9px;color:var(--purple);font-size:11px;font-weight:700;letter-spacing:1.7px;text-transform:uppercase}h1{margin:0;font-size:31px;line-height:1.18;font-weight:800;letter-spacing:-1.15px}.subheading{margin:10px 0 24px;color:var(--muted);font-size:14px;line-height:1.55}
+    .form-view{display:none;animation:formIn .35s ease both}.form-view.active{display:block}@keyframes formIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+    .field{margin:0 0 14px}label{display:block;margin:0 0 7px;color:#39394d;font-size:12px;font-weight:700}.input-wrap{position:relative}
+    input[type=email],input[type=text],input[type=password]{width:100%;height:46px;padding:0 14px;border:1px solid var(--line);border-radius:10px;outline:none;color:var(--ink);background:#fff;font:14px inherit;transition:.2s}
+    input::placeholder{color:#b1b1bf}input:focus{border-color:#927ef0;box-shadow:0 0 0 3px rgba(115,87,232,.11)}.password-input{padding-right:76px!important}
+    .toggle-password{position:absolute;top:50%;right:13px;transform:translateY(-50%);border:0;padding:4px;color:#85859a;background:none;cursor:pointer;font-size:10px;font-weight:700}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:3px 0 18px}.check{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:11px;font-weight:500}.check input{width:14px;height:14px;accent-color:var(--purple)}
+    .text-link{color:var(--purple);font-size:11px;font-weight:700;text-decoration:none;cursor:pointer}.text-link:hover{color:var(--purple-dark);text-decoration:underline}
+    .primary{width:100%;min-height:46px;border:0;border-radius:10px;color:#fff;background:var(--purple);font:700 13px inherit;cursor:pointer;box-shadow:0 7px 16px rgba(115,87,232,.2);transition:.2s}.primary:hover{background:var(--purple-dark);transform:translateY(-1px);box-shadow:0 9px 20px rgba(115,87,232,.28)}
+    .fine-print{margin:17px 0 0;text-align:center;color:#aaa9b7;font-size:10px;line-height:1.55}.welcome-content{position:relative;z-index:1;max-width:340px}.welcome-icon{width:52px;height:52px;display:grid;place-items:center;margin-bottom:24px;border:1px solid rgba(255,255,255,.32);border-radius:17px;background:rgba(255,255,255,.13);font-size:23px}.welcome-content h2{margin:0 0 13px;font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-.9px}.welcome-content p{margin:0;color:rgba(255,255,255,.77);font-size:14px;line-height:1.7}.welcome-prompt{margin-top:35px!important;color:rgba(255,255,255,.9)!important;font-size:12px!important}.welcome-prompt a{margin-left:5px;color:white;font-weight:700;text-underline-offset:3px;cursor:pointer}.dots{display:flex;gap:6px;margin-top:31px}.dots span{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.35)}.dots span:first-child{width:20px;background:white}
+    .notice{display:none;margin:12px 0 0;padding:10px 12px;border-radius:8px;color:#316f5d;background:#e9f8f1;font-size:12px}.notice.error{color:#8b3030;background:#fff0f0}
+    @media(max-width:700px){body{padding:0;background:#f4f3fa}.backdrop{padding:12px;background:transparent;backdrop-filter:none}.modal{width:min(440px,100%);height:min(740px,calc(100dvh - 24px));min-height:590px;border-radius:20px}.form-side,.welcome-side{width:100%;height:auto;left:0;transition:none}.form-side{top:0;bottom:165px;padding:26px 26px 22px}.welcome-side{top:auto;bottom:0;min-height:165px;padding:22px 27px}.modal.is-secondary .form-side{left:0}.modal.is-secondary .welcome-side{left:0}.brand{font-size:17px}.eyebrow{margin-top:23px}h1{font-size:27px}.subheading{margin-bottom:18px}.welcome-icon{display:none}.welcome-content h2{font-size:21px;margin-bottom:6px}.welcome-content p{font-size:12px}.welcome-prompt{margin-top:10px!important}.dots{display:none}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body>
+  <main class="backdrop">
+    <section class="modal" id="modal" aria-label="Acceso a Nébula">
+      <div class="form-side">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">✦</span> nébula</div>
+        <div class="form-view active" id="loginView">
+          <p class="eyebrow">Qué bueno verte</p><h1>Inicia sesión</h1><p class="subheading">Accede a tu cuenta para continuar donde lo dejaste.</p>
+          <form id="loginForm">
+            <div class="field"><label for="loginEmail">Correo electrónico</label><input id="loginEmail" name="email" type="email" placeholder="tu@correo.com" required autocomplete="email"></div>
+            <div class="field"><label for="loginPassword">Contraseña</label><div class="input-wrap"><input class="password-input" id="loginPassword" name="password" type="password" placeholder="Tu contraseña" required autocomplete="current-password"><button class="toggle-password" type="button" data-target="loginPassword" aria-label="Mostrar contraseña">VER</button></div></div>
+            <div class="row"><label class="check"><input type="checkbox" name="remember"> Recordarme</label><a href="#" class="text-link" data-mode="recover">¿Olvidaste tu contraseña?</a></div>
+            <button class="primary" type="submit">Iniciar sesión <span aria-hidden="true">→</span></button>
+          </form><p class="fine-print">Al continuar, aceptas nuestros términos de servicio y política de privacidad.</p>
+        </div>
+        <div class="form-view" id="registerView">
+          <p class="eyebrow">Empieza hoy</p><h1>Crea tu cuenta</h1><p class="subheading">Solo necesitas unos datos para unirte a Nébula.</p>
+          <form id="registerForm">
+            <div class="field"><label for="fullName">Nombre completo</label><input id="fullName" name="name" type="text" placeholder="Tu nombre" required autocomplete="name" minlength="2"></div>
+            <div class="field"><label for="registerEmail">Correo electrónico</label><input id="registerEmail" name="email" type="email" placeholder="tu@correo.com" required autocomplete="email"></div>
+            <div class="field"><label for="registerPassword">Crea una contraseña</label><div class="input-wrap"><input class="password-input" id="registerPassword" name="password" type="password" placeholder="Mínimo 8 caracteres" minlength="8" required autocomplete="new-password"><button class="toggle-password" type="button" data-target="registerPassword" aria-label="Mostrar contraseña">VER</button></div></div>
+            <div class="row"><label class="check"><input type="checkbox" name="terms" required> Acepto los <a href="#" class="text-link">términos</a></label></div>
+            <button class="primary" type="submit">Crear cuenta <span aria-hidden="true">→</span></button>
+          </form><p class="fine-print">Tus datos están seguros. Nunca compartiremos tu información.</p>
+        </div>
+        <div class="form-view" id="recoverView">
+          <p class="eyebrow">Recuperación segura</p><h1>Recupera tu acceso</h1><p class="subheading">Escribe el correo asociado a tu cuenta y te indicaremos cómo restablecer la contraseña.</p>
+          <form id="recoverForm"><div class="field"><label for="recoverEmail">Correo electrónico</label><input id="recoverEmail" name="email" type="email" placeholder="tu@correo.com" required autocomplete="email"></div><button class="primary" type="submit">Enviar instrucciones <span aria-hidden="true">→</span></button></form>
+          <p class="fine-print">Si la cuenta existe, recibirás instrucciones para continuar.</p>
+        </div>
+        <div class="notice" id="notice" role="status" aria-live="polite"></div>
+      </div>
+      <aside class="welcome-side"><div class="welcome-content">
+        <div class="welcome-icon" aria-hidden="true">✦</div><h2 id="welcomeTitle">Todo empieza aquí.</h2><p id="welcomeText">Inicia sesión para descubrir tu espacio, organizar tus ideas y seguir avanzando.</p>
+        <p class="welcome-prompt"><span id="promptText">¿Aún no tienes cuenta?</span><a href="#" id="switchLink" data-mode="register">Regístrate</a></p><div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div></aside>
+    </section>
+  </main>
+  <script>
+    const modal=document.getElementById('modal');
+    const views={login:document.getElementById('loginView'),register:document.getElementById('registerView'),recover:document.getElementById('recoverView')};
+    const title=document.getElementById('welcomeTitle'),text=document.getElementById('welcomeText'),promptText=document.getElementById('promptText'),switchLink=document.getElementById('switchLink'),notice=document.getElementById('notice');
+    const copy={
+      login:{title:'Todo empieza aquí.',text:'Inicia sesión para descubrir tu espacio, organizar tus ideas y seguir avanzando.',prompt:'¿Aún no tienes cuenta?',link:'Regístrate',target:'register'},
+      register:{title:'Nos alegra que estés aquí.',text:'Crea tu cuenta y empieza a construir algo increíble. Te tomará menos de un minuto.',prompt:'¿Ya tienes cuenta?',link:'Inicia sesión',target:'login'},
+      recover:{title:'Volver será sencillo.',text:'Te ayudaremos a recuperar el acceso de forma segura usando el correo asociado a tu cuenta.',prompt:'¿Recordaste tu contraseña?',link:'Inicia sesión',target:'login'}
+    };
+    function setMode(mode){
+      if(!views[mode])return;
+      Object.entries(views).forEach(([key,view])=>view.classList.toggle('active',key===mode));
+      modal.classList.toggle('is-secondary',mode!=='login');
+      const c=copy[mode];title.textContent=c.title;text.textContent=c.text;promptText.textContent=c.prompt;switchLink.textContent=c.link;switchLink.dataset.mode=c.target;
+      notice.style.display='none';notice.classList.remove('error');
+      const heading=views[mode].querySelector('h1');if(heading)heading.setAttribute('tabindex','-1');heading?.focus({preventScroll:true});
+    }
+    document.addEventListener('click',event=>{const link=event.target.closest('[data-mode]');if(link){event.preventDefault();setMode(link.dataset.mode)}});
+    document.querySelectorAll('.toggle-password').forEach(button=>button.addEventListener('click',()=>{const input=document.getElementById(button.dataset.target);const show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'OCULTAR':'VER';button.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña')}));
+    function demoSubmit(formId,message){document.getElementById(formId).addEventListener('submit',event=>{event.preventDefault();if(!event.currentTarget.reportValidity())return;notice.textContent=message;notice.style.display='block';notice.classList.remove('error')})}
+    demoSubmit('loginForm','Formulario de inicio de sesión listo para conectar con tu sistema.');
+    demoSubmit('registerForm','¡Listo! Formulario de registro listo para conectar con tu sistema.');
+    demoSubmit('recoverForm','Si la cuenta existe, recibirás instrucciones para restablecer tu contraseña.');
+  </script>
+</body>
+</html>

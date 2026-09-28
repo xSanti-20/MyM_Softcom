@@ -61,7 +61,7 @@ function LotPage() {
     switch (statusLower) {
       case "libre":
       case "disponible":
-        badgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+        badgeClass = "bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200"
         displayText = "Libre"
         break
       case "vendido":

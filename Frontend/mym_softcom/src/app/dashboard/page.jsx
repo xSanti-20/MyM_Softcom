@@ -27,24 +27,24 @@ import axiosInstance from "@/lib/axiosInstance"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 
-// Componente de tabla de datos resumida
+// Componente de tabla de datos resumida - Mejorado
 const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => {
   const [showAll, setShowAll] = useState(false)
   const displayData = showAll ? data : data.slice(0, maxRows)
 
   return (
     <div className="w-full">
-      {title && <h3 className="text-base font-medium mb-3">{title}</h3>}
-      <div className="border rounded-lg overflow-hidden">
+      {title && <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{title}</p>}
+      <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-50/50 dark:from-gray-800/50 dark:to-gray-900/30 border-b border-gray-200 dark:border-gray-800">
               <tr>
                 {columns.map((column, i) => (
                   <th
                     key={i}
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
                   >
                     {column.header}
                   </th>
@@ -54,11 +54,14 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               {displayData.length > 0 ? (
                 displayData.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <tr 
+                    key={rowIndex} 
+                    className="hover:bg-pink-50/30 dark:hover:bg-pink-900/20 transition-colors duration-150"
+                  >
                     {columns.map((column, colIndex) => (
                       <td
                         key={colIndex}
-                        className="px-4 py-2.5 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300"
+                        className="px-4 py-3 whitespace-nowrap text-sm text-gray-800 dark:text-gray-200 font-medium"
                       >
                         {column.cell ? column.cell(row) : row[column.accessor]}
                       </td>
@@ -69,21 +72,24 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
                 <tr>
                   <td
                     colSpan={columns.length}
-                    className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+                    className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
-                    No hay datos disponibles
+                    <div className="flex flex-col items-center">
+                      <Calendar className="h-8 w-8 text-gray-300 dark:text-gray-600 mb-2" />
+                      No hay datos disponibles
+                    </div>
                   </td>
                 </tr>
               )}
             </tbody>
-            {/* Nuevo: Pie de tabla para la fila de totales */}
+            {/* Fila de totales */}
             {footerData && (
-              <tfoot className="bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+              <tfoot className="bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
                 <tr>
                   {columns.map((column, i) => (
                     <td
                       key={i}
-                      className={`px-4 py-3 whitespace-nowrap text-sm font-semibold ${i === 0 ? "text-gray-800 dark:text-gray-200" : "text-gray-900 dark:text-gray-100"
+                      className={`px-4 py-3 whitespace-nowrap text-sm font-bold ${i === 0 ? "text-gray-900 dark:text-gray-100" : "text-pink-700 dark:text-pink-400"
                         }`}
                     >
                       {column.cell ? column.cell(footerData) : footerData[column.accessor]}
@@ -95,20 +101,20 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
           </table>
         </div>
         {data.length > maxRows && (
-          <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-right">
+          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800 text-right">
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs text-blue-600 gap-1"
+              className="text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300 gap-1.5 font-medium text-xs"
               onClick={() => setShowAll(!showAll)}
             >
               {showAll ? (
                 <>
-                  Mostrar menos <ChevronUp className="h-3 w-3" />
+                  Mostrar menos <ChevronUp className="h-3.5 w-3.5" />
                 </>
               ) : (
                 <>
-                  Ver todos ({data.length}) <ChevronDown className="h-3 w-3" />
+                  Ver todos ({data.length}) <ChevronDown className="h-3.5 w-3.5" />
                 </>
               )}
             </Button>
@@ -119,57 +125,50 @@ const DataTable = ({ columns, data, title, maxRows = 5, footerData = null }) => 
   )
 }
 
-// Componente de tarjeta de estadísticas
+// Componente de tarjeta de estadísticas - Mejorado
 const StatCard = ({ icon: Icon, title, value, description, color = "blue", onClick = null }) => {
   const colorSchemes = {
     blue: {
-      light: "bg-blue-50 text-blue-700 border-blue-100",
-      icon: "bg-blue-100 text-blue-600",
-      trend: "text-blue-600",
-      border: "border-blue-100 hover:border-blue-200",
-      shadow: "shadow-blue-100/50",
+      light: "bg-gradient-to-br from-blue-50 to-blue-50/40 dark:from-blue-900/20 dark:to-blue-900/10 hover:from-blue-100 hover:to-blue-50/50",
+      icon: "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30",
+      accent: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+      border: "border border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700",
     },
     green: {
-      light: "bg-green-50 text-green-700 border-green-100",
-      icon: "bg-green-100 text-green-600",
-      trend: "text-green-600",
-      border: "border-green-100 hover:border-green-200",
-      shadow: "shadow-blue-100/50",
+      light: "bg-gradient-to-br from-pink-50 to-pink-50/40 dark:from-pink-900/20 dark:to-pink-900/10 hover:from-pink-100 hover:to-pink-50/50",
+      icon: "bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-500/30",
+      accent: "bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
+      border: "border border-pink-200 dark:border-pink-800 hover:border-pink-300 dark:hover:border-pink-700",
     },
     purple: {
-      light: "bg-purple-50 text-purple-700 border-purple-100",
-      icon: "bg-purple-100 text-purple-600",
-      trend: "text-purple-600",
-      border: "border-purple-100 hover:border-purple-200",
-      shadow: "shadow-purple-100/50",
+      light: "bg-gradient-to-br from-purple-50 to-purple-50/40 dark:from-purple-900/20 dark:to-purple-900/10 hover:from-purple-100 hover:to-purple-50/50",
+      icon: "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30",
+      accent: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+      border: "border border-purple-200 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-700",
     },
     amber: {
-      light: "bg-amber-50 text-amber-700 border-amber-100",
-      icon: "bg-amber-100 text-amber-600",
-      trend: "text-amber-600",
-      border: "border-amber-100 hover:border-amber-200",
-      shadow: "shadow-amber-100/50",
+      light: "bg-gradient-to-br from-amber-50 to-amber-50/40 dark:from-amber-900/20 dark:to-amber-900/10 hover:from-amber-100 hover:to-amber-50/50",
+      icon: "bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-500/30",
+      accent: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+      border: "border border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700",
     },
     red: {
-      light: "bg-red-50 text-red-700 border-red-100",
-      icon: "bg-red-100 text-red-600",
-      trend: "text-red-600",
-      border: "border-red-100 hover:border-red-200",
-      shadow: "shadow-red-100/50",
+      light: "bg-gradient-to-br from-red-50 to-red-50/40 dark:from-red-900/20 dark:to-red-900/10 hover:from-red-100 hover:to-red-50/50",
+      icon: "bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30",
+      accent: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+      border: "border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700",
     },
     cyan: {
-      light: "bg-cyan-50 text-cyan-700 border-cyan-100",
-      icon: "bg-cyan-100 text-cyan-600",
-      trend: "text-cyan-600",
-      border: "border-cyan-100 hover:border-cyan-200",
-      shadow: "shadow-cyan-100/50",
+      light: "bg-gradient-to-br from-cyan-50 to-cyan-50/40 dark:from-cyan-900/20 dark:to-cyan-900/10 hover:from-cyan-100 hover:to-cyan-50/50",
+      icon: "bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30",
+      accent: "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
+      border: "border border-cyan-200 dark:border-cyan-800 hover:border-cyan-300 dark:hover:border-cyan-700",
     },
     teal: {
-      light: "bg-teal-50 text-teal-700 border-teal-100",
-      icon: "bg-teal-100 text-teal-600",
-      trend: "text-teal-600",
-      border: "border-teal-100 hover:border-teal-200",
-      shadow: "shadow-teal-100/50",
+      light: "bg-gradient-to-br from-teal-50 to-teal-50/40 dark:from-teal-900/20 dark:to-teal-900/10 hover:from-teal-100 hover:to-teal-50/50",
+      icon: "bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg shadow-teal-500/30",
+      accent: "bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400",
+      border: "border border-teal-200 dark:border-teal-800 hover:border-teal-300 dark:hover:border-teal-700",
     },
   }
 
@@ -177,57 +176,59 @@ const StatCard = ({ icon: Icon, title, value, description, color = "blue", onCli
 
   return (
     <Card
-      className={`border ${scheme.border} shadow-sm hover:shadow-md transition-all duration-300 ${scheme.shadow} ${onClick ? "cursor-pointer" : ""}`}
+      className={`${scheme.light} ${scheme.border} shadow-md hover:shadow-xl transition-all duration-300 ${onClick ? "cursor-pointer active:scale-95" : ""}`}
       onClick={onClick}
     >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
-          <div className={`p-2.5 rounded-lg ${scheme.icon}`}>
-            <Icon className="h-5 w-5" />
+          <div className={`p-3 rounded-xl ${scheme.icon} transform transition-transform duration-300 hover:scale-110`}>
+            <Icon className="h-6 w-6" />
           </div>
         </div>
       </CardHeader>
-      <CardContent className="py-2">
-        <div className="text-2xl font-bold">{value}</div>
-        <CardDescription className="text-sm">{title}</CardDescription>
+      <CardContent className="py-3">
+        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{value}</div>
+        <CardDescription className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</CardDescription>
       </CardContent>
-      {description && <CardFooter className="pt-0 text-xs text-gray-500 dark:text-gray-400">{description}</CardFooter>}
+      {description && <CardFooter className="pt-0 text-xs text-gray-600 dark:text-gray-400 font-medium">{description}</CardFooter>}
     </Card>
   )
 }
 
-// Componente de alerta
+// Componente de alerta - Mejorado
 const AlertCard = ({ title, messages, icon: Icon = AlertCircle, color = "amber" }) => {
   const colorSchemes = {
-    amber: "border-l-amber-500 bg-amber-50/50",
-    red: "border-l-red-500 bg-red-50/50",
-    blue: "border-l-blue-500 bg-blue-50/50",
-    green: "border-l-green-500 bg-green-50/50",
-    purple: "border-l-purple-500 bg-purple-50/50",
+    amber: "border-l-4 border-l-amber-500 bg-gradient-to-r from-amber-50 to-amber-50/30 dark:from-amber-900/20 dark:to-amber-900/10 shadow-md",
+    red: "border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-red-50/30 dark:from-red-900/20 dark:to-red-900/10 shadow-md",
+    blue: "border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-blue-50/30 dark:from-blue-900/20 dark:to-blue-900/10 shadow-md",
+    green: "border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-green-50/30 dark:from-green-900/20 dark:to-green-900/10 shadow-md",
+    purple: "border-l-4 border-l-purple-500 bg-gradient-to-r from-purple-50 to-purple-50/30 dark:from-purple-900/20 dark:to-purple-900/10 shadow-md",
   }
 
   const iconColors = {
-    amber: "text-amber-500",
-    red: "text-red-500",
-    blue: "text-blue-500",
-    green: "text-green-500",
-    purple: "text-purple-500",
+    amber: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+    red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+    green: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+    purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
   }
 
   return (
-    <Card className={`border-l-4 ${colorSchemes[color]} shadow-sm`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center space-x-2">
-          <Icon className={`h-5 w-5 ${iconColors[color]}`} />
-          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    <Card className={`${colorSchemes[color]}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2 rounded-lg ${iconColors[color]}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <CardTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="py-1">
-        <ul className="space-y-1.5">
+      <CardContent className="pt-0">
+        <ul className="space-y-2">
           {messages.map((message, index) => (
-            <li key={index} className="text-xs text-gray-600 dark:text-gray-400 flex items-start">
-              <span className="mr-2 text-gray-400">•</span>
-              {message}
+            <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-3">
+              <span className="text-lg leading-none mt-0.5">•</span>
+              <span>{message}</span>
             </li>
           ))}
         </ul>
@@ -236,30 +237,27 @@ const AlertCard = ({ title, messages, icon: Icon = AlertCircle, color = "amber" 
   )
 }
 
-// Componente de actividad reciente
+// Componente de actividad reciente - Mejorado
 const ActivityItem = ({ action, details, time, icon: Icon = Activity, color = "blue" }) => {
   const colorSchemes = {
-    blue: "bg-blue-100 text-blue-600",
-    green: "bg-green-100 text-green-600",
-    red: "bg-red-100 text-red-600",
-    amber: "bg-amber-100 text-amber-600",
-    purple: "bg-purple-100 text-purple-600",
+    blue: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+    green: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
+    red: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+    amber: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
+    purple: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
+    emerald: "bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
   }
 
   return (
-    <div className="py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+    <div className="py-4 px-4 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors duration-150 border-b last:border-b-0 border-gray-100 dark:border-gray-800">
       <div className="flex items-start gap-3">
-        <div className={`p-1.5 rounded-full ${colorSchemes[color]} mt-0.5`}>
-          <Icon className="h-3.5 w-3.5" />
+        <div className={`p-2 rounded-lg ${colorSchemes[color]} flex-shrink-0 mt-0.5`}>
+          <Icon className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{action}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{details}</p>
-            </div>
-            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap ml-2">{time}</span>
-          </div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{action}</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{details}</p>
+          <span className="text-xs text-gray-500 dark:text-gray-500 mt-2 inline-block font-medium">{time}</span>
         </div>
       </div>
     </div>
@@ -938,92 +936,10 @@ export default function Dashboard() {
         <NavPrivada>
           <div className="py-6 px-4 md:px-6">
             <div className="max-w-7xl mx-auto">
-              {/* Encabezado del dashboard */}
               <div className="mb-8">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bienvenido a M&M SoftCom</h1>
-
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                      Resumen y control de la Actividad financiera
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div
-                      className={`${hasErrors ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                        } text-xs font-medium px-3 py-1.5 rounded-full flex items-center`}
-                    >
-                      <span
-                        className={`w-2 h-2 ${hasErrors ? "bg-amber-500" : "bg-blue-500"
-                          } rounded-full mr-1.5 animate-pulse`}
-                      ></span>
-                      {hasErrors ? "Datos parciales" : "Datos en tiempo real"}
-                    </div>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs gap-1.5 bg-transparent"
-                            onClick={loadAllData}
-                            disabled={dataLoading}
-                          >
-                            {dataLoading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-3.5 w-3.5" />
-                            )}
-                            Actualizar
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Última actualización: {lastUpdated.toLocaleTimeString()}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    {dataLoading && (
-                      <div className="flex items-center text-gray-500 text-xs">
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        Actualizando...
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Mostrar errores si existen */}
-                {hasErrors && (
-                  <Card className="border-l-4 border-l-amber-500 shadow-sm mb-6 bg-amber-50/30">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-5 w-5 text-amber-500" />
-                        <CardTitle className="text-sm font-medium">Problemas de conexión</CardTitle>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="py-1">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                        Algunos datos no pudieron cargarse correctamente. Se están mostrando datos parciales.
-                      </p>
-                      <details className="text-xs text-gray-600 dark:text-gray-400">
-                        <summary className="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 font-medium">
-                          Ver detalles técnicos
-                        </summary>
-                        <ul className="mt-2 space-y-1 pl-4">
-                          {Object.values(errors).map((err, index) => (
-                            <li key={index} className="text-red-600 dark:text-red-400">
-                              {err}
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Header content - simplified */}
               </div>
 
-              {/* Pestañas del dashboard */}
               <Tabs defaultValue="overview" className="mb-6" onValueChange={setActiveTab}>
                 <TabsList className="mb-6">
                   <TabsTrigger value="overview" className="text-sm">
@@ -1032,141 +948,89 @@ export default function Dashboard() {
                 </TabsList>
 
                 {/* Contenido de la pestaña Resumen */}
-                <TabsContent value="overview" className="space-y-6">
-                  {/* Tarjetas de estadísticas de pagos */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                    <StatCard
-                      icon={UserCheck}
-                      title="Clientes Activos"
-                      value={stats.activeClients.toString()}
-                      description="Total de clientes con ventas activas"
-                      color="green"
-                    />
-                    <StatCard
-                      icon={UserX}
-                      title="Clientes en Mora"
-                      value={stats.overdueClients.toString()}
-                      description="Clientes con pagos vencidos"
-                      color="red"
-                    />
-                    <StatCard
-                      icon={DollarSign}
-                      title="Total Adeudado"
-                      value={formatCurrency(stats.totalOwed)}
-                      description="Monto total en mora"
-                      color="amber"
-                    />
-                    <StatCard
-                      icon={XCircle}
-                      title="Desistimientos"
-                      value={stats.cancellations.toString()}
-                      description="Ventas canceladas este mes"
-                      color="purple"
-                    />
+                <TabsContent value="overview" className="space-y-8">
+                  {/* Sección 1: KPIs Principales */}
+                  <div>
+                    <div className="mb-4">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
+                        Indicadores Clave
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Estado actual de clientes y cobros</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <StatCard icon={UserCheck} title="Clientes Activos" value={stats.activeClients.toString()} description="Con ventas activas" color="green" />
+                      <StatCard icon={UserX} title="Clientes en Mora" value={stats.overdueClients.toString()} description="Con pagos vencidos" color="red" />
+                      <StatCard icon={DollarSign} title="Total Adeudado" value={formatCurrency(stats.totalOwed)} description="Monto en mora" color="amber" />
+                      <StatCard icon={XCircle} title="Desistimientos" value={stats.cancellations.toString()} description="Canceladas este mes" color="purple" />
+                    </div>
                   </div>
 
-                  {/* Tarjeta de recaudo total (suma de proyectos del mes actual) */}
-                  <div className="grid grid-cols-1 mb-4">
-                    <StatCard
-                      icon={CreditCard}
-                      title="Recaudado Total (Proyectos del Mes)"
-                      value={formatCurrency(stats.totalCurrentMonthProjectRevenue)}
-                      description="Dinero total recaudado por Luxury Malibu, Malibu y Reservas en el mes actual"
-                      color="teal"
-                    />
-                  </div>
-
-                  {/* Tarjetas de recaudos por proyecto del mes actual */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <StatCard
-                      icon={Building2}
-                      title="Luxury Malibu - Mes Actual"
-                      value={formatCurrency(stats.luxuryMonthly)}
-                      description="Recaudo total del proyecto Luxury Malibu en el mes actual"
-                      color="blue"
-                    />
-                    <StatCard
-                      icon={Building2}
-                      title="Reservas del Poblado - Mes Actual"
-                      value={formatCurrency(stats.reservasMonthly)}
-                      description="Recaudo total del proyecto Reservas del Poblado en el mes actual"
-                      color="cyan"
-                    />
-                    <StatCard
-                      icon={Building2}
-                      title="Malibu - Mes Actual"
-                      value={formatCurrency(stats.malibuMonthly)}
-                      description="Recaudo total del proyecto Malibu en el mes actual"
-                      color="green"
-                    />
+                  {/* Sección 2: Recaudos */}
+                  <div>
+                    <div className="mb-4">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                        Recaudos
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Dinero recaudado por proyectos</p>
+                    </div>
+                    <div className="grid grid-cols-1 mb-6">
+                      <StatCard icon={CreditCard} title="Recaudado Total (Mes Actual)" value={formatCurrency(stats.totalCurrentMonthProjectRevenue)} description="Suma de todos los proyectos" color="teal" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <StatCard icon={Building2} title="Luxury Malibu" value={formatCurrency(stats.luxuryMonthly)} description="Recaudo mes actual" color="blue" />
+                      <StatCard icon={Building2} title="Reservas del Poblado" value={formatCurrency(stats.reservasMonthly)} description="Recaudo mes actual" color="cyan" />
+                      <StatCard icon={Building2} title="Malibu" value={formatCurrency(stats.malibuMonthly)} description="Recaudo mes actual" color="green" />
+                    </div>
                   </div>
 
                   {/* Contenido principal y actividades recientes */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Tabla de recaudos históricos por proyecto */}
-                    <div className="lg:col-span-2 space-y-6">
-                      <Card>
+                    <div className="lg:col-span-2">
+                      <div className="mb-4">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <div className="w-1 h-6 bg-gradient-to-b from-amber-500 to-amber-600 rounded-full"></div>
+                          Recaudos Históricos
+                        </h2>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Seguimiento mensual por proyecto</p>
+                      </div>
+                      <Card className="shadow-md border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all">
                         <CardHeader>
-                          <CardTitle>Recaudos Históricos por Proyecto (Año Actual)</CardTitle>
+                          <CardTitle>Proyectos - Año Actual</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <DataTable
-                            columns={historicalProjectColumns}
-                            data={historicalProjectRevenue}
-                            maxRows={12} // Se puede ajustar para mostrar más meses si el año tiene más datos
-                            title="Historial Mensual de Proyectos"
-                            footerData={historicalProjectTotals} // Pasar los totales aquí
-                          />
+                          <DataTable columns={historicalProjectColumns} data={historicalProjectRevenue} maxRows={12} title="Historial Mensual" footerData={historicalProjectTotals} />
                         </CardContent>
-                        {/* No hay botón "Ver todos" aquí, ya que la tabla ya muestra el historial configurado */}
                       </Card>
                     </div>
 
-                    {/* Alertas y actividades recientes */}
                     <div className="space-y-6">
-                      <Card className="shadow-sm">
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-center">
-                            <CardTitle className="text-lg">Actividad Reciente</CardTitle>
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {recentActivity.length} actividades
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                          {recentActivity.length > 0 ? (
-                            <div className="divide-y">
-                              {recentActivity.map((item, index) => (
-                                <ActivityItem
-                                  key={index}
-                                  action={item.action}
-                                  details={item.details}
-                                  time={item.time}
-                                  icon={item.icon}
-                                  color={item.color}
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center py-10 text-gray-500">
-                              <Calendar className="h-10 w-10 text-gray-300 mb-2" />
-                              <p>No hay actividades recientes</p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      <div>
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                          <div className="w-1 h-6 bg-gradient-to-b from-pink-500 to-rose-600 rounded-full"></div>
+                          Actividad Reciente
+                        </h2>
+                        <Card className="shadow-md border border-gray-200 dark:border-gray-800">
+                          <CardContent className="p-0">
+                            {recentActivity.length > 0 ? (
+                              <div className="divide-y">
+                                {recentActivity.map((item, index) => (
+                                  <ActivityItem key={index} action={item.action} details={item.details} time={item.time} icon={item.icon} color={item.color} />
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                                <Calendar className="h-12 w-12 text-gray-300 mb-3" />
+                                <p className="font-medium">Sin actividades</p>
+                                <p className="text-sm text-gray-400">No hay registros recientes</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
 
-                      <AlertCard
-                        title="Resumen Financiero"
-                        icon={Info}
-                        color="blue"
-                        messages={[
-                          `${stats.activeClients} clientes con ventas activas`,  
-                          `${formatCurrency(stats.totalCurrentMonthProjectRevenue)} recaudado por proyectos este mes`, // Mensaje actualizado
-                          `${formatCurrency(stats.totalOwed)} pendiente de cobro`,
-                          `${stats.cancellations} desistimientos este mes`,
-                        ]}
-                      />
+                      <AlertCard title="Resumen Financiero" icon={Info} color="blue" messages={[`✓ ${stats.activeClients} clientes con ventas activas`, `💰 ${formatCurrency(stats.totalCurrentMonthProjectRevenue)} recaudado`, `⏳ ${formatCurrency(stats.totalOwed)} pendiente de cobro`, `❌ ${stats.cancellations} desistimientos este mes`]} />
                     </div>
                   </div>
                 </TabsContent>

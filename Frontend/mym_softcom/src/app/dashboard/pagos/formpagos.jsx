@@ -170,45 +170,82 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
 
   // Poblar formulario para edición
   useEffect(() => {
-    if (isEditing && paymentToEdit && !editDataLoadedRef.current) {
-      console.log("🔧 [EDIT MODE - PAGO] Cargando datos del pago:", paymentToEdit)
-      editDataLoadedRef.current = true // Marcar como cargado
-      
-      setFormData({
-        amount: paymentToEdit.amount?.toString() || "",
-        payment_date: paymentToEdit.payment_date
-          ? new Date(paymentToEdit.payment_date).toISOString().split("T")[0]
-          : "",
-        payment_method: paymentToEdit.payment_method || "",
-        id_Sales: paymentToEdit.id_Sales?.toString() || "",
-      })
+    const loadEditData = async () => {
+      if (isEditing && paymentToEdit && !editDataLoadedRef.current) {
+        console.log("🔧 [EDIT MODE - PAGO] Cargando datos del pago:", paymentToEdit)
+        editDataLoadedRef.current = true // Marcar como cargado
+        
+        setFormData({
+          amount: paymentToEdit.amount?.toString() || "",
+          payment_date: paymentToEdit.payment_date
+            ? new Date(paymentToEdit.payment_date).toISOString().split("T")[0]
+            : "",
+          payment_method: paymentToEdit.payment_method || "",
+          id_Sales: paymentToEdit.id_Sales?.toString() || "",
+        })
 
-      // Cargar datos del cliente y venta para edición
-      if (paymentToEdit.sale?.client) {
-        console.log("👤 [EDIT MODE - PAGO] Cargando cliente y venta:", paymentToEdit.sale.client)
-        setFoundClient(paymentToEdit.sale.client)
-        setClientDocument(paymentToEdit.sale.client.document?.toString() || "")
-        setSelectedSale(paymentToEdit.sale)
-        setClientSales([paymentToEdit.sale])
+        // Cargar datos del cliente y venta para edición
+        if (paymentToEdit.sale?.client) {
+          console.log("👤 [EDIT MODE - PAGO] Cargando cliente y venta:", paymentToEdit.sale.client)
+          setFoundClient(paymentToEdit.sale.client)
+          setClientDocument(paymentToEdit.sale.client.document?.toString() || "")
+          setSelectedSale(paymentToEdit.sale)
+          setClientSales([paymentToEdit.sale])
+        }
+
+        // ← NUEVO: Cargar cuotas originales del pago para edición
+        if (paymentToEdit.id_Sales) {
+          try {
+            const detailsResponse = await axiosInstance.get(
+              `/api/Detail/GetDetailsBySaleId/${paymentToEdit.id_Sales}`
+            )
+            setPaymentDetailsForQuota(detailsResponse.data || [])
+
+            // Detalles cargados pero no usamos selector de cuotas
+            console.log("📌 [EDIT MODE - PAGO] Detalles del pago cargados para referencia")
+          } catch (error) {
+            console.error("Error al cargar detalles del pago:", error)
+            setPaymentDetailsForQuota([])
+          }
+        }
+      } else if (!isEditing) {
+        // Resetear estados solo si NO está en modo edición
+        console.log("🔄 [RESET - PAGO] Limpiando formulario")
+        editDataLoadedRef.current = false // Resetear el flag
+        
+        setFormData({
+          amount: "",
+          payment_date: new Date().toISOString().split("T")[0],
+          payment_method: "",
+          id_Sales: "",
+        })
+        setClientDocument("")
+        setFoundClient(null)
+        setClientSearchError(null)
+        setClientSales([])
+        setSelectedSale(null)
       }
-    } else if (!isEditing) {
-      // Resetear estados solo si NO está en modo edición
-      console.log("🔄 [RESET - PAGO] Limpiando formulario")
-      editDataLoadedRef.current = false // Resetear el flag
-      
-      setFormData({
-        amount: "",
-        payment_date: new Date().toISOString().split("T")[0],
-        payment_method: "",
-        id_Sales: "",
-      })
-      setClientDocument("")
-      setFoundClient(null)
-      setClientSearchError(null)
-      setClientSales([])
-      setSelectedSale(null)
     }
+
+    loadEditData()
   }, [paymentToEdit, isEditing])
+
+  // ← NUEVO: Cargar detalles de pagos cuando se selecciona una venta
+  const [paymentDetailsForQuota, setPaymentDetailsForQuota] = useState([])
+  useEffect(() => {
+    if (selectedSale && selectedSale.id_Sales) {
+      const loadPaymentDetails = async () => {
+        try {
+          const response = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${selectedSale.id_Sales}`)
+          setPaymentDetailsForQuota(response.data || [])
+        } catch (error) {
+          console.error("Error al cargar detalles de pago para selector de cuotas:", error)
+          setPaymentDetailsForQuota([])
+        }
+      }
+      loadPaymentDetails()
+    }
+  }, [selectedSale])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -275,8 +312,17 @@ function RegisterPayment({ refreshData, paymentToEdit, onCancelEdit, closeModal,
       Id_Sales: Number.parseInt(id_Sales, 10),
     }
 
+    // ← DISTRIBUCIÓN AUTOMÁTICA: El backend distribuye inteligentemente el pago
+    // Sin PaymentDetails, backend usa DistributePaymentToQuotas() que:
+    // 1. Cubre lo que falta en Cuota 1
+    // 2. Si sobra dinero, lo aplica a Cuota 2
+    // 3. Y así sucesivamente
+    console.log("📤 [SUBMIT - PAGO] Distribución automática por backend")
+
     if (isEditing) {
       body.Id_Payments = paymentToEdit.id_Payments
+      body.KeepOriginalQuotas = true
+      console.log("⚠️ [EDIT MODE] Manteniendo cuotas originales")
     }
 
     try {
@@ -546,6 +592,8 @@ Detalles: ${errorData.substring(0, 150)}...`
             )}
           </div>
         )}
+
+
 
         {/* Sección de Detalles del Pago */}
         <div className="bg-gray-50 p-4 rounded-lg">

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using mym_softcom.Models;
 using mym_softcom.Services;
+using mym_softcom.DTOs; // ← NUEVO: Para RedistributeQuotasRequest
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
@@ -26,8 +27,19 @@ namespace mym_softcom.Controllers
         [HttpGet("GetAllSales")]
         public async Task<ActionResult<IEnumerable<Sale>>> GetAllSales()
         {
-            var sales = await _saleServices.GetAllSales();
-            return Ok(sales);
+            try
+            {
+                Console.WriteLine("🔍 [Sale Controller] GetAllSales iniciado");
+                var sales = await _saleServices.GetAllSales();
+                Console.WriteLine($"✅ [Sale Controller] Se obtuvieron {sales.Count()} ventas");
+                return Ok(sales);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [Sale Controller] Error en GetAllSales: {ex.Message}");
+                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                return StatusCode(500, new { error = $"Error al obtener ventas: {ex.Message}", details = ex.StackTrace });
+            }
         }
 
         /// <summary>
@@ -155,17 +167,6 @@ namespace mym_softcom.Controllers
             }
         }
 
-        [HttpPost("{id}/redistribute-quotas")]
-        public async Task<IActionResult> RedistributeQuotas(int id, [FromBody] RedistributeQuotasRequest request)
-        {
-            var result = await _saleServices.RedistributeOverdueQuotas(id, request.RedistributionType, request.OverdueQuotas);
-
-            if (result.Success)
-                return Ok(result);
-            else
-                return BadRequest(result);
-        }
-
         /// <summary>
         /// ✅ ENDPOINT TEMPORAL DE DEBUGGING: Diagnostica el schema de la tabla sales
         /// </summary>
@@ -196,6 +197,78 @@ namespace mym_softcom.Controllers
             }
             catch (Exception ex)
             {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Redistribuye cuotas vencidas de una venta (todas a última cuota o en un rango personalizado).
+        /// </summary>
+        /// <param name="id">El ID de la venta a redistribuir.</param>
+        /// <param name="request">Solicitud con tipo de redistribución y cuotas vencidas.</param>
+        /// <returns>OK si la redistribución es exitosa, BadRequest o NotFound si hay error.</returns>
+        // POST: api/Sale/{id}/redistribute-quotas
+        [HttpPost("{id}/redistribute-quotas")]
+        public async Task<IActionResult> RedistributeQuotas(int id, [FromBody] RedistributeQuotasRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                Console.WriteLine($"[RedistributeQuotas] 📥 Solicitud recibida para venta {id}: {request.RedistributionType}");
+                
+                var result = await _saleServices.RedistributeOverdueQuotas(id, request);
+                
+                if (result.Success)
+                {
+                    Console.WriteLine($"[RedistributeQuotas] ✅ Redistribución completada para venta {id}");
+                    return Ok(new { success = true, message = result.Message });
+                }
+                else
+                {
+                    Console.WriteLine($"[RedistributeQuotas] ❌ Error en redistribución: {result.Message}");
+                    return BadRequest(new { success = false, message = result.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RedistributeQuotas] 💥 Excepción: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Revierte una redistribución de cuotas vencidas, restaurando los valores originales.
+        /// </summary>
+        /// <param name="id">El ID de la venta a restaurar.</param>
+        /// <returns>OK si la reversión es exitosa, NotFound o BadRequest si hay error.</returns>
+        // POST: api/Sale/{id}/undo-redistribution
+        [HttpPost("{id}/undo-redistribution")]
+        public async Task<IActionResult> UndoRedistribution(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[UndoRedistribution] 🔄 Solicitud para deshacer redistribución en venta {id}");
+                
+                var result = await _saleServices.UndoRedistribution(id);
+                
+                if (result.Success)
+                {
+                    Console.WriteLine($"[UndoRedistribution] ✅ Redistribución revertida para venta {id}");
+                    return Ok(new { success = true, message = result.Message });
+                }
+                else
+                {
+                    Console.WriteLine($"[UndoRedistribution] ❌ Error al revertir: {result.Message}");
+                    return BadRequest(new { success = false, message = result.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UndoRedistribution] 💥 Excepción: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

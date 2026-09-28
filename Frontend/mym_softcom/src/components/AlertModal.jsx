@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import styles from "./AlertModal.module.css"
 import PropTypes from "prop-types"
+import { CheckCircle, AlertCircle, Info } from "lucide-react"
 
 const AlertModal = ({ isOpen, message, type = "info", onClose, redirectUrl, onClick }) => {
   const router = useRouter()
@@ -23,16 +24,23 @@ const AlertModal = ({ isOpen, message, type = "info", onClose, redirectUrl, onCl
     info: "Información"
   }
 
+  const iconMap = {
+    success: <CheckCircle className="w-12 h-12 text-pink-600 mx-auto mb-3" strokeWidth={1.5} />,
+    error: <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-3" strokeWidth={1.5} />,
+    info: <Info className="w-12 h-12 text-blue-600 mx-auto mb-3" strokeWidth={1.5} />
+  }
+
   const modalClass = `${styles.modalContent} ${styles[type] || styles.info}`
 
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="alert-title">
       <div className={styles.modal}>
         <div className={modalClass}>
+          {iconMap[type] || iconMap.info}
           <h2 id="alert-title">{titleMap[type] || titleMap.info}</h2>
           <p>{message}</p>
           <button className={styles.acceptButton} onClick={handleAccept}>
-            Aceptar
+            ✓ Aceptar
           </button>
         </div>
       </div>

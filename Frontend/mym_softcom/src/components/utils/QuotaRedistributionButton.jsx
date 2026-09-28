@@ -200,16 +200,25 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
 
   const { overdueQuotas, remainingQuotas, totalOverdueAmount } = calculateOverdueQuotas()
 
-  const handleRedistribute = async (redistributionType) => {
+  const handleRedistribute = async (options) => {
     setIsProcessing(true)
     try {
+      // ← ACTUALIZADO: Manejar nuevo formato con fromQuota y toQuota (rango)
+      const redistributionType = typeof options === 'string' ? options : options.type
+      const fromQuota = options.fromQuota
+      const toQuota = options.toQuota
+
       const requestData = {
         redistributionType: redistributionType,
+        fromQuota: fromQuota, // ← NUEVO: Cuota inicial del rango
+        toQuota: toQuota, // ← NUEVO: Cuota final del rango
         overdueQuotas: overdueQuotas.map((q) => ({
           quotaNumber: q.quotaNumber,
           remainingAmount: q.remainingAmount,
         })),
       }
+
+      console.log('[QuotaRedistributionButton] Enviando solicitud de redistribución:', requestData)
 
       await axiosInstance.post(`/api/Sale/${saleId}/redistribute-quotas`, requestData)
 

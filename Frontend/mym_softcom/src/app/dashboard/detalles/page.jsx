@@ -21,7 +21,7 @@ const ClientInfo = ({ client, sale }) => {
     switch (status?.toLowerCase()) {
       case "active":
       case "activo":
-        return "bg-emerald-100 text-emerald-800 border border-emerald-300"
+        return "bg-pink-100 text-pink-800 border border-pink-300"
       case "escriturar":
         return "bg-blue-100 text-blue-800 border border-blue-300"
       case "desistida":
@@ -163,10 +163,10 @@ const FinancialSummary = ({ sale }) => {
             <p className="text-2xl font-bold text-blue-900 mt-2">{formatCurrency(sale.total_value)}</p>
             <div className="absolute -top-2 -right-2 w-12 h-12 bg-blue-100 rounded-full opacity-10"></div>
           </div>
-          <div className="relative p-5 bg-emerald-50 rounded-lg border border-emerald-200 hover:shadow-md transition-shadow">
-            <Label className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Total Pagado</Label>
-            <p className="text-2xl font-bold text-emerald-900 mt-2">{formatCurrency(sale.total_raised)}</p>
-            <div className="absolute -top-2 -right-2 w-12 h-12 bg-emerald-100 rounded-full opacity-10"></div>
+          <div className="relative p-5 bg-pink-50 rounded-lg border border-pink-200 hover:shadow-md transition-shadow">
+            <Label className="text-xs font-bold text-pink-700 uppercase tracking-wider">Total Pagado</Label>
+            <p className="text-2xl font-bold text-pink-900 mt-2">{formatCurrency(sale.total_raised)}</p>
+            <div className="absolute -top-2 -right-2 w-12 h-12 bg-pink-100 rounded-full opacity-10"></div>
           </div>
           <div className="relative p-5 bg-amber-50 rounded-lg border border-amber-200 hover:shadow-md transition-shadow">
             <Label className="text-xs font-bold text-amber-700 uppercase tracking-wider">Saldo Pendiente</Label>
@@ -190,7 +190,7 @@ const FinancialSummary = ({ sale }) => {
           </div>
           <div className="w-full bg-gray-300 rounded-full h-3 overflow-hidden shadow-inner">
             <div
-              className="bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-500 ease-out shadow-lg"
+              className="bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 h-3 rounded-full transition-all duration-500 ease-out shadow-lg"
               style={{ width: `${Math.min(progressPercentage, 100)}%` }}
             ></div>
           </div>
