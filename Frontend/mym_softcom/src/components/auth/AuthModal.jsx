@@ -11,9 +11,9 @@ import styles from "./AuthModal.module.css"
  */
 const validators = {
   email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-  password: (password) => password.length >= 8,
+  password: (password) => password.length >= 6,
   username: (username) => username.length >= 3 && username.length <= 50,
-  passwordsMatch: (pwd1, pwd2) => pwd1 === pwd2 && pwd1.length >= 8,
+  passwordsMatch: (pwd1, pwd2) => pwd1 === pwd2 && pwd1.length >= 6,
 }
 
 /**
@@ -100,7 +100,7 @@ export default function AuthModal({ initialMode = "login" }) {
     }
 
     if (!validators.password(loginForm.password)) {
-      showNotice("La contraseña debe tener al menos 8 caracteres")
+      showNotice("La contraseña debe tener al menos 6 caracteres")
       setIsLoading(false)
       return
     }
@@ -151,7 +151,7 @@ export default function AuthModal({ initialMode = "login" }) {
     }
 
     if (!validators.passwordsMatch(registerForm.password, registerForm.confirmPassword)) {
-      showNotice("✗ Las contraseñas no coinciden o son menores a 8 caracteres")
+      showNotice("✗ Las contraseñas no coinciden o son menores a 6 caracteres")
       setIsLoading(false)
       return
     }
@@ -195,14 +195,25 @@ export default function AuthModal({ initialMode = "login" }) {
     }
 
     try {
-      await axiosInstance.post("/api/User/ResetPassUser", {
+      console.log("📧 [RECOVER] Enviando solicitud de recuperación...")
+      console.log("📧 [RECOVER] Email:", recoverForm.email)
+      console.log("📧 [RECOVER] Endpoint: /api/User/ResetPassUser")
+      
+      const response = await axiosInstance.post("/api/User/ResetPassUser", {
         Email: sanitizeInput(recoverForm.email),
       })
-
+      
+      console.log("✅ [RECOVER] Respuesta del servidor:", response.status, response.data)
+      
       // Mensaje genérico para no revelar si el usuario existe
       showNotice("✓ Si la cuenta existe, recibirás instrucciones en tu correo.", "success")
       setTimeout(() => setCurrentMode("login"), 3000)
     } catch (error) {
+      console.error("❌ [RECOVER] Error en solicitud:")
+      console.error("   Status:", error.response?.status)
+      console.error("   Message:", error.response?.data?.message || error.message)
+      console.error("   Data:", error.response?.data)
+      
       // Mensaje genérico aunque falle
       showNotice("✓ Si la cuenta existe, recibirás instrucciones en tu correo.", "success")
       setTimeout(() => setCurrentMode("login"), 3000)
@@ -353,7 +364,7 @@ export default function AuthModal({ initialMode = "login" }) {
                   <input
                     id="registerPassword"
                     type={showPassword.register ? "text" : "password"}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     className={`${styles["input-field"]} ${styles["password-input"]}`}
                     value={registerForm.password}
                     onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}

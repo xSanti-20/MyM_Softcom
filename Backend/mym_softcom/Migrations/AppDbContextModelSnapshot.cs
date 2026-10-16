@@ -443,18 +443,21 @@ namespace mym_softcom.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("id_Sales"));
 
                     b.Property<string>("CustomQuotasJson")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("customQuotasJson");
+
+                    b.Property<int?>("FromQuotaRange")
+                        .HasColumnType("int");
 
                     b.Property<decimal?>("HouseInitialAmount")
-                        .HasColumnType("decimal(65,30)");
+                        .HasColumnType("decimal(65,30)")
+                        .HasColumnName("houseInitialAmount");
 
                     b.Property<decimal?>("HouseInitialPercentage")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(65,30)")
-                        .HasDefaultValue(30m);
-
-                    b.Property<decimal?>("LastQuotaValue")
-                        .HasColumnType("decimal(65,30)");
+                        .HasDefaultValue(30m)
+                        .HasColumnName("houseInitialPercentage");
 
                     b.Property<decimal?>("NewQuotaValue")
                         .HasColumnType("decimal(65,30)");
@@ -465,16 +468,17 @@ namespace mym_softcom.Migrations
                     b.Property<string>("PaymentPlanType")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("longtext")
-                        .HasDefaultValue("Automatic");
+                        .HasDefaultValue("Automatic")
+                        .HasColumnName("PaymentPlanType");
 
                     b.Property<string>("RedistributedQuotaNumbers")
                         .HasColumnType("longtext");
 
-                    b.Property<decimal?>("RedistributionAmount")
-                        .HasColumnType("decimal(65,30)");
-
                     b.Property<string>("RedistributionType")
                         .HasColumnType("longtext");
+
+                    b.Property<int?>("ToQuotaRange")
+                        .HasColumnType("int");
 
                     b.Property<int>("id_Clients")
                         .HasColumnType("int");

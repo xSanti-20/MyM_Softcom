@@ -82,6 +82,49 @@ public class AppDbContext : DbContext
             entity.ToTable("transfer_details");
         });
 
+        // ✅ NUEVO: Configuración de la tabla Quotas
+        modelBuilder.Entity<Quota>(entity =>
+        {
+            entity.ToTable("quotas");
+            
+            entity.HasKey(e => e.id);
+            
+            entity.Property(e => e.quota_number)
+                .IsRequired();
+            
+            entity.Property(e => e.amount)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+            
+            entity.Property(e => e.current_amount)
+                .HasColumnType("decimal(18,2)")
+                .IsRequired();
+            
+            entity.Property(e => e.due_date)
+                .IsRequired();
+            
+            entity.Property(e => e.status)
+                .HasColumnType("varchar(50)")
+                .HasDefaultValue("Pending");
+            
+            entity.Property(e => e.redistributed_amount)
+                .HasColumnType("decimal(18,2)");
+            
+            entity.Property(e => e.created_at)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            
+            entity.HasOne(e => e.sale)
+                .WithMany(s => s.quotas)
+                .HasForeignKey(e => e.id_sale)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasIndex(e => e.id_sale)
+                .HasName("idx_quota_sale");
+            
+            entity.HasIndex(e => new { e.id_sale, e.quota_number })
+                .HasName("idx_quota_number");
+        });
+
         base.OnModelCreating(modelBuilder);
     }
 
@@ -92,6 +135,7 @@ public class AppDbContext : DbContext
     public DbSet<Lot> Lots { get; set; }
     public DbSet<Plan> Plans { get; set; }
     public DbSet<Sale> Sales { get; set; }
+    public DbSet<Quota> Quotas { get; set; } // ✅ NUEVO: Tabla de cuotas
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Withdrawal> Withdrawals { get; set; }
     public DbSet<User> Users { get; set; }

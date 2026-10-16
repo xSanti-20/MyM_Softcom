@@ -23,31 +23,25 @@ namespace mym_softcom.Models
 
         [NotMapped]
         public decimal? RedistributionAmount { get; set; }
-        [NotMapped]
         public string? RedistributionType { get; set; }
-        [NotMapped]
-        public string? RedistributedQuotaNumbers { get; set; }
+        public string? RedistributedQuotaNumbers { get; set; } // JSON: {"received": [...], "overdue": [...]}
         [NotMapped]
         public decimal? LastQuotaValue { get; set; } // Added LastQuotaValue property for lastQuota redistribution type
 
-        [NotMapped]
         public decimal? NewQuotaValue { get; set; }
-        [NotMapped]
         public decimal? OriginalQuotaValue { get; set; }
         [NotMapped]
         public int? CustomNumQuotasToUpdate { get; set; } // ← NUEVO: Para redistribución personalizada, cuántas cuotas finales se actualizan
-        [NotMapped]
         public int? FromQuotaRange { get; set; } // ← NUEVO: Cuota inicial del rango para redistribución personalizada
-        [NotMapped]
         public int? ToQuotaRange { get; set; } // ← NUEVO: Cuota final del rango para redistribución personalizada
 
-        [NotMapped]
+        [Column("PaymentPlanType")]
         public string? PaymentPlanType { get; set; } = "Automatic"; // "Automatic", "Custom", "House"
-        [NotMapped]
+        [Column("customQuotasJson")]
         public string? CustomQuotasJson { get; set; } // JSON array for custom quotas: [{"quotaNumber": 1, "amount": 1000000}, ...]
-        [NotMapped]
+        [Column("houseInitialPercentage")]
         public decimal? HouseInitialPercentage { get; set; } = 30; // For house type, default 30%
-        [NotMapped]
+        [Column("houseInitialAmount")]
         public decimal? HouseInitialAmount { get; set; } // Calculated amount for house initial payment
 
         //foránea a la tabla Clients
@@ -73,6 +67,9 @@ namespace mym_softcom.Models
 
         [ForeignKey("id_Plans")]
         public Plan? plan { get; set; }
+
+        // ✅ NUEVO: Relación con tabla Quotas
+        public ICollection<Quota>? quotas { get; set; } = new List<Quota>();
     }
 
     public class CustomQuota

@@ -27,12 +27,6 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
   })
 
   const [customQuotaInput, setCustomQuotaInput] = useState({ quotaNumber: "", amount: "", dueDate: "" })
-  
-  // Ref para rastrear si ya se cargaron los datos de edición
-  const editDataLoadedRef = useRef(false)
-  
-  // Ref para evitar limpiezas durante la carga inicial
-  const isInitialLoadRef = useRef(false)
 
   // Estados para búsqueda de cliente
   const [clientDocument, setClientDocument] = useState("")
@@ -363,15 +357,6 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función para limpiar selección de lote
   const handleClearLotSelection = () => {
-    console.log("🗑️ [CLEAR LOT] Iniciando limpieza. isEditing:", isEditing, "editDataLoaded:", editDataLoadedRef.current, "isInitialLoad:", isInitialLoadRef.current)
-    
-    // No limpiar durante la carga inicial en modo edición
-    if (isEditing && isInitialLoadRef.current) {
-      console.log("⏸️ [CLEAR LOT] Carga inicial en progreso, cancelando limpieza")
-      return
-    }
-    
-    console.log("✅ [CLEAR LOT] Procediendo con limpieza")
     setSelectedLot(null)
     setFormData((prev) => ({ ...prev, id_Lots: "" }))
     setLotSearchTerm("")
@@ -382,35 +367,9 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función para manejar cambio de proyecto
   const handleProjectChange = (projectId) => {
-    console.log("🔄 [PROJECT CHANGE] Cambio de proyecto solicitado:", projectId, "anterior:", selectedProject, "isEditing:", isEditing, "isInitialLoad:", isInitialLoadRef.current)
-    
-    // Ignorar cambios a undefined o vacío durante la carga inicial
-    if (!projectId && isInitialLoadRef.current) {
-      console.log("⏸️ [PROJECT CHANGE] Ignorando cambio a vacío durante carga inicial")
-      return
-    }
-    
-    // Si es carga inicial y en modo edición, solo actualizar el proyecto sin limpiar
-    if (isEditing && isInitialLoadRef.current) {
-      console.log("⏩ [PROJECT CHANGE] Carga inicial - Solo actualizando proyecto, NO limpiando lote")
-      setSelectedProject(projectId)
-      return
-    }
-    
-    const previousProject = selectedProject
-    
-    // Actualizar el proyecto
     setSelectedProject(projectId)
-    
-    // Solo limpiar si el proyecto cambió realmente y no es la primera vez que se establece
-    if (previousProject && projectId !== previousProject) {
-      console.log("🗑️ [PROJECT CHANGE] Usuario cambió proyecto de", previousProject, "a", projectId, "- limpiando lote")
+    if (projectId !== selectedProject) {
       handleClearLotSelection()
-    } else if (!projectId && previousProject) {
-      console.log("🗑️ [PROJECT CHANGE] Proyecto deseleccionado, limpiando lote")
-      handleClearLotSelection()
-    } else {
-      console.log("✅ [PROJECT CHANGE] Proyecto establecido sin limpiar lote")
     }
   }
 
@@ -449,426 +408,59 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
     fetchProjects()
   }, [showAlert, fetchProjects])
 
-  // Resetear flag cuando cambia la venta a editar o se cancela la edición
-  useEffect(() => {
-    if (!isEditing || !saleToEdit) {
-      editDataLoadedRef.current = false
-      isInitialLoadRef.current = false
-    }
-  }, [isEditing, saleToEdit])
+
 
   // Poblar formulario para edición
   useEffect(() => {
-    // ⚠️ IMPORTANTE: Solo cargar si no se ha cargado antes
-    // Ya no requerimos que users y plans estén cargados para poblar el formulario
-    if (isEditing && saleToEdit && !editDataLoadedRef.current) {
-      console.log("🔧 [EDIT MODE] Cargando datos de venta:", saleToEdit)
-      console.log("🔧 [EDIT MODE] ¿Tiene customQuotasJson?", !!saleToEdit.customQuotasJson, "Valor:", saleToEdit.customQuotasJson?.substring(0, 50))
-      console.log("🔧 [EDIT MODE] PaymentPlanType:", saleToEdit.paymentPlanType)
-      console.log("🔧 [EDIT MODE] Users disponibles:", users.length)
-      console.log("🔧 [EDIT MODE] Plans disponibles:", plans.length)
+    if (isEditing && saleToEdit) {
       
-      // ✅ IMPORTANTE: Marcar como cargado INMEDIATAMENTE para evitar re-ejecuciones
-      editDataLoadedRef.current = true
-      isInitialLoadRef.current = true // Activar protección de carga inicial
-      
-      // Desactivar protección después de 2 segundos (tiempo suficiente para completar la carga)
-      setTimeout(() => {
-        isInitialLoadRef.current = false
-        console.log("⏰ [EDIT MODE] Protección de carga inicial desactivada")
-      }, 2000)
-      
-      let customQuotas = []
-      if (saleToEdit.customQuotasJson) {
-        try {
-          const parsed = JSON.parse(saleToEdit.customQuotasJson)
-          console.log("📋 [EDIT MODE] Raw customQuotasJson:", saleToEdit.customQuotasJson)
-          console.log("📋 [EDIT MODE] Parsed custom quotas:", parsed)
-          
-          // 🔧 SOLUCIÓN: Generar fechas automáticamente cuando falten
-          const saleDate = new Date(saleToEdit.sale_date)
-          
-          customQuotas = parsed.map((q, index) => {
-            const quotaNumber = q.QuotaNumber || q.quotaNumber
-            const amount = q.Amount || q.amount
-            let dueDate = q.DueDate || q.dueDate || ""
-            
-            // Si no hay fecha, generarla automáticamente
-            if (!dueDate) {
-              const monthsToAdd = quotaNumber
-              const targetDate = new Date(saleDate)
-              targetDate.setMonth(saleDate.getMonth() + monthsToAdd)
-              
-              // Ajustar al último día del mes si es necesario
-              const targetDay = saleDate.getDate()
-              const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
-              targetDate.setDate(Math.min(targetDay, maxDayInMonth))
-              
-              dueDate = targetDate.toISOString().split('T')[0]
-              
-              if (index < 3) {
-                console.warn(`🔧 [EDIT MODE] Cuota #${quotaNumber} generando fecha automáticamente: ${dueDate}`)
-              }
-            }
-            
-            return {
-              quotaNumber,
-              amount,
-              dueDate
-            }
-          })
-          
-          console.log("📅 [EDIT MODE] Mapped custom quotas with dates:", customQuotas.slice(0, 5))
-          
-          const quotasWithoutDate = customQuotas.filter(q => !q.dueDate)
-          if (quotasWithoutDate.length > 0) {
-            console.error(`❌ [EDIT MODE] ${quotasWithoutDate.length} cuotas aún sin fecha de ${customQuotas.length} totales`)
-          } else {
-            console.log(`✅ [EDIT MODE] Todas las ${customQuotas.length} cuotas tienen fecha asignada`)
-          }
-          
-          // Informar al usuario si se generaron fechas automáticamente
-          const hadMissingDates = parsed.some(q => !(q.DueDate || q.dueDate))
-          if (hadMissingDates) {
-            console.warn(`⚠️ [BACKEND ISSUE] Esta venta fue creada sin fechas. Se generaron automáticamente. Guarda la venta para actualizarlas en el backend.`)
-          }
-        } catch (e) {
-          console.error("❌ [EDIT MODE] Error parsing custom quotas:", e)
-        }
-      }
-
       const editFormData = {
         sale_date: saleToEdit.sale_date ? new Date(saleToEdit.sale_date).toISOString().split("T")[0] : "",
         total_value: saleToEdit.total_value?.toString() || "",
         initial_payment: saleToEdit.initial_payment?.toString() || "",
         initial_payment_method: saleToEdit.initial_payment_method || "Efectivo",
         id_Clients: saleToEdit.id_Clients?.toString() || "",
-        id_Lots: saleToEdit.id_Lots?.toString() || "",  // ✅ Ya incluido aquí
+        id_Lots: saleToEdit.id_Lots?.toString() || "",
         id_Users: saleToEdit.id_Users?.toString() || "",
         id_Plans: saleToEdit.id_Plans ? saleToEdit.id_Plans.toString() : "",
-        // 🔧 IMPORTANTE: Si hay customQuotas, el tipo DEBE ser "custom"
-        paymentPlanType: customQuotas.length > 0 ? "custom" : (saleToEdit.paymentPlanType?.toLowerCase() || "automatic"),
+        paymentPlanType: saleToEdit.paymentPlanType?.toLowerCase() || "automatic",
         houseInitialPercentage: saleToEdit.houseInitialPercentage?.toString() || "30",
-        customQuotas: customQuotas,
+        customQuotas: saleToEdit.customQuotasJson ? JSON.parse(saleToEdit.customQuotasJson).map(q => ({
+          quotaNumber: q.QuotaNumber || q.quotaNumber,
+          amount: q.Amount || q.amount,
+          dueDate: q.DueDate || q.dueDate || ""
+        })) : [],
       }
       
-      console.log("📝 [EDIT MODE] Datos del formulario a establecer:", editFormData)
-      console.log("📋 [EDIT MODE] Plan ID recibido:", saleToEdit.id_Plans, "Plan nombre:", saleToEdit.plan?.name)
-      console.log("📦 [EDIT MODE] ✅ CONFIRMACIÓN: editFormData.customQuotas.length =", editFormData.customQuotas.length)
-      console.log("🎯 [EDIT MODE] ✅ CONFIRMACIÓN: editFormData.paymentPlanType =", editFormData.paymentPlanType)
-      if (editFormData.customQuotas?.length > 0) {
-        console.log("   ✅ Primeras 3 cuotas en editFormData:", editFormData.customQuotas.slice(0, 3))
-      } else {
-        console.warn("   ⚠️ NO HAY CUOTAS EN editFormData!")
-      }
-      
-      // ✅ PRIMERO: Agregar el plan a la lista si está en saleToEdit
-      if (saleToEdit.plan) {
-        console.log("🔧 [EDIT MODE] Asegurando que el plan está en la lista:", saleToEdit.plan.name)
-        setPlans(prevPlans => {
-          const exists = prevPlans.some(p => p.id_Plans.toString() === saleToEdit.id_Plans.toString())
-          if (exists) {
-            console.log("✅ [EDIT MODE] Plan ya está en la lista")
-            return prevPlans
-          }
-          console.log("✅ [EDIT MODE] Plan agregado a la lista")
-          return [saleToEdit.plan, ...prevPlans]
-        })
-      }
-      
-      // ✅ SEGUNDO: Establecer el formData
       setFormData(editFormData)
-      
-      // 🔍 Log de verificación INMEDIATO
-      console.log("🔍 [SETFORMDATA] setFormData fue llamado con:", {
-        customQuotasCount: editFormData.customQuotas.length,
-        paymentPlanType: editFormData.paymentPlanType,
-        id_Plans: editFormData.id_Plans
-      })
 
-      // Cargar cliente para edición
-      if (saleToEdit.id_Clients) {
-        // Primero intentar usar los datos del cliente si ya vienen en saleToEdit
-        if (saleToEdit.client) {
-          console.log("👤 [EDIT MODE] Usando datos de cliente de saleToEdit:", saleToEdit.client)
-          setFoundClient(saleToEdit.client)
-          setClientDocument(saleToEdit.client.document?.toString() || "")
-        } else {
-          console.log("👤 [EDIT MODE] Cargando datos de cliente desde API...")
-          // Si no vienen, hacer la petición al backend
-          const fetchClientForEdit = async () => {
-            try {
-              const response = await axiosInstance.get(`/api/Client/${saleToEdit.id_Clients}`)
-              if (response.status === 200 && response.data) {
-                console.log("✅ [EDIT MODE] Cliente cargado exitosamente:", response.data)
-                setFoundClient(response.data)
-                setClientDocument(response.data.document?.toString() || "")
-              }
-            } catch (error) {
-              console.error("❌ [EDIT MODE] Error al cargar cliente para edición:", error)
-              console.error("❌ [EDIT MODE] Status:", error.response?.status)
-              setClientSearchError("No se pudo cargar el cliente asociado a esta venta.")
-            }
-          }
-          fetchClientForEdit()
+      // Asegurar que el plan de la venta a editar esté disponible en la lista
+      if (saleToEdit.id_Plans && saleToEdit.plan) {
+        const planExists = plans.some(p => p.id_Plans === saleToEdit.id_Plans)
+        if (!planExists) {
+          console.log("📋 [EDIT] Plan no encontrado en la lista, agregándolo:", saleToEdit.plan.name)
+          setPlans(prev => [...prev, saleToEdit.plan])
         }
       }
+      
+      // Cargar cliente
+      if (saleToEdit.id_Clients && saleToEdit.client) {
+        setFoundClient(saleToEdit.client)
+        setClientDocument(saleToEdit.client.document?.toString() || "")
+      }
 
-      // Cargar lote y proyecto para edición
+      // Cargar lote y proyecto
       if (saleToEdit.lot) {
-        console.log("🏗️ [EDIT MODE] Cargando lote y proyecto:", saleToEdit.lot)
-        const projectId = saleToEdit.lot.project?.id_Projects?.toString() || ""
-        const projectName = saleToEdit.lot.project?.name || "Proyecto desconocido"
-        const lotSearchValue = `${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`
-        
-        console.log("📍 [EDIT MODE] ID del proyecto:", projectId, "Nombre:", projectName)
-        console.log("📍 [EDIT MODE] Lote a establecer:", lotSearchValue)
-        console.log("📍 [EDIT MODE] Proyectos disponibles en este momento:", projects.length)
-        
-        // PRIMERO: Asegurarse de que el proyecto esté en la lista
-        if (projectId && saleToEdit.lot.project) {
-          setProjects(prevProjects => {
-            const projectExists = prevProjects.some(p => p.id_Projects.toString() === projectId)
-            
-            if (!projectExists) {
-              console.log("⚠️ [EDIT MODE] Proyecto no está en la lista, agregándolo:", projectName)
-              return [...prevProjects, {
-                id_Projects: saleToEdit.lot.project.id_Projects,
-                name: saleToEdit.lot.project.name,
-                status: saleToEdit.lot.project.status || "Activo"
-              }]
-            }
-            
-            console.log("✅ [EDIT MODE] Proyecto ya está en la lista")
-            return prevProjects
-          })
-        }
-        
-        // SEGUNDO: Establecer los estados de proyecto y lote
-        setSelectedProject(projectId)
+        setSelectedProject(saleToEdit.lot.project?.id_Projects?.toString() || "")
         setSelectedLot(saleToEdit.lot)
-        setLotSearchTerm(lotSearchValue)
-        
-        console.log("✅ [EDIT MODE] Estados de lote establecidos:")
-        console.log("   - selectedProject:", projectId)
-        console.log("   - selectedLot.id_Lots:", saleToEdit.lot.id_Lots)
-        console.log("   - lotSearchTerm:", lotSearchValue)
-        console.log("   - formData.id_Lots ya establecido en:", saleToEdit.id_Lots)
-      } else {
-        console.warn("⚠️ [EDIT MODE] No hay información de lote en saleToEdit")
+        setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
       }
     }
-    // ✅ NOTA: El reset del formulario ahora solo ocurre después de guardar exitosamente o cancelar edición
-  }, [saleToEdit, isEditing])
+  }, [saleToEdit, isEditing, plans])
 
-  // useEffect para cargar el plan completo si falta (respaldo)
-  useEffect(() => {
-    if (isEditing && saleToEdit?.id_Plans && !saleToEdit?.plan && editDataLoadedRef.current) {
-      console.log("🔧 [PLAN LOADER] Plan faltante detectado, buscando plan ID:", saleToEdit.id_Plans)
-      
-      const loadPlan = async () => {
-        try {
-          const response = await axiosInstance.get(`/api/Plan/GetPlanID/${saleToEdit.id_Plans}`)
-          if (response.status === 200 && response.data) {
-            console.log("✅ [PLAN LOADER] Plan obtenido:", response.data)
-            // Agregar el plan a la lista
-            setPlans(prev => {
-              const exists = prev.some(p => p.id_Plans.toString() === response.data.id_Plans.toString())
-              if (exists) return prev
-              return [response.data, ...prev]
-            })
-            // Establecer el plan en el formulario
-            setFormData(prev => ({ 
-              ...prev, 
-              id_Plans: response.data.id_Plans.toString() 
-            }))
-          }
-        } catch (error) {
-          console.error("❌ [PLAN LOADER] Error al obtener plan:", error)
-        }
-      }
-      
-      loadPlan()
-    }
-  }, [isEditing, saleToEdit, editDataLoadedRef])
 
-  // useEffect para debuggear cambios en lotSearchTerm y selectedLot
-  useEffect(() => {
-    if (isEditing && saleToEdit) {
-      console.log("🔍 [DEBUG LOT] Cambio detectado:")
-      console.log("   - lotSearchTerm:", lotSearchTerm)
-      console.log("   - selectedLot:", selectedLot?.id_Lots || "null")
-      console.log("   - selectedProject:", selectedProject)
-      console.log("   - formData.id_Lots:", formData.id_Lots)
-    }
-  }, [lotSearchTerm, selectedLot, selectedProject, formData.id_Lots, isEditing, saleToEdit])
 
-  // useEffect guardián: Si estamos editando y el lote se pierde, restaurarlo
-  useEffect(() => {
-    // Solo actuar si NO estamos en carga inicial
-    if (isEditing && saleToEdit?.lot && editDataLoadedRef.current && !isInitialLoadRef.current && !selectedLot && formData.id_Lots) {
-      console.warn("🔧 [GUARDIAN LOT] Detectado lote perdido después de carga inicial, restaurando...")
-      console.log("   - saleToEdit.lot:", saleToEdit.lot)
-      console.log("   - formData.id_Lots:", formData.id_Lots)
-      
-      setSelectedLot(saleToEdit.lot)
-      setLotSearchTerm(`${saleToEdit.lot.block}-${saleToEdit.lot.lot_number}`)
-      setSelectedProject(saleToEdit.lot.project?.id_Projects?.toString() || "")
-      
-      console.log("✅ [GUARDIAN LOT] Lote restaurado")
-    }
-  }, [isEditing, saleToEdit, selectedLot, formData.id_Lots, selectedProject])
 
-  // useEffect guardián para el proyecto: asegurarse de que no se pierda durante renders
-  useEffect(() => {
-    if (isEditing && saleToEdit?.lot?.project && editDataLoadedRef.current && !selectedProject && formData.id_Lots) {
-      const correctProjectId = saleToEdit.lot.project.id_Projects?.toString() || ""
-      if (correctProjectId) {
-        console.warn("🔧 [GUARDIAN PROJECT] Detectado proyecto perdido, restaurando...")
-        console.log("   - Proyecto correcto:", correctProjectId, saleToEdit.lot.project.name)
-        setSelectedProject(correctProjectId)
-        console.log("✅ [GUARDIAN PROJECT] Proyecto restaurado")
-      }
-    }
-  }, [isEditing, saleToEdit, selectedProject, formData.id_Lots])
-
-  // useEffect guardián para el usuario: asegurarse de que no se pierda durante renders
-  useEffect(() => {
-    if (isEditing && saleToEdit && editDataLoadedRef.current && !formData.id_Users && saleToEdit.id_Users) {
-      console.warn("🔧 [GUARDIAN USER] Detectado usuario perdido, restaurando...")
-      console.log("   - Usuario correcto:", saleToEdit.id_Users, saleToEdit.user?.nom_Users)
-      setFormData(prev => ({ ...prev, id_Users: saleToEdit.id_Users.toString() }))
-      console.log("✅ [GUARDIAN USER] Usuario restaurado")
-    }
-  }, [isEditing, saleToEdit, formData.id_Users])
-
-  // useEffect guardián para el plan: sincronizar si se pierde
-  useEffect(() => {
-    if (isEditing && saleToEdit && editDataLoadedRef.current && saleToEdit.id_Plans) {
-      const planFromForm = (formData.id_Plans || "").toString()
-      const planFromSale = saleToEdit.id_Plans.toString()
-      
-      if (planFromForm !== planFromSale) {
-        console.warn("🔧 [GUARDIAN PLAN] Plan no sincronizado, restaurando...")
-        console.log("   - Esperado:", planFromSale, "Actual:", planFromForm)
-        console.log("   - Plan objeto:", saleToEdit.plan?.name)
-        
-        // Asegurar que el plan está en la lista
-        if (saleToEdit.plan) {
-          setPlans(prev => {
-            const exists = prev.some(p => p.id_Plans.toString() === planFromSale)
-            if (!exists) {
-              console.log("   - Agregando plan a la lista:", saleToEdit.plan.name)
-              return [saleToEdit.plan, ...prev]
-            }
-            return prev
-          })
-        }
-        
-        // Restaurar el valor del formulario
-        setFormData(prev => {
-          if ((prev.id_Plans || "").toString() !== planFromSale) {
-            console.log("✅ [GUARDIAN PLAN] Plan restaurado a:", planFromSale)
-            return { ...prev, id_Plans: planFromSale }
-          }
-          return prev
-        })
-      }
-    }
-  }, [isEditing, saleToEdit, formData.id_Plans, editDataLoadedRef])
-
-  // useEffect guardián para las cuotas personalizadas: sincronizar si se pierden
-  useEffect(() => {
-    if (isEditing && saleToEdit && editDataLoadedRef.current) {
-      // Si saleToEdit tiene customQuotasJson pero formData.customQuotas está vacío, restaurar
-      if (saleToEdit.customQuotasJson && formData.customQuotas.length === 0) {
-        console.warn("🔧 [GUARDIAN QUOTAS] Cuotas personalizadas detectadas como vacías, restaurando...")
-        console.log("   - saleToEdit.paymentPlanType:", saleToEdit.paymentPlanType)
-        console.log("   - formData.paymentPlanType:", formData.paymentPlanType)
-        
-        try {
-          let customQuotasToRestore = []
-          const parsed = JSON.parse(saleToEdit.customQuotasJson)
-          console.log("📋 [GUARDIAN QUOTAS] Parseando:", parsed.length, "cuotas desde JSON")
-          
-          const saleDate = new Date(saleToEdit.sale_date)
-          
-          customQuotasToRestore = parsed.map((q, index) => {
-            const quotaNumber = q.QuotaNumber || q.quotaNumber
-            const amount = q.Amount || q.amount
-            let dueDate = q.DueDate || q.dueDate || ""
-            
-            if (!dueDate) {
-              const monthsToAdd = quotaNumber
-              const targetDate = new Date(saleDate)
-              targetDate.setMonth(saleDate.getMonth() + monthsToAdd)
-              const targetDay = saleDate.getDate()
-              const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
-              targetDate.setDate(Math.min(targetDay, maxDayInMonth))
-              dueDate = targetDate.toISOString().split('T')[0]
-            }
-            
-            return {
-              quotaNumber,
-              amount,
-              dueDate
-            }
-          })
-          
-          console.log("✅ [GUARDIAN QUOTAS] Restauradas", customQuotasToRestore.length, "cuotas")
-          console.log("   Primeras 3:", customQuotasToRestore.slice(0, 3))
-          
-          setFormData(prev => {
-            const newData = {
-              ...prev, 
-              customQuotas: customQuotasToRestore,
-              // Asegurar que paymentPlanType es "custom" si hay cuotas
-              paymentPlanType: customQuotasToRestore.length > 0 ? "custom" : prev.paymentPlanType
-            }
-            console.log("🔄 [GUARDIAN QUOTAS] Nuevo formData.customQuotas.length:", newData.customQuotas.length)
-            console.log("🔄 [GUARDIAN QUOTAS] Nuevo formData.paymentPlanType:", newData.paymentPlanType)
-            return newData
-          })
-        } catch (error) {
-          console.error("❌ [GUARDIAN QUOTAS] Error al restaurar cuotas:", error)
-        }
-      }
-    }
-  }, [isEditing, saleToEdit, editDataLoadedRef]) // Solo depender de estos, no de formData
-
-  // Guardian secundario: si paymentPlanType es "custom" pero customQuotas está vacío, restaurar
-  useEffect(() => {
-    if (isEditing && saleToEdit && editDataLoadedRef.current && formData.paymentPlanType === "custom" && formData.customQuotas.length === 0 && saleToEdit.customQuotasJson) {
-      console.warn("🔧 [SECONDARY GUARDIAN] PaymentType es 'custom' pero customQuotas vacías, forzando restauración...")
-      
-      try {
-        const parsed = JSON.parse(saleToEdit.customQuotasJson)
-        const saleDate = new Date(saleToEdit.sale_date)
-        
-        const customQuotasToRestore = parsed.map((q) => {
-          const quotaNumber = q.QuotaNumber || q.quotaNumber
-          const amount = q.Amount || q.amount
-          let dueDate = q.DueDate || q.dueDate || ""
-          
-          if (!dueDate) {
-            const targetDate = new Date(saleDate)
-            targetDate.setMonth(saleDate.getMonth() + quotaNumber)
-            const targetDay = saleDate.getDate()
-            const maxDayInMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate()
-            targetDate.setDate(Math.min(targetDay, maxDayInMonth))
-            dueDate = targetDate.toISOString().split('T')[0]
-          }
-          
-          return { quotaNumber, amount, dueDate }
-        })
-        
-        console.log("✅ [SECONDARY GUARDIAN] Forzando cuotas:", customQuotasToRestore.length)
-        setFormData(prev => ({ ...prev, customQuotas: customQuotasToRestore }))
-      } catch (error) {
-        console.error("❌ [SECONDARY GUARDIAN] Error:", error)
-      }
-    }
-  }, [isEditing, saleToEdit, editDataLoadedRef, formData.paymentPlanType, formData.customQuotas.length])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -887,11 +479,6 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
   // Función mejorada para cancelar edición
   const handleCancelEdit = () => {
-    console.log("❌ [CANCEL] Cancelando edición")
-    
-    // Resetear el flag de carga de datos de edición
-    editDataLoadedRef.current = false
-    isInitialLoadRef.current = false
     
     // Limpiar todos los estados del formulario
     setFormData({
@@ -1012,109 +599,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
       if (isEditing) {
         response = await axiosInstance.put(`/api/Sale/UpdateSale/${body.id_Sales}`, body)
         
-        // 💰 Actualizar el pago inicial si el monto cambió
-        const initialPaymentChanged = parsedInitialPayment !== saleToEdit.initial_payment
-        if (initialPaymentChanged) {
-          console.log("💰 [PAYMENT UPDATE] Cuota inicial cambió de", saleToEdit.initial_payment, "a", parsedInitialPayment)
-          try {
-            // Obtener todos los pagos
-            const paymentsResponse = await axiosInstance.get("/api/Payment/GetAllPayments")
-            if (paymentsResponse.data && Array.isArray(paymentsResponse.data)) {
-              // Filtrar pagos de esta venta
-              const salePayments = paymentsResponse.data.filter(p => p.id_Sales === body.id_Sales)
-              
-              if (salePayments.length > 0) {
-                // Ordenar por fecha y obtener el primer pago (el más antiguo)
-                const firstPayment = salePayments.sort((a, b) => new Date(a.payment_date) - new Date(b.payment_date))[0]
-                console.log("💰 [PAYMENT UPDATE] Primer pago encontrado:", firstPayment)
-                
-                // Actualizar el primer pago con el nuevo monto
-                const updatePaymentBody = {
-                  id_Payments: firstPayment.id_Payments,
-                  amount: parsedInitialPayment,
-                  payment_date: firstPayment.payment_date,
-                  payment_method: formData.initial_payment_method,
-                  id_Sales: body.id_Sales
-                }
-                
-                await axiosInstance.put(`/api/Payment/UpdatePayment/${firstPayment.id_Payments}`, updatePaymentBody)
-                console.log("✅ [PAYMENT UPDATE] Pago actualizado exitosamente")
-              } else {
-                console.warn("⚠️ [PAYMENT UPDATE] No se encontraron pagos para esta venta")
-              }
-            }
-          } catch (paymentError) {
-            console.error("❌ [PAYMENT UPDATE] Error al actualizar el pago:", paymentError)
-            // No lanzamos el error para no interrumpir el flujo principal
-          }
-        }
 
-        // 🔄 Redistribuir pagos si cambió el plan personalizado
-        if (paymentPlanType === "custom") {
-          const oldCustomQuotas = saleToEdit.customQuotasJson ? JSON.parse(saleToEdit.customQuotasJson) : null
-          const newCustomQuotas = formData.customQuotas.length > 0 ? formData.customQuotas : null
-          
-          // Verificar si las cuotas realmente cambiaron
-          const quotasChanged = 
-            (oldCustomQuotas && newCustomQuotas) && 
-            JSON.stringify(oldCustomQuotas) !== JSON.stringify(newCustomQuotas.map(q => ({ QuotaNumber: q.quotaNumber, Amount: q.amount })))
-          
-          if (quotasChanged) {
-            console.log("🔄 [REDISTRIBUTION] Las cuotas personalizadas cambiaron, iniciando redistribución...")
-            try {
-              // Obtener los detalles (pagos) actuales de la venta
-              const detailsResponse = await axiosInstance.get(`/api/Detail/GetByIdSale/${body.id_Sales}`)
-              const paymentDetails = detailsResponse.data || []
-              
-              // Agrupar pagos por cuota
-              const quotaMap = new Map()
-              paymentDetails.forEach(detail => {
-                if (!quotaMap.has(detail.number_quota)) {
-                  quotaMap.set(detail.number_quota, 0)
-                }
-                quotaMap.set(detail.number_quota, quotaMap.get(detail.number_quota) + (detail.covered_amount || 0))
-              })
-              
-              // Calcular cuotas vencidas (usando el promedio de las nuevas cuotas como referencia)
-              const avgNewQuotaValue = newCustomQuotas.reduce((sum, q) => sum + q.amount, 0) / newCustomQuotas.length
-              const overdueQuotas = []
-              let totalOverdueAmount = 0
-              
-              newCustomQuotas.forEach(customQuota => {
-                const coveredAmount = quotaMap.get(customQuota.quotaNumber) || 0
-                const customAmount = customQuota.amount
-                
-                if (coveredAmount < customAmount) {
-                  const remaining = customAmount - coveredAmount
-                  overdueQuotas.push({
-                    QuotaNumber: customQuota.quotaNumber,
-                    RemainingAmount: remaining
-                  })
-                  totalOverdueAmount += remaining
-                }
-              })
-              
-              // Si hay cuotas incompletas, redistribuir
-              if (overdueQuotas.length > 0) {
-                console.log("🔄 [REDISTRIBUTION] Encontradas", overdueQuotas.length, "cuotas con deuda. Total:", totalOverdueAmount)
-                
-                const redistributeBody = {
-                  RedistributionType: "uniform", // Distribuir uniformemente
-                  OverdueQuotas: overdueQuotas
-                }
-                
-                await axiosInstance.post(`/api/Sale/${body.id_Sales}/redistribute-quotas`, redistributeBody)
-                console.log("✅ [REDISTRIBUTION] Pagos redistribuidos exitosamente")
-              } else {
-                console.log("✅ [REDISTRIBUTION] Todas las cuotas están pagadas, no es necesario redistribuir")
-              }
-            } catch (redistributeError) {
-              console.error("⚠️ [REDISTRIBUTION] Error al redistribuir:", redistributeError)
-              // No lanzamos el error para no interrumpir el flujo principal
-              showAlert("warning", "Las cuotas fueron actualizadas pero hubo un problema al redistribuir los pagos. Por favor verifica manualmente.")
-            }
-          }
-        }
       } else {
         response = await axiosInstance.post("/api/Sale/CreateSale", body)
       }
@@ -1127,9 +612,7 @@ function RegisterSale({ refreshData, saleToEdit, onCancelEdit, closeModal, showA
 
       showAlert("success", successMessage)
 
-      // Resetear el flag de edición después de guardar
-      editDataLoadedRef.current = false
-      isInitialLoadRef.current = false
+
 
       if (!isEditing || closeModal) {
         setFormData({

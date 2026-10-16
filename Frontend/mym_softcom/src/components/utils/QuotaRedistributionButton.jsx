@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Loader2, CheckCircle } from "lucide-react"
 import QuotaRedistributionModal from "./QuotaRedistributionModal"
 import axiosInstance from "@/lib/axiosInstance"
 
 export default function QuotaRedistributionButton({ saleId, paymentDetails = [], sale, onRedistributionComplete }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
 
   const calculateOverdueQuotas = () => {
     if (!sale?.plan?.number_quotas || !sale?.sale_date)
@@ -33,7 +34,25 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
       }
     }
 
-    const redistributedQuotaNumbers = sale.redistributedQuotaNumbers ? JSON.parse(sale.redistributedQuotaNumbers) : []
+    const parsedRedistribution = sale.redistributedQuotaNumbers ? JSON.parse(sale.redistributedQuotaNumbers) : null
+    // ✅ NUEVO: Soportar ambos formatos (array antiguo y objeto nuevo con {received, overdue})
+    let redistributedQuotaNumbers = []
+    let overdueQuotasFromRedistribution = []
+    
+    if (parsedRedistribution) {
+      if (Array.isArray(parsedRedistribution)) {
+        // Formato antiguo: array directo
+        redistributedQuotaNumbers = parsedRedistribution
+      } else if (parsedRedistribution.received) {
+        // Formato nuevo: objeto con {received, overdue}
+        redistributedQuotaNumbers = parsedRedistribution.received || []
+        overdueQuotasFromRedistribution = parsedRedistribution.overdue || []
+        console.log('[QuotaRedistributionButton] Formato nuevo de redistribución detectado:', {
+          received: redistributedQuotaNumbers,
+          overdue: overdueQuotasFromRedistribution
+        })
+      }
+    }
 
     const overdueQuotas = []
     const remainingQuotas = []
@@ -176,8 +195,16 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
       const coveredInfo = aggregatedQuotas.get(i)
       const totalPaid = coveredInfo?.covered || 0
 
+      // ✅ NUEVO: Verificar si esta cuota cedió dinero (fue vencida y redistribuyó)
+      const isDistribuida = overdueQuotasFromRedistribution.includes(i)
+
       // ✅ Comparar con el valor correcto de la cuota
-      if (isOverdue && totalPaid < adjustedQuotaValue && !isRedistributed) {
+      // Solo incluir como vencida si:
+      // - Está vencida por fecha
+      // - Tiene dinero pendiente
+      // - NO está recibiendo redistribución (isRedistributed)
+      // - NO cedió dinero (isDistribuida)
+      if (isOverdue && totalPaid < adjustedQuotaValue && !isRedistributed && !isDistribuida) {
         const remainingAmount = adjustedQuotaValue - totalPaid
         overdueQuotas.push({
           quotaNumber: i,
@@ -202,6 +229,7 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
 
   const handleRedistribute = async (options) => {
     setIsProcessing(true)
+    setShowSuccessMessage(false)
     try {
       // ← ACTUALIZADO: Manejar nuevo formato con fromQuota y toQuota (rango)
       const redistributionType = typeof options === 'string' ? options : options.type
@@ -218,9 +246,24 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
         })),
       }
 
-      console.log('[QuotaRedistributionButton] Enviando solicitud de redistribución:', requestData)
+      console.log('[QuotaRedistributionButton] ⏳ Enviando solicitud de redistribución:', requestData)
 
       await axiosInstance.post(`/api/Sale/${saleId}/redistribute-quotas`, requestData)
+      
+      console.log('[QuotaRedistributionButton] ✅ Redistribución exitosa')
+
+      // ✅ Mostrar mensaje de éxito
+      setShowSuccessMessage(true)
+      setTimeout(() => setShowSuccessMessage(false), 4000)
+
+      // ✅ Hacer scroll a la sección de cuotas
+      setTimeout(() => {
+        const quotasSection = document.querySelector('[data-quota-tracker]')
+        if (quotasSection) {
+          quotasSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          console.log('[QuotaRedistributionButton] 📍 Scroll a sección de cuotas')
+        }
+      }, 500)
 
       if (onRedistributionComplete) {
         await onRedistributionComplete()
@@ -229,6 +272,7 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
       setIsModalOpen(false)
     } catch (error) {
       console.error("Error al redistribuir cuotas:", error)
+      alert("Error al redistribuir cuotas: " + (error.response?.data?.message || error.message))
       throw error
     } finally {
       setIsProcessing(false)
@@ -241,13 +285,34 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
 
   return (
     <>
+      {/* ✅ Mensaje de éxito */}
+      {showSuccessMessage && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 rounded-lg flex items-center gap-3 animate-pulse">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <div>
+            <p className="font-semibold text-green-800">✅ Redistribución exitosa</p>
+            <p className="text-sm text-green-700">Las cuotas han sido redistribuidas correctamente</p>
+          </div>
+        </div>
+      )}
+
       <Button
         onClick={() => setIsModalOpen(true)}
+        disabled={isProcessing}
         variant="outline"
-        className="flex items-center gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+        className="flex items-center gap-2 text-orange-600 border-orange-200 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <AlertTriangle className="h-4 w-4" />
-        Redistribuir Cuotas Vencidas ({overdueQuotas.length})
+        {isProcessing ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Redistribuyendo...
+          </>
+        ) : (
+          <>
+            <AlertTriangle className="h-4 w-4" />
+            Redistribuir Cuotas Vencidas ({overdueQuotas.length})
+          </>
+        )}
       </Button>
 
       <QuotaRedistributionModal

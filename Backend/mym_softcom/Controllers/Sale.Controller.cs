@@ -218,14 +218,15 @@ namespace mym_softcom.Controllers
 
             try
             {
-                Console.WriteLine($"[RedistributeQuotas] 📥 Solicitud recibida para venta {id}: {request.RedistributionType}");
+                Console.WriteLine($"[RedistributeQuotas] 📥 Solicitud recibida para venta {id}: {request.redistributionType}");
                 
-                var result = await _saleServices.RedistributeOverdueQuotas(id, request);
+                // ✅ Intentar usar tabla Quotas primero
+                var result = await _saleServices.RedistributeOverdueQuotasWithTableAsync(id, request);
                 
                 if (result.Success)
                 {
                     Console.WriteLine($"[RedistributeQuotas] ✅ Redistribución completada para venta {id}");
-                    return Ok(new { success = true, message = result.Message });
+                    return Ok(new { success = true, message = result.Message, data = result.Data });
                 }
                 else
                 {
@@ -253,7 +254,8 @@ namespace mym_softcom.Controllers
             {
                 Console.WriteLine($"[UndoRedistribution] 🔄 Solicitud para deshacer redistribución en venta {id}");
                 
-                var result = await _saleServices.UndoRedistribution(id);
+                // ✅ Usar tabla Quotas
+                var result = await _saleServices.UndoRedistributionWithTableAsync(id);
                 
                 if (result.Success)
                 {
@@ -269,6 +271,107 @@ namespace mym_softcom.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[UndoRedistribution] 💥 Excepción: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Migra cuotas desde CustomQuotasJson a tabla Quotas
+        /// </summary>
+        /// <param name="id">El ID de la venta</param>
+        /// <returns>OK si la migración es exitosa</returns>
+        [HttpPost("{id}/migrate-quotas")]
+        public async Task<IActionResult> MigrateQuotas(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[MigrateQuotas] 🔄 Iniciando migración para venta {id}");
+                await _saleServices.MigrateQuotasFromJsonAsync(id);
+                return Ok(new { success = true, message = "Cuotas migradas exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MigrateQuotas] ❌ Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Obtiene las cuotas de una venta desde tabla Quotas
+        /// </summary>
+        /// <param name="id">El ID de la venta</param>
+        /// <returns>Lista de cuotas</returns>
+        [HttpGet("{id}/quotas")]
+        public async Task<IActionResult> GetQuotas(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[GetQuotas] 📋 Obteniendo cuotas para venta {id}");
+                var sale = await _saleServices.GetSaleById(id);
+                
+                if (sale == null)
+                {
+                    Console.WriteLine($"[GetQuotas] ❌ Venta no encontrada");
+                    return NotFound(new { error = "Venta no encontrada" });
+                }
+
+                Console.WriteLine($"[GetQuotas] ✅ Venta encontrada, cuotas: {sale.quotas?.Count ?? 0}");
+                if (sale.quotas != null && sale.quotas.Count > 0)
+                {
+                    Console.WriteLine($"[GetQuotas] 📊 Primeras 3 cuotas: {string.Join(", ", sale.quotas.Take(3).Select(q => $"#{q.quota_number}:{q.status}"))}");
+                }
+                else
+                {
+                    Console.WriteLine($"[GetQuotas] ⚠️ Sin cuotas en la venta {id}");
+                }
+
+                return Ok(new { success = true, quotas = sale.quotas ?? new List<Quota>() });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetQuotas] ❌ Error: {ex.Message}");
+                Console.WriteLine($"[GetQuotas] Stack: {ex.StackTrace}");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Migra TODAS las ventas con CustomQuotasJson a tabla Quotas
+        /// Endpoint bulk para hacer la migración completa sin afectar la app
+        /// </summary>
+        /// <returns>Resumen de la migración (total, migradas, saltadas, errores)</returns>
+        [HttpPost("migrate-all-quotas")]
+        public async Task<IActionResult> MigrateAllQuotas()
+        {
+            try
+            {
+                Console.WriteLine("[MigrateAllQuotas] 🚀 Iniciando migración bulk de TODAS las ventas");
+                var result = await _saleServices.MigrateAllQuotasAsync();
+                
+                if (result.Success)
+                {
+                    Console.WriteLine($"[MigrateAllQuotas] ✅ Migración completada");
+                    return Ok(new 
+                    { 
+                        success = true, 
+                        message = result.Message,
+                        summary = result.Data
+                    });
+                }
+                else
+                {
+                    Console.WriteLine($"[MigrateAllQuotas] ❌ Migración con errores");
+                    return StatusCode(500, new 
+                    { 
+                        success = false, 
+                        message = result.Message,
+                        summary = result.Data
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MigrateAllQuotas] 💥 Excepción: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
             }
         }

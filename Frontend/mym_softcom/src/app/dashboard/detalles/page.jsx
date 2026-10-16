@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import NavPrivada from "@/components/nav/PrivateNav"
 import axiosInstance from "@/lib/axiosInstance"
 import MonthlyQuotaTracker from "@/components/utils/MonthlyQuotaTracker"
-import QuotaRedistributionButton from "@/components/utils/QuotaRedistributionButton"
+import QuotaRedistributionAccordion from "@/components/utils/QuotaRedistributionAccordion"
 import salesPdfService from "@/services/pdfExportService"
 
 // Componente para mostrar información del cliente
@@ -297,11 +297,24 @@ export default function DetailsPage() {
 
   const loadSaleDetails = async (sale) => {
     try {
-      setSaleData(sale)
+      // ✅ IMPORTANTE: Recargar las quotas desde el servidor
+      console.log('[loadSaleDetails] 🔄 Recargando quotas actualizadas:', sale.id_Sales)
+      const quotasResponse = await axiosInstance.get(`/api/Sale/${sale.id_Sales}/quotas`)
+      
+      // Actualizar la venta con las quotas recargadas (para que MonthlyQuotaTracker las vea)
+      const updatedSale = {
+        ...sale,
+        quotas: quotasResponse.data.quotas || []
+      }
+      console.log('[loadSaleDetails] ✅ Quotas recargadas:', updatedSale.quotas?.length)
+      
+      setSaleData(updatedSale)
 
       // Obtener detalles de pagos para la venta seleccionada
       const detailsResponse = await axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
       setDetailsData(detailsResponse.data)
+      
+      console.log('[loadSaleDetails] ✅ Detalles de pagos recargados')
     } catch (error) {
       console.error("Error al cargar detalles de la venta:", error)
       setError("Error al cargar los detalles de la venta seleccionada")
@@ -548,29 +561,20 @@ export default function DetailsPage() {
                   {/* Resumen financiero */}
                   <FinancialSummary sale={saleData} />
 
-                  {/* Gestión de Cuotas */}
-                  <Card className="border-gray-200 shadow-sm">
-                    <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-gray-200">
-                      <CardTitle className="flex items-center gap-3 text-gray-800">
-                        <CreditCard className="h-5 w-5 text-slate-600" />
-                        <span className="text-xl font-semibold">Gestión de Cuotas</span>
-                      </CardTitle>
-                      <CardDescription className="text-gray-600 font-medium mt-2">
-                        Herramientas para manejar cuotas vencidas y redistribución de pagos
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <QuotaRedistributionButton
-                        saleId={saleData.id_Sales}
-                        paymentDetails={detailsData}
-                        sale={saleData}
-                        onRedistributionComplete={handleRedistributionComplete}
-                      />
-                    </CardContent>
-                  </Card>
+                  {/* Gestión de Cuotas - Acordeón de Redistribución */}
+                  <QuotaRedistributionAccordion
+                    saleId={saleData.id_Sales}
+                    sale={saleData}
+                    paymentDetails={detailsData}
+                    onRedistributionComplete={handleRedistributionComplete}
+                  />
                   
                   {/* Detalles de cuotas con el nuevo componente */}
-                  <MonthlyQuotaTracker sale={saleData} paymentDetails={detailsData} />
+                  <MonthlyQuotaTracker 
+                    sale={saleData} 
+                    paymentDetails={detailsData}
+                    onRedistributionComplete={handleRedistributionComplete}
+                  />
                 </div>
               )}
             </div>

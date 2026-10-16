@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Filter, Plus, Trash2, CheckSquare, Square } from "lucide-react"
+import { Filter, Plus, Trash2, CheckSquare, Square, AlertCircle, X } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 function Payments() {
   const TitlePage = "Pagos"
@@ -27,8 +28,10 @@ function Payments() {
   const [paymentDateTo, setPaymentDateTo] = useState("")
   const [paymentAmountFilter, setPaymentAmountFilter] = useState("")
   const [methodFilter, setMethodFilter] = useState("all")
-  const [selectedPayments, setSelectedPayments] = useState([]) // ← NUEVO: IDs de pagos seleccionados
-  const [isDeleting, setIsDeleting] = useState(false) // ← NUEVO: Estado de eliminación masiva
+  const [selectedPayments, setSelectedPayments] = useState([])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [paymentToDelete, setPaymentToDelete] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [alertInfo, setAlertInfo] = useState({
     isOpen: false,
     message: "",
@@ -238,7 +241,7 @@ function Payments() {
             lote: payment.sale?.lot ? `${payment.sale.lot.block}-${payment.sale.lot.lot_number}` : "Sin lote",
             proyecto: getProjectName(payment),
             original: payment,
-            canDelete: !isInitialPayment, // ← NUEVO: Propiedad para controlar eliminación
+            canDelete: true, // ← ACTUALIZADO: Se puede eliminar, pero pide confirmación
             searchableIdentifier: `${payment.id_Payments} ${payment.sale?.client?.names} ${payment.sale?.client?.surnames} ${payment.sale?.lot?.block}-${payment.sale.lot?.lot_number} ${getProjectName(payment)} ${payment.payment_method}`,
           }
         })
@@ -309,17 +312,33 @@ function Payments() {
     loadData()
   }, [])
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
+    // Encontrar el pago a eliminar para mostrar información en la confirmación
+    const payment = paymentData.find(p => p.id === id)
+    setPaymentToDelete({ id, ...payment })
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!paymentToDelete) return
+
     try {
-      const numericId = Number.parseInt(id, 10)
+      setShowDeleteConfirm(false)
+      const numericId = Number.parseInt(paymentToDelete.id, 10)
       const response = await axiosInstance.delete(`/api/Payment/DeletePayment/${numericId}`)
       fetchPayments(selectedProjectId === "all" ? null : selectedProjectId, projects)
       showAlert("success", response.data?.message || "Pago eliminado y recaudo actualizado correctamente.")
+      setPaymentToDelete(null)
     } catch (error) {
       console.error("Error al eliminar:", error)
       const errorMessage = error.response?.data?.message || "Error al eliminar el pago"
       showAlert("error", errorMessage)
     }
+  }
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false)
+    setPaymentToDelete(null)
   }
 
   // ← NUEVO: Eliminar múltiples pagos seleccionados
@@ -682,6 +701,50 @@ function Payments() {
       )}
 
       {error && <div className="text-red-600 text-center mt-4">{error}</div>}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteConfirm && paymentToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <CardHeader className="pb-4 border-b">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+                <CardTitle className="text-lg font-semibold text-red-600">Confirmar eliminación</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <p className="text-gray-700 font-medium">¿Está seguro de que desea eliminar este pago?</p>
+                <div className="bg-gray-50 p-3 rounded-md space-y-2 text-sm">
+                  <p><span className="font-semibold">ID:</span> {paymentToDelete.id}</p>
+                  <p><span className="font-semibold">Monto:</span> {paymentToDelete.monto}</p>
+                  <p><span className="font-semibold">Cliente:</span> {paymentToDelete.cliente}</p>
+                  <p><span className="font-semibold">Lote:</span> {paymentToDelete.lote}</p>
+                  <p><span className="font-semibold">Proyecto:</span> {paymentToDelete.proyecto}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                ⚠️ Esta acción no se puede deshacer. El recaudo será actualizado automáticamente.
+              </p>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={cancelDelete}
+                  variant="outline"
+                  className="flex-1 border-gray-300 hover:bg-gray-50"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Eliminar Pago
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <AlertModal
         isOpen={alertInfo.isOpen}

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace mym_softcom.DTOs
 {
@@ -79,21 +80,38 @@ namespace mym_softcom.DTOs
     // ← NUEVO: DTO para solicitud de redistribución de cuotas vencidas
     public class RedistributeQuotasRequest
     {
-        [Required(ErrorMessage = "El tipo de redistribución es obligatorio.")]
-        public string RedistributionType { get; set; } // "lastQuota" o "custom"
+        [JsonPropertyName("redistributionType")]
+        public string redistributionType { get; set; } // "lastQuota", "custom", "manual"
 
-        [Required(ErrorMessage = "La lista de cuotas vencidas es obligatoria.")]
-        public List<OverdueQuotaInfo> OverdueQuotas { get; set; }
+        [JsonPropertyName("numQuotasToDistribute")]
+        public int? numQuotasToDistribute { get; set; }
 
-        // Para redistribución custom: rango de cuotas
-        public int? FromQuota { get; set; } // Cuota inicial del rango
-        public int? ToQuota { get; set; } // Cuota final del rango
+        [JsonPropertyName("amountPerQuota")]
+        public decimal? amountPerQuota { get; set; }
+
+        [JsonPropertyName("startDate")]
+        public DateTime? startDate { get; set; }
+
+        [JsonPropertyName("overdueQuotas")]
+        public List<OverdueQuotaInfo> overdueQuotas { get; set; } = new();
+
+        [JsonPropertyName("fromQuota")]
+        public int? fromQuota { get; set; }
+
+        [JsonPropertyName("toQuota")]
+        public int? toQuota { get; set; }
+
+        [JsonPropertyName("manualDistribution")]
+        public Dictionary<int, decimal>? manualDistribution { get; set; }
     }
 
     // ← NUEVO: Información sobre una cuota vencida
     public class OverdueQuotaInfo
     {
-        public int QuotaNumber { get; set; }
-        public decimal RemainingAmount { get; set; }
+        [JsonPropertyName("quotaNumber")]
+        public int quotaNumber { get; set; }
+
+        [JsonPropertyName("remainingAmount")]
+        public decimal remainingAmount { get; set; }
     }
 }
