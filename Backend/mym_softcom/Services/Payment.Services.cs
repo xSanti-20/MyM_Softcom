@@ -438,6 +438,11 @@ namespace mym_softcom.Services
                     if (quotasFromTable != null && quotasFromTable.Count > 0)
                     {
                         Console.WriteLine($"[PaymentServices] ✅ Usando {quotasFromTable.Count} cuotas de la tabla quotas");
+                        Console.WriteLine($"[PaymentServices] 📊 Todas las cuotas en tabla:");
+                        foreach (var q in quotasFromTable)
+                        {
+                            Console.WriteLine($"   Cuota {q.quota_number}: status={q.status}, amount={q.amount}, current_amount={q.current_amount}");
+                        }
                         
                         decimal remainingPaymentAmount = payment.amount.Value;
 
@@ -452,33 +457,51 @@ namespace mym_softcom.Services
                             .GroupBy(pd => pd.number_quota)
                             .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
 
-                        // ✅ ORDEN INTELIGENTE DE DISTRIBUCIÓN:
-                        // 1. Pending sin redistribución (normales)
-                        // 2. Pending con redistribución (recibieron dinero)
-                        // 3. Vencida sin redistribución (si sobra dinero)
-                        // 4. NUNCA Distribuida (cedieron dinero)
+                        // ✅ LÓGICA SIMPLE: 
+                        // SIN redistribución: SOLO por número de cuota (1,2,3,4...)
+                        // CON redistribución: Pending primero, luego Vencida
+                        bool hasRedistribution = sale.RedistributionAmount.HasValue && sale.RedistributionAmount.Value > 0;
                         
-                        var orderedQuotas = quotasFromTable
-                            .Where(q => q.status != "Pagada" && q.status != "Distribuida")
+                        // ✅ CRÍTICO: Excluir SOLO "Pagada" (es decir, 100% cubierta)
+                        // Mantener TODOS los demás status: Vencida, Pending, Abonado, Vencido Abonado, Distribuida
+                        var filteredQuotas = quotasFromTable
+                            .Where(q => q.status != "Pagada")  // ← Solo excluir completamente pagadas
+                            .ToList();
+                        
+                        Console.WriteLine($"[PaymentServices] 🔍 Después de filtrar (status != Pagada): {filteredQuotas.Count} cuotas");
+                        foreach (var q in filteredQuotas.Take(10))
+                        {
+                            Console.WriteLine($"   Cuota {q.quota_number}: status={q.status}, current_amount={q.current_amount}");
+                        }
+                        
+                        var orderedQuotas = filteredQuotas
                             .OrderBy(q => {
-                                // Pending sin redistribución primero
-                                if (q.status == "Pending" && Math.Abs(q.current_amount - q.amount) < 0.01m)
-                                    return 0;
-                                // Pending con redistribución segundo
-                                if (q.status == "Pending" && q.current_amount > q.amount)
-                                    return 1;
-                                // Vencida sin redistribución tercero
-                                if (q.status == "Vencida")
-                                    return 2;
-                                return 3;
+                                if (hasRedistribution)
+                                {
+                                    // CON redistribución: Pending normal → Pending con redistribución → Vencida
+                                    if (q.status == "Pending" && Math.Abs(q.current_amount - q.amount) < 0.01m)
+                                        return 0;
+                                    if (q.status == "Pending" && q.current_amount > q.amount)
+                                        return 1;
+                                    if (q.status == "Vencida")
+                                        return 2;
+                                    return 3;
+                                }
+                                else
+                                {
+                                    // SIN redistribución: SOLO POR NÚMERO DE CUOTA (1,2,3,4...)
+                                    return 0;  // ← Todos tienen la misma prioridad, se ordena por número al final
+                                }
                             })
-                            .ThenBy(q => q.quota_number)
+                            .ThenBy(q => q.quota_number)  // ← SIEMPRE ordena por número de cuota
                             .ToList();
 
-                        Console.WriteLine($"[PaymentServices] 📋 Orden de procesamiento:");
+                        Console.WriteLine($"[PaymentServices] 📋 Venta {sale.id_Sales}: hasRedistribution={hasRedistribution}");
+                        Console.WriteLine($"[PaymentServices] ✨ Orden final de distribución ({orderedQuotas.Count} cuotas):");
                         foreach (var q in orderedQuotas)
                         {
-                            Console.WriteLine($"   Cuota {q.quota_number}: {q.status}, amount={q.amount}, current={q.current_amount}");
+                            decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(q.quota_number, 0);
+                            Console.WriteLine($"   Cuota {q.quota_number}: status={q.status}, current_amount={q.current_amount}, ya_cubierto={currentCovered}, pendiente={q.current_amount - currentCovered}");
                         }
 
                         // Procesar cada cuota en orden
@@ -505,6 +528,11 @@ namespace mym_softcom.Services
                                 remainingPaymentAmount -= amountToApplyToThisQuota;
                                 Console.WriteLine($"[PaymentServices] ✓ Cuota #{quota.quota_number}: Aplicado {amountToApplyToThisQuota:C} (current_amount={quota.current_amount:C}, cubierto={currentCovered:C}). Restante: {remainingPaymentAmount:C}");
                             }
+                            else
+                            {
+                                // ← NUEVO: Log de cuotas saltadas
+                                Console.WriteLine($"[PaymentServices] ⏭️  Cuota #{quota.quota_number} SALTADA: remaining={remainingForThisQuota:C} (current_amount={quota.current_amount:C}, ya_cubierto={currentCovered:C})");
+                            }
                         }
 
                         if (remainingPaymentAmount > 0)
@@ -513,6 +541,9 @@ namespace mym_softcom.Services
                         }
 
                         await _context.SaveChangesAsync();
+                        
+                        // ✅ NUEVO: Recalcular status de todas las cuotas
+                        await _saleServices.RecalculateQuotaStatusAsync(paymentDTO.Id_Sales);
                     }
                     else
                     {
@@ -644,6 +675,9 @@ namespace mym_softcom.Services
                     }
 
                     await _context.SaveChangesAsync();
+                    
+                    // ✅ NUEVO: Recalcular status de todas las cuotas
+                    await _saleServices.RecalculateQuotaStatusAsync(paymentDTO.Id_Sales);
                 }
 
                 // Actualizar los totales de la venta (mismo código para ambos casos)
@@ -687,154 +721,101 @@ namespace mym_softcom.Services
         }
 
         /// <summary>
-        /// ← NUEVO: Distribuye un pago automáticamente entre cuotas pendientes (lógica heredada)
-        /// Esto se usa cuando NO se especifican PaymentDetails
+        /// ✅ NUEVA: Distribuye un pago usando TABLA QUOTAS con lógica condicional
+        /// - SIN redistribución: Cubre Vencida PRIMERO (normal)
+        /// - CON redistribución: Cubre Pending PRIMERO
         /// </summary>
         private async Task DistributePaymentToQuotas(Payment payment, Sale sale)
         {
-            decimal remainingPaymentAmount = payment.amount.Value;
-            decimal baseQuotaValue = sale.quota_value ?? 0;
-            int totalQuotas = sale.plan?.number_quotas ?? 0;
-
-            // ✅ Cargar cuotas personalizadas si el tipo de plan es "custom"
-            Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
-            if (sale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(sale.CustomQuotasJson))
+            try
             {
-                try
+                Console.WriteLine($"[DistributePaymentToQuotas] 📋 Distribuyendo pago ${payment.amount:C} a venta {sale.id_Sales}");
+
+                decimal remainingPaymentAmount = payment.amount.Value;
+
+                // ✅ Cargar cuotas desde tabla
+                var quotasFromTable = await _context.Quotas
+                    .Where(q => q.id_sale == sale.id_Sales)
+                    .OrderBy(q => q.quota_number)
+                    .ToListAsync();
+
+                if (quotasFromTable == null || quotasFromTable.Count == 0)
                 {
-                    var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(sale.CustomQuotasJson);
-                    if (customQuotas != null && customQuotas.Count > 0)
+                    Console.WriteLine($"[DistributePaymentToQuotas] ⚠️  No hay cuotas en tabla para venta {sale.id_Sales}");
+                    return;
+                }
+
+                // Obtener detalles existentes
+                var existingDetails = await _context.Details
+                    .AsNoTracking()
+                    .Where(pd => pd.id_Sales == sale.id_Sales)
+                    .ToListAsync();
+
+                var coveredAmountsPerQuota = existingDetails
+                    .GroupBy(pd => pd.number_quota)
+                    .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
+
+                // ✅ LÓGICA CONDICIONAL: Si hay redistribución → Pending primero. Si no → Vencida primero (pero priorizar parcialmente pagadas)
+                bool hasRedistribution = sale.RedistributionAmount.HasValue && sale.RedistributionAmount.Value > 0;
+                
+                var orderedQuotas = quotasFromTable
+                    .Where(q => q.status != "Pagada" && q.status != "Distribuida")
+                    .OrderBy(q => {
+                        bool hasRedistribution = sale.RedistributionAmount.HasValue && sale.RedistributionAmount.Value > 0;
+                        if (hasRedistribution)
+                        {
+                            if (q.status == "Pending" && Math.Abs(q.current_amount - q.amount) < 0.01m) return 0;
+                            if (q.status == "Pending" && q.current_amount > q.amount) return 1;
+                            if (q.status == "Vencida") return 2;
+                            return 3;
+                        }
+                        else
+                        {
+                            return 0;  // SIN redistribución: SOLO ordenar por número de cuota
+                        }
+                    })
+                    .ThenBy(q => q.quota_number)
+                    .ToList();
+
+                Console.WriteLine($"[DistributePaymentToQuotas] 🎯 hasRedistribution={hasRedistribution}");
+                foreach (var q in orderedQuotas.Take(5))
+                {
+                    Console.WriteLine($"   Cuota {q.quota_number}: status={q.status}, amount={q.amount}, current={q.current_amount}");
+                }
+
+                // Distribuir el pago
+                foreach (var quota in orderedQuotas)
+                {
+                    if (remainingPaymentAmount <= 0) break;
+
+                    decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(quota.quota_number, 0);
+                    decimal remainingForThisQuota = quota.current_amount - currentCovered;
+
+                    if (remainingForThisQuota > 0)
                     {
-                        customQuotaData = customQuotas.ToDictionary(
-                            q => q.QuotaNumber,
-                            q => (q.Amount, q.DueDate)
-                        );
-                        totalQuotas = customQuotas.Count;
-                        Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Plan personalizado con {totalQuotas} cuotas detectado.");
+                        decimal amountToApplyToThisQuota = Math.Min(remainingPaymentAmount, remainingForThisQuota);
+
+                        _context.Details.Add(new Detail
+                        {
+                            id_Payments = payment.id_Payments,
+                            id_Sales = sale.id_Sales,
+                            number_quota = quota.quota_number,
+                            covered_amount = amountToApplyToThisQuota
+                        });
+
+                        remainingPaymentAmount -= amountToApplyToThisQuota;
+                        Console.WriteLine($"[DistributePaymentToQuotas] ✓ Cuota {quota.quota_number} ({quota.status}): ${amountToApplyToThisQuota:C}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[PaymentServices] Error deserializando cuotas personalizadas: {ex.Message}");
-                }
-            }
 
-            if ((customQuotaData == null && baseQuotaValue <= 0) || totalQuotas <= 0)
+                await _context.SaveChangesAsync();
+                Console.WriteLine($"[DistributePaymentToQuotas] ✅ Distribución completada");
+            }
+            catch (Exception ex)
             {
-                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
-                return;
+                Console.WriteLine($"[DistributePaymentToQuotas] ❌ Error: {ex.Message}");
+                throw;
             }
-
-            decimal redistributionAmount = sale.RedistributionAmount ?? 0;
-            string redistributionType = sale.RedistributionType;
-            List<int> redistributedQuotaNumbers = new List<int>();
-
-            if (!string.IsNullOrEmpty(sale.RedistributedQuotaNumbers))
-            {
-                try
-                {
-                    redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(sale.RedistributedQuotaNumbers) ?? new List<int>();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[PaymentServices] Error deserializando cuotas redistribuidas: {ex.Message}");
-                }
-            }
-
-            var existingDetails = await _context.Details
-                .AsNoTracking()
-                .Where(pd => pd.id_Sales == sale.id_Sales)
-                .ToListAsync();
-
-            var coveredAmountsPerQuota = existingDetails
-                .GroupBy(pd => pd.number_quota)
-                .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
-
-            var adjustedQuotaValues = new Dictionary<int, decimal>();
-
-            if (customQuotaData != null)
-            {
-                foreach (var kvp in customQuotaData)
-                {
-                    adjustedQuotaValues[kvp.Key] = kvp.Value.Amount;
-                }
-                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Usando valores de cuotas personalizadas.");
-            }
-            else if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
-            {
-                for (int i = 1; i <= totalQuotas; i++)
-                {
-                    decimal adjustedValue = baseQuotaValue;
-
-                    if (!redistributedQuotaNumbers.Contains(i))
-                    {
-                        if (redistributionType == "uniform")
-                        {
-                            int remainingQuotasCount = totalQuotas - redistributedQuotaNumbers.Count;
-                            if (remainingQuotasCount > 0)
-                            {
-                                decimal redistributionPerQuota = redistributionAmount / remainingQuotasCount;
-                                adjustedValue += redistributionPerQuota;
-                            }
-                        }
-                        else if (redistributionType == "lastQuota" && i == totalQuotas)
-                        {
-                            adjustedValue += redistributionAmount;
-                        }
-                    }
-
-                    adjustedQuotaValues[i] = adjustedValue;
-                }
-            }
-            else
-            {
-                for (int i = 1; i <= totalQuotas; i++)
-                {
-                    adjustedQuotaValues[i] = baseQuotaValue;
-                }
-            }
-
-            var sortedQuotas = adjustedQuotaValues.OrderBy(kvp => kvp.Key).ToList();
-
-            foreach (var quotaKvp in sortedQuotas)
-            {
-                if (remainingPaymentAmount <= 0) break;
-
-                int quotaNumber = quotaKvp.Key;
-                decimal quotaValue = quotaKvp.Value;
-
-                if (redistributedQuotaNumbers.Contains(quotaNumber))
-                {
-                    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Saltando cuota #{quotaNumber} (redistribuida)");
-                    continue;
-                }
-
-                decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(quotaNumber, 0);
-                decimal remainingForThisQuota = quotaValue - currentCovered;
-
-                if (remainingForThisQuota > 0)
-                {
-                    decimal amountToApplyToThisQuota = Math.Min(remainingPaymentAmount, remainingForThisQuota);
-
-                    _context.Details.Add(new Detail
-                    {
-                        id_Payments = payment.id_Payments,
-                        id_Sales = sale.id_Sales,
-                        number_quota = quotaNumber,
-                        covered_amount = amountToApplyToThisQuota
-                    });
-
-                    remainingPaymentAmount -= amountToApplyToThisQuota;
-                    Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Aplicado {amountToApplyToThisQuota:C} a cuota #{quotaNumber} (valor: {quotaValue:C}). Restante del pago: {remainingPaymentAmount:C}");
-                }
-            }
-
-            if (remainingPaymentAmount > 0)
-            {
-                Console.WriteLine($"[PaymentServices] Venta ID {sale.id_Sales}: Quedan {remainingPaymentAmount:C} después de cubrir todas las cuotas definidas. Esto se sumará al total_raised de la venta.");
-            }
-
-            await _context.SaveChangesAsync();
         }
 
         /// <summary>
@@ -932,6 +913,9 @@ namespace mym_softcom.Services
                 _context.Sales.Update(sale);
                 await _context.SaveChangesAsync();
 
+                // ✅ NUEVO: Recalcular status de todas las cuotas después de actualizar pago
+                await _saleServices.RecalculateQuotaStatusAsync(paymentDTO.Id_Sales);
+
                 Console.WriteLine($"[PaymentServices] ✅ Pago actualizado. Total recaudado: ${sale.total_raised:C}, Deuda: ${sale.total_debt:C}");
                 return true;
             }
@@ -947,183 +931,195 @@ namespace mym_softcom.Services
         }
 
         /// <summary>
-        /// Actualiza un pago existente y ajusta el recaudo total y la deuda de la venta asociada.
-        /// También actualiza los detalles de cuotas (PaymentDetail) si el monto o la venta cambian.
+        /// ✅ NUEVO: Actualiza un pago con lógica inteligente para evitar duplicados
+        /// - Si monto es igual: solo actualiza fecha/método (mantiene Details)
+        /// - Si monto cambia: recalcula Details con transacción segura
         /// </summary>
         public async Task<bool> UpdatePayment(int id_Payments, Payment updatedPayment)
         {
+            // Usar transacción para evitar duplicados
+            using (var transaction = await _context.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
+                    if (existingPayment == null) 
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    if (id_Payments != updatedPayment.id_Payments)
+                        throw new ArgumentException("El ID del pago en la URL no coincide con el ID del pago en el cuerpo de la solicitud.");
+
+                    if (!updatedPayment.amount.HasValue || updatedPayment.amount.Value <= 0)
+                    {
+                        throw new ArgumentException("El monto del pago debe ser un valor positivo.");
+                    }
+
+                    var oldSale = await _context.Sales
+                        .Include(s => s.plan)
+                        .FirstOrDefaultAsync(s => s.id_Sales == existingPayment.id_Sales);
+                    var newSale = await _context.Sales
+                        .Include(s => s.plan)
+                        .FirstOrDefaultAsync(s => s.id_Sales == updatedPayment.id_Sales);
+
+                    if (oldSale == null || newSale == null)
+                    {
+                        throw new InvalidOperationException("La venta asociada al pago original o al pago actualizado no existe.");
+                    }
+
+                    // ✅ LÓGICA INTELIGENTE: Detectar tipo de cambio
+                    bool amountChanged = Math.Abs((existingPayment.amount ?? 0) - (updatedPayment.amount ?? 0)) > 0.01m;
+                    bool saleChanged = existingPayment.id_Sales != updatedPayment.id_Sales;
+
+                    Console.WriteLine($"[UpdatePayment] 📝 Pago {id_Payments}: amountChanged={amountChanged}, saleChanged={saleChanged}");
+
+                    if (!amountChanged && !saleChanged)
+                    {
+                        // ✅ CASO 1: Solo cambió fecha/método → NO tocar Details
+                        Console.WriteLine($"[UpdatePayment] ✓ Solo actualizar fecha/método (mantener Details)");
+                        
+                        existingPayment.payment_date = updatedPayment.payment_date;
+                        existingPayment.payment_method = updatedPayment.payment_method;
+                        _context.Payments.Update(existingPayment);
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        return true;
+                    }
+
+                    // ✅ CASO 2: Cambió monto o venta → Recalcular con cuidado
+                    Console.WriteLine($"[UpdatePayment] ⚠️  Monto/Venta cambió - recalculando Details");
+
+                    // Revertir impacto del pago anterior en la venta anterior
+                    oldSale.total_raised = (oldSale.total_raised ?? 0) - (existingPayment.amount ?? 0);
+                    oldSale.total_debt = (oldSale.total_debt ?? 0) + (existingPayment.amount ?? 0);
+                    if (oldSale.total_raised < 0) oldSale.total_raised = 0;
+
+                    // ✅ IMPORTANTE: Eliminar Details del pago ANTERIOR
+                    var oldDetails = await _context.Details
+                        .Where(pd => pd.id_Payments == existingPayment.id_Payments)
+                        .ToListAsync();
+                    _context.Details.RemoveRange(oldDetails);
+                    Console.WriteLine($"[UpdatePayment] 🗑️  Eliminados {oldDetails.Count} Details anteriores");
+
+                    if (oldSale.status == "Escriturar" && oldSale.total_debt > 0) 
+                        oldSale.status = "Active";
+
+                    // Aplicar el nuevo monto a la venta (nueva o misma)
+                    newSale.total_raised = (newSale.total_raised ?? 0) + updatedPayment.amount.Value;
+                    newSale.total_debt = (newSale.total_debt ?? 0) - updatedPayment.amount.Value;
+
+                    if (newSale.total_debt < 0.01m)
+                        newSale.total_debt = 0m;
+
+                    // Actualizar el pago con nuevos valores
+                    existingPayment.payment_date = updatedPayment.payment_date;
+                    existingPayment.payment_method = updatedPayment.payment_method;
+                    existingPayment.amount = updatedPayment.amount;
+                    existingPayment.id_Sales = updatedPayment.id_Sales;
+
+                    // ✅ Guardar cambios de Payment y Sales antes de crear nuevos Details
+                    _context.Payments.Update(existingPayment);
+                    _context.Sales.Update(oldSale);
+                    _context.Sales.Update(newSale);
+                    await _context.SaveChangesAsync();
+
+                    // ✅ Ahora recalcular y crear nuevos Details
+                    await CreatePaymentDetailsForUpdate(existingPayment, newSale);
+
+                    // Actualizar estado si está completado
+                    if (newSale.total_debt == 0)
+                    {
+                        newSale.status = "Escriturar";
+                    }
+
+                    _context.Sales.Update(newSale);
+                    await _context.SaveChangesAsync();
+
+                    // ✅ Recalcular status de quotas
+                    await _saleServices.RecalculateQuotaStatusAsync(newSale.id_Sales);
+                    if (oldSale.id_Sales != newSale.id_Sales)
+                    {
+                        await _saleServices.RecalculateQuotaStatusAsync(oldSale.id_Sales);
+                    }
+
+                    await transaction.CommitAsync();
+                    Console.WriteLine($"[UpdatePayment] ✅ Pago {id_Payments} actualizado exitosamente");
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($"[UpdatePayment] ❌ Error: {ex.Message}");
+                    Console.WriteLine($"[UpdatePayment] Stack: {ex.StackTrace}");
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ✅ Helper: Crear Details para actualización de pago (misma lógica que CreatePaymentFromDTO)
+        /// </summary>
+        private async Task CreatePaymentDetailsForUpdate(Payment payment, Sale sale)
+        {
             try
             {
-                var existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == id_Payments);
-                if (existingPayment == null) return false;
+                Console.WriteLine($"[CreatePaymentDetailsForUpdate] 📋 Creando Details para pago {payment.id_Payments}");
 
-                if (id_Payments != updatedPayment.id_Payments)
-                    throw new ArgumentException("El ID del pago en la URL no coincide con el ID del pago en el cuerpo de la solicitud.");
-
-                if (!updatedPayment.amount.HasValue || updatedPayment.amount.Value <= 0)
-                {
-                    throw new ArgumentException("El monto del pago debe ser un valor positivo.");
-                }
-
-                var oldSale = await _context.Sales
-                                    .Include(s => s.plan)
-                                    .FirstOrDefaultAsync(s => s.id_Sales == existingPayment.id_Sales);
-                var newSale = await _context.Sales
-                                    .Include(s => s.plan)
-                                    .FirstOrDefaultAsync(s => s.id_Sales == updatedPayment.id_Sales);
-
-                if (oldSale == null || newSale == null)
-                {
-                    throw new InvalidOperationException("La venta asociada al pago original o al pago actualizado no existe.");
-                }
-
-                // Revertir el impacto del pago original en la venta original
-                oldSale.total_raised = (oldSale.total_raised ?? 0) - (existingPayment.amount ?? 0);
-                oldSale.total_debt = (oldSale.total_debt ?? 0) + (existingPayment.amount ?? 0);
-                if (oldSale.total_raised < 0) oldSale.total_raised = 0;
-
-                // Revertir los Details asociados al pago original
-                var oldDetails = await _context.Details
-                    .Where(pd => pd.id_Payments == existingPayment.id_Payments)
+                // Usar tabla quotas
+                var quotasFromTable = await _context.Quotas
+                    .Where(q => q.id_sale == sale.id_Sales)
+                    .OrderBy(q => q.quota_number)
                     .ToListAsync();
-                _context.Details.RemoveRange(oldDetails);
 
-                // ✅ ACTUALIZACIÓN: Revertir estado si se completó y ahora tiene deuda
-                if (oldSale.status == "Escriturar" && oldSale.total_debt > 0) oldSale.status = "Active";
-
-                // Aplicar el nuevo monto del pago a la venta (puede ser la misma o una nueva)
-                newSale.total_raised = (newSale.total_raised ?? 0) + updatedPayment.amount.Value;
-                newSale.total_debt = (newSale.total_debt ?? 0) - updatedPayment.amount.Value;
-
-                // Asegurarse de que total_debt no sea negativo y redondear para precisión
-                if (newSale.total_debt < 0.01m) // Usar un pequeño umbral para considerar que es cero
+                if (quotasFromTable != null && quotasFromTable.Count > 0)
                 {
-                    newSale.total_debt = 0m; // Asegurar que sea exactamente cero
-                }
-                else if (newSale.total_debt < 0) // Si es negativo después del umbral, forzar a cero
-                {
-                    newSale.total_debt = 0m;
-                }
+                    decimal remainingPaymentAmount = payment.amount.Value;
 
-                // --- Lógica MEJORADA para distribuir el pago ACTUALIZADO en PaymentDetail ---
-                decimal remainingPaymentAmount = updatedPayment.amount.Value;
-                decimal baseQuotaValue = newSale.quota_value ?? 0;
-                int totalQuotas = newSale.plan?.number_quotas ?? 0;
-
-                // ✅ CORRECCIÓN: Cargar cuotas personalizadas si el tipo de plan es "custom"
-                Dictionary<int, (decimal Amount, DateTime? DueDate)> customQuotaData = null;
-                if (newSale.PaymentPlanType?.ToLower() == "custom" && !string.IsNullOrEmpty(newSale.CustomQuotasJson))
-                {
-                    try
-                    {
-                        var customQuotas = JsonSerializer.Deserialize<List<CustomQuota>>(newSale.CustomQuotasJson);
-                        if (customQuotas != null && customQuotas.Count > 0)
-                        {
-                            customQuotaData = customQuotas.ToDictionary(
-                                q => q.QuotaNumber,
-                                q => (q.Amount, q.DueDate)
-                            );
-                            totalQuotas = customQuotas.Count;
-                            Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Plan personalizado con {totalQuotas} cuotas detectado.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[PaymentServices] UpdatePayment - Error deserializando cuotas personalizadas: {ex.Message}");
-                    }
-                }
-
-                if ((customQuotaData == null && baseQuotaValue <= 0) || totalQuotas <= 0)
-                {
-                    Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Valor de cuota o número de cuotas inválido. No se crearán Details.");
-                }
-                else
-                {
-                    decimal redistributionAmount = newSale.RedistributionAmount ?? 0;
-                    string redistributionType = newSale.RedistributionType;
-                    List<int> redistributedQuotaNumbers = new List<int>();
-
-                    if (!string.IsNullOrEmpty(newSale.RedistributedQuotaNumbers))
-                    {
-                        try
-                        {
-                            redistributedQuotaNumbers = JsonSerializer.Deserialize<List<int>>(newSale.RedistributedQuotaNumbers) ?? new List<int>();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[PaymentServices] UpdatePayment - Error deserializando cuotas redistribuidas: {ex.Message}");
-                        }
-                    }
-
-                    // Obtener los detalles de cuotas existentes para esta VENTA (excluyendo los que acabamos de revertir)
-                    var currentSaleDetails = await _context.Details
+                    var existingDetails = await _context.Details
                         .AsNoTracking()
-                        .Where(pd => pd.id_Sales == newSale.id_Sales && pd.id_Payments != updatedPayment.id_Payments)
+                        .Where(pd => pd.id_Sales == sale.id_Sales && pd.id_Payments != payment.id_Payments)
                         .ToListAsync();
 
-                    var coveredAmountsPerQuota = currentSaleDetails
+                    var coveredAmountsPerQuota = existingDetails
                         .GroupBy(pd => pd.number_quota)
                         .ToDictionary(g => g.Key, g => g.Sum(pd => pd.covered_amount ?? 0));
 
-                    var adjustedQuotaValues = new Dictionary<int, decimal>();
-
-                    // ✅ CORRECCIÓN: Usar valores personalizados si existen
-                    if (customQuotaData != null)
-                    {
-                        // Para planes personalizados, usar los valores exactos del JSON
-                        foreach (var kvp in customQuotaData)
-                        {
-                            adjustedQuotaValues[kvp.Key] = kvp.Value.Amount;
-                        }
-                        Console.WriteLine($"[PaymentServices] UpdatePayment - Venta ID {newSale.id_Sales}: Usando valores de cuotas personalizadas.");
-                    }
-                    else if (redistributionAmount > 0 && !string.IsNullOrEmpty(redistributionType))
-                    {
-                        for (int i = 1; i <= totalQuotas; i++)
-                        {
-                            decimal adjustedValue = baseQuotaValue;
-
-                            // Si esta cuota NO fue redistribuida, recibe parte del monto redistribuido
-                            if (!redistributedQuotaNumbers.Contains(i))
+                    // ✅ LÓGICA CONDICIONAL: Si hay redistribución → Pending primero. Si no → Vencida primero (pero priorizar parcialmente pagadas)
+                    bool hasRedistribution = sale.RedistributionAmount.HasValue && sale.RedistributionAmount.Value > 0;
+                    
+                    var orderedQuotas = quotasFromTable
+                        .Where(q => q.status != "Pagada" && q.status != "Distribuida")
+                        .OrderBy(q => {
+                            if (hasRedistribution)
                             {
-                                if (redistributionType == "uniform")
-                                {
-                                    int remainingQuotasCount = totalQuotas - redistributedQuotaNumbers.Count;
-                                    if (remainingQuotasCount > 0)
-                                    {
-                                        decimal redistributionPerQuota = redistributionAmount / remainingQuotasCount;
-                                        adjustedValue += redistributionPerQuota;
-                                    }
-                                }
-                                else if (redistributionType == "lastQuota" && i == totalQuotas)
-                                {
-                                    adjustedValue += redistributionAmount;
-                                }
+                                if (q.status == "Pending" && Math.Abs(q.current_amount - q.amount) < 0.01m) return 0;
+                                if (q.status == "Pending" && q.current_amount > q.amount) return 1;
+                                if (q.status == "Vencida") return 2;
+                                return 3;
                             }
+                            else
+                            {
+                                return 0;  // SIN redistribución: SOLO ordenar por número de cuota
+                            }
+                        })
+                        .ThenBy(q => q.quota_number)
+                        .ToList();
 
-                            adjustedQuotaValues[i] = adjustedValue;
-                        }
-                    }
-                    else
+                    Console.WriteLine($"[CreatePaymentDetailsForUpdate] 📋 Sale {sale.id_Sales}: hasRedistribution={hasRedistribution}, Orden de cuotas:");
+                    foreach (var q in orderedQuotas)
                     {
-                        // Sin redistribución, usar valores base
-                        for (int i = 1; i <= totalQuotas; i++)
-                        {
-                            adjustedQuotaValues[i] = baseQuotaValue;
-                        }
+                        decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(q.quota_number, 0);
+                        Console.WriteLine($"   Cuota {q.quota_number}: status={q.status}, amount={q.amount}, current={q.current_amount}, covered={currentCovered}");
                     }
 
-                    for (int i = 1; i <= totalQuotas && remainingPaymentAmount > 0; i++)
+                    foreach (var quota in orderedQuotas)
                     {
-                        // Saltar cuotas redistribuidas
-                        if (redistributedQuotaNumbers.Contains(i))
-                        {
-                            continue;
-                        }
+                        if (remainingPaymentAmount <= 0) break;
 
-                        decimal quotaValue = adjustedQuotaValues[i];
-                        decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(i, 0);
-                        decimal remainingForThisQuota = quotaValue - currentCovered;
+                        decimal currentCovered = coveredAmountsPerQuota.GetValueOrDefault(quota.quota_number, 0);
+                        decimal remainingForThisQuota = quota.current_amount - currentCovered;
 
                         if (remainingForThisQuota > 0)
                         {
@@ -1131,49 +1127,26 @@ namespace mym_softcom.Services
 
                             _context.Details.Add(new Detail
                             {
-                                id_Payments = updatedPayment.id_Payments,
-                                id_Sales = newSale.id_Sales,
-                                number_quota = i,
+                                id_Payments = payment.id_Payments,
+                                id_Sales = sale.id_Sales,
+                                number_quota = quota.quota_number,
                                 covered_amount = amountToApplyToThisQuota
                             });
 
                             remainingPaymentAmount -= amountToApplyToThisQuota;
+                            Console.WriteLine($"[CreatePaymentDetailsForUpdate] ✓ Cuota {quota.quota_number}: ${amountToApplyToThisQuota:C}");
                         }
                     }
+
+                    await _context.SaveChangesAsync();
                 }
-                // --- Fin de la lógica MEJORADA para distribuir el pago ACTUALIZADO ---
-
-                // ✅ ACTUALIZACIÓN: Actualizar estado si se completa
-                if (newSale.total_debt == 0) newSale.status = "Escriturar";
-                else if (newSale.status == "Cancelled" && newSale.total_debt > 0) newSale.status = "Active";
-
-                // ✅ CORRECCIÓN: Actualizar el pago existente correctamente
-     existingPayment.amount = updatedPayment.amount;
-     existingPayment.payment_date = updatedPayment.payment_date;
-     existingPayment.payment_method = updatedPayment.payment_method;
- existingPayment.id_Sales = updatedPayment.id_Sales;
-       _context.Payments.Update(existingPayment);
-
-    _context.Sales.Update(oldSale);
-    if (oldSale.id_Sales != newSale.id_Sales)
-             {
-          _context.Sales.Update(newSale);
-}
-
-           await _context.SaveChangesAsync();
-
-     return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error en UpdatePayment: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
+                Console.WriteLine($"[CreatePaymentDetailsForUpdate] ❌ Error: {ex.Message}");
                 throw;
             }
-        } 
+        }
 
         /// <summary>
         /// Elimina un pago y revierte el recaudo total y la deuda de la venta asociada.
@@ -1226,6 +1199,9 @@ namespace mym_softcom.Services
 
                 _context.Sales.Update(sale); // Marcar la venta para actualización
                 await _context.SaveChangesAsync(); // Guardar todos los cambios (eliminación de pago, detalles y actualización de venta)
+
+                // ✅ NUEVO: Recalcular status de todas las cuotas después de eliminar pago
+                await _saleServices.RecalculateQuotaStatusAsync(sale.id_Sales);
 
                 return true;
             }

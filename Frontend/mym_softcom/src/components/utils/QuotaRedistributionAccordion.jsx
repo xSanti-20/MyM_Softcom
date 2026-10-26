@@ -81,12 +81,15 @@ export default function QuotaRedistributionAccordion({
 
   // Calcular cuotas vencidas y pendientes automáticamente
   const { overdueQuotas, remainingQuotas } = useMemo(() => {
-    console.log(`[useMemo] 🔍 Calculando cuotas. quotasFromDB=${quotasFromDB.length}, sale.customQuotasJson=${!!sale?.customQuotasJson}`)
+    console.log(`[useMemo] 🔍 Calculando cuotas. sale.quotas=${sale?.quotas?.length}, quotasFromDB=${quotasFromDB.length}, sale.customQuotasJson=${!!sale?.customQuotasJson}`)
     
-    // ✅ PREFERENCIA 1: Si tenemos cuotas de BD y tienen datos, usarlas
-    if (quotasFromDB && quotasFromDB.length > 0) {
-      console.log(`[QuotaRedistributionAccordion] 📊 Calculando vencidas/pendientes desde tabla (${quotasFromDB.length} cuotas)`)
-      console.log(`[QuotaRedistributionAccordion] 📋 Todas las cuotas:`, quotasFromDB.map(q => ({ 
+    // ✅ PRIORIDAD 1: Si sale.quotas existe (cargadas directamente en ventas.jsx)
+    const quotasToUse = (sale?.quotas && sale.quotas.length > 0) ? sale.quotas : 
+                        (quotasFromDB && quotasFromDB.length > 0) ? quotasFromDB : null
+    
+    if (quotasToUse && quotasToUse.length > 0) {
+      console.log(`[QuotaRedistributionAccordion] 📊 Calculando vencidas/pendientes desde tabla (${quotasToUse.length} cuotas)`)
+      console.log(`[QuotaRedistributionAccordion] 📋 Todas las cuotas:`, quotasToUse.map(q => ({ 
         num: q.quota_number, 
         status: q.status, 
         amount: q.current_amount, 
@@ -109,27 +112,29 @@ export default function QuotaRedistributionAccordion({
         }
       })
 
-      quotasFromDB.forEach((quota) => {
+      quotasToUse.forEach((quota) => {
         const dueDate = new Date(quota.due_date)
         const isOverdue = dueDate < currentDate
         const isPaid = quota.status === "Pagada"
         const isDistribuida = quota.status === "Distribuida"
-        const isVencida = quota.status === "Vencida"
+        const isVencida = quota.status === "Vencida" || quota.status === "Vencido Abonado"
         const paidAmount = paymentsByQuota[quota.quota_number] || 0
         const remainingAmount = quota.current_amount - paidAmount
 
         console.log(`  Cuota ${quota.quota_number}: due=${dueDate.toLocaleDateString()}, status=${quota.status}, overdue=${isOverdue}, paid=${isPaid}, dist=${isDistribuida}, remaining=${remainingAmount}`)
 
-        // ✅ INCLUIR CUOTAS VENCIDAS (sin importar si tienen remaining) Y DISTRIBUIDAS
-        // Porque vencidas y distribuidas son cuotas que pueden redistribuirse
-        if (!isPaid && (isVencida || isDistribuida)) {
+        // ✅ CORRECCIÓN: Solo contar cuotas REALMENTE VENCIDAS
+        // - "Vencida" (sin pagar)
+        // - "Vencido Abonado" (parcialmente pagada pero vencida)
+        // NO incluir "Distribuida" porque ya cedió dinero
+        if (!isPaid && !isDistribuida && isVencida && remainingAmount > 0) {
           overdueResult.push({
             quotaNumber: quota.quota_number,
-            remainingAmount: Math.max(remainingAmount, 0), // Al menos 0, no negativo
+            remainingAmount: Math.max(remainingAmount, 0),
             expectedAmount: quota.amount,
             dueDate: dueDate,
           })
-        } else if (!isOverdue && !isPaid && remainingAmount > 0) {
+        } else if (!isOverdue && !isPaid && !isDistribuida && remainingAmount > 0) {
           remainingResult.push({
             quotaNumber: quota.quota_number,
             expectedAmount: quota.current_amount,
@@ -286,7 +291,7 @@ export default function QuotaRedistributionAccordion({
     }
 
     return { overdueQuotas: overdueQuotasResult, remainingQuotas: remainingQuotasResult }
-  }, [sale, paymentDetails])
+  }, [sale, paymentDetails, quotasFromDB])
 
   const [isExpanded, setIsExpanded] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)

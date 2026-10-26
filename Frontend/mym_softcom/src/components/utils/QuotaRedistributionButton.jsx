@@ -20,6 +20,54 @@ export default function QuotaRedistributionButton({ saleId, paymentDetails = [],
     const totalQuotas = sale.plan.number_quotas
     const quotaValue = sale.quota_value || 0
 
+    // ✅ PRIORIDAD 1: Usar tabla de quotas si existe (datos precisos del backend)
+    if (sale.quotas && sale.quotas.length > 0) {
+      console.log('[QuotaRedistributionButton] ✅ Usando quotas de tabla (BD) para calcular vencidas')
+      
+      const overdueQuotas = []
+      const remainingQuotas = []
+      let totalOverdueAmount = 0
+
+      sale.quotas.forEach((quota) => {
+        // ✅ Solo contar como vencida si:
+        // - Status es "Vencida" (sin pagar)
+        // - O "Vencido Abonado" (parcialmente pagado pero vencido)
+        const isOverdueStatus = quota.status === "Vencida" || quota.status === "Vencido Abonado"
+        
+        if (isOverdueStatus) {
+          const remainingAmount = quota.current_amount - (quota.covered_amount || 0)
+          if (remainingAmount > 0) {
+            overdueQuotas.push({
+              quotaNumber: quota.quota_number,
+              remainingAmount: remainingAmount,
+              expectedAmount: quota.amount,
+              dueDate: new Date(quota.due_date),
+              status: quota.status
+            })
+            totalOverdueAmount += remainingAmount
+          }
+        } else if (quota.status === "Pending" && (quota.current_amount - (quota.covered_amount || 0)) > 0) {
+          remainingQuotas.push({
+            quotaNumber: quota.quota_number,
+            expectedAmount: quota.amount,
+            dueDate: new Date(quota.due_date),
+            status: quota.status
+          })
+        }
+      })
+
+      console.log('[QuotaRedistributionButton] 📊 Cuotas vencidas desde tabla:', {
+        count: overdueQuotas.length,
+        totalAmount: totalOverdueAmount,
+        quotas: overdueQuotas.map(q => ({ quota: q.quotaNumber, status: q.status, remaining: q.remainingAmount }))
+      })
+
+      return { overdueQuotas, remainingQuotas, totalOverdueAmount }
+    }
+
+    // ✅ PRIORIDAD 2: Fallback a cálculo manual basado en paymentDetails (planes legacy sin tabla)
+    console.log('[QuotaRedistributionButton] ⚠️ Tabla de quotas no disponible, usando cálculo manual desde paymentDetails')
+
     // 🔧 Obtener cuotas personalizadas si existen
     let customQuotas = null
     const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType

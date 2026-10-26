@@ -140,6 +140,7 @@ function DataTable({
       const saleDataWithQuotas = {
         ...selectedSale,
         paymentDetails: selectedSale.paymentDetails || [], // Include payment details for quotas
+        quotas: selectedSale.quotas || [], // ✅ NUEVO: Incluir quotas de la tabla si existen (refleja redistribuciones)
       }
       
       // ✅ Parsear customQuotas si existen
@@ -155,6 +156,7 @@ function DataTable({
 
       console.log("[v0] DataTable - saleDataWithQuotas:", saleDataWithQuotas)
       console.log("[v0] DataTable - paymentDetails:", saleDataWithQuotas.paymentDetails)
+      console.log("[v0] DataTable - quotas from table:", saleDataWithQuotas.quotas?.length, "quotas")
 
       const planPagosHTML = buildPlanPagosHTML(saleDataWithQuotas)
 

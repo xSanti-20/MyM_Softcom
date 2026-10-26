@@ -239,13 +239,19 @@ function buildPlanPagosHTML(saleData) {
   const saleDate = new Date(saleData.sale_date)
   const paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
   const customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
+  const quotasFromTable = saleData.quotas || [] // ✅ NUEVO: Preferir quotas de tabla
 
   console.log("[v0] Payment Plan Type:", paymentPlanType)
+  console.log("[v0] Quotas from table:", quotasFromTable.length, quotasFromTable)
   console.log("[v0] Custom Quotas JSON:", customQuotasJson)
 
-  // Detectar si es plan personalizado
+  // ✅ PRIORIDAD 1: Usar quotas de la tabla si existen (refleja redistribuciones)
+  let useTableQuotas = quotasFromTable && quotasFromTable.length > 0
+  console.log("[v0] Using quotas from table:", useTableQuotas)
+
+  // Detectar si es plan personalizado (fallback a JSON)
   let customQuotas = null
-  if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+  if (!useTableQuotas && paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
     try {
       customQuotas = JSON.parse(customQuotasJson)
       console.log("[v0] Custom plan detected with", customQuotas?.length, "personalized quotas")
@@ -277,7 +283,7 @@ function buildPlanPagosHTML(saleData) {
     `
   }
 
-  console.log("[v0] Generating quotas - totalQuotas:", totalQuotas, "paymentPlanType:", paymentPlanType)
+  console.log("[v0] Generating quotas - totalQuotas:", totalQuotas, "paymentPlanType:", paymentPlanType, "useTableQuotas:", useTableQuotas)
 
   const rows = []
   for (let i = 1; i <= totalQuotas; i++) {
@@ -302,7 +308,22 @@ function buildPlanPagosHTML(saleData) {
     let currentQuotaValue = quotaValue
     let formattedDate = dueDate.toLocaleDateString("es-CO")
 
-    if (customQuotas && customQuotas.length > 0) {
+    // ✅ PRIORIDAD 1: Obtener datos de la tabla de quotas
+    if (useTableQuotas) {
+      const tableQuota = quotasFromTable.find(q => q.quota_number === i)
+      if (tableQuota) {
+        currentQuotaValue = tableQuota.current_amount || tableQuota.amount || quotaValue
+        if (tableQuota.due_date) {
+          const dueDate = new Date(tableQuota.due_date)
+          formattedDate = dueDate.toLocaleDateString("es-CO")
+        }
+        if (i <= 3 || i === totalQuotas) {
+          console.log(`[v0] Quota ${i}: Using table value ${currentQuotaValue} (reflects redistributions)`)
+        }
+      }
+    }
+    // ✅ PRIORIDAD 2: Fallback a quotas personalizadas del JSON
+    else if (customQuotas && customQuotas.length > 0) {
       const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
       if (customQuota) {
         // Intentar con Amount (mayúscula) y amount (minúscula)
@@ -310,7 +331,7 @@ function buildPlanPagosHTML(saleData) {
         if (customAmount) {
           currentQuotaValue = customAmount
           if (i <= 3 || i === totalQuotas) {
-            console.log(`[v0] Quota ${i}: Using custom value ${currentQuotaValue}`)
+            console.log(`[v0] Quota ${i}: Using custom JSON value ${currentQuotaValue}`)
           }
         }
 
@@ -327,7 +348,7 @@ function buildPlanPagosHTML(saleData) {
         }
       }
     } else if (i === 1) {
-      console.log("[v0] No custom quotas found, using automatic value:", quotaValue)
+      console.log("[v0] No custom quotas or table data found, using automatic value:", quotaValue)
     }
 
     rows.push(`
@@ -449,27 +470,44 @@ class SalesPDFService {
       for (let i = 1; i <= numQuotas; i++) {
         const covered = detailsByQuota[i] || 0
         
-        // 🔧 Obtener el valor correcto de cada cuota (personalizado o estándar)
+        // ✅ PRIORIDAD 1: Obtener el valor correcto de la tabla de quotas
         let currentQuotaValue = quotaValue
         let dueDate = null
-        let paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
-        let customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
         
-        if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
-          try {
-            let customQuotas = JSON.parse(customQuotasJson)
-            const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
-            if (customQuota) {
-              currentQuotaValue = parseFloat(customQuota.amount || customQuota.Amount) || quotaValue
-              // Obtener fecha de vencimiento personalizada si existe
-              if (customQuota.dueDate || customQuota.DueDate) {
-                const dueDateStr = customQuota.dueDate || customQuota.DueDate
-                const [year, month, day] = dueDateStr.split('-').map(Number)
-                dueDate = new Date(year, month - 1, day)
-              }
+        // Si tenemos quotas de la tabla, usarlas (reflejan redistribuciones)
+        if (saleData.quotas && saleData.quotas.length > 0) {
+          const tableQuota = saleData.quotas.find(q => q.quota_number === i)
+          if (tableQuota) {
+            currentQuotaValue = tableQuota.current_amount || tableQuota.amount || quotaValue
+            if (tableQuota.due_date) {
+              dueDate = new Date(tableQuota.due_date)
             }
-          } catch (error) {
-            console.error("[SaleReport] Error parsing custom quota for row", i, ":", error)
+            if (i <= 3 || i === numQuotas) {
+              console.log(`[SaleReport] Quota ${i}: Using table value ${currentQuotaValue} (reflects redistributions)`)
+            }
+          }
+        }
+        // ✅ PRIORIDAD 2: Fallback a quotas personalizadas del JSON
+        else {
+          let paymentPlanType = saleData.paymentPlanType || saleData.PaymentPlanType
+          let customQuotasJson = saleData.customQuotasJson || saleData.CustomQuotasJson
+          
+          if (paymentPlanType?.toLowerCase() === "custom" && customQuotasJson) {
+            try {
+              let customQuotas = JSON.parse(customQuotasJson)
+              const customQuota = customQuotas.find(q => q.quotaNumber === i || q.QuotaNumber === i)
+              if (customQuota) {
+                currentQuotaValue = parseFloat(customQuota.amount || customQuota.Amount) || quotaValue
+                // Obtener fecha de vencimiento personalizada si existe
+                if (customQuota.dueDate || customQuota.DueDate) {
+                  const dueDateStr = customQuota.dueDate || customQuota.DueDate
+                  const [year, month, day] = dueDateStr.split('-').map(Number)
+                  dueDate = new Date(year, month - 1, day)
+                }
+              }
+            } catch (error) {
+              console.error("[SaleReport] Error parsing custom quota for row", i, ":", error)
+            }
           }
         }
         
