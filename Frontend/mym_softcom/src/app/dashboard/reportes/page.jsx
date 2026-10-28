@@ -124,21 +124,64 @@ function ReportesPage() {
     return rawStatus
   }
 
-  // Calcular cuotas en mora para una venta
+  // ✅ Calcular cuotas en mora para una venta (USANDO TABLA QUOTAS RECALCULADA)
   const calculateOverdueQuotas = (sale, paymentDetails) => {
     const totalDebt = Number.parseFloat(sale?.total_debt) || 0
 
-    if (!sale || !sale.plan || totalDebt <= 0) {
+    if (!sale || totalDebt <= 0) {
       return { count: 0, details: [], totalOverdue: 0 }
     }
 
-    const totalQuotas = sale.plan.number_quotas || 0
+    // ✅ PRIORIDAD 1: Si la venta tiene cuotas desde tabla Quotas, usarlas directamente
+    if (sale.quotas && Array.isArray(sale.quotas) && sale.quotas.length > 0) {
+      console.log(`[MORA REPORT] ✅ Usando tabla Quotas para venta ${sale.id_Sales}`)
+      
+      const overdueQuotas = []
+      let totalOverdueAmount = 0
+
+      sale.quotas.forEach((quota) => {
+        const statusLower = (quota.status || "").toLowerCase().trim()
+        // Detectar cuotas vencidas (status recalculado automáticamente en backend)
+        const isVencida = statusLower === "vencida" || statusLower === "vencido"
+        const isVencidoAbonado = statusLower === "vencido abonado"
+
+        if ((isVencida || isVencidoAbonado) && quota.current_amount > 0) {
+          const remainingAmount = Math.max(quota.current_amount, 0)
+          
+          overdueQuotas.push({
+            quotaNumber: quota.quota_number,
+            dueDate: new Date(quota.due_date),
+            expectedAmount: quota.amount,
+            coveredAmount: 0,
+            overdueAmount: remainingAmount,
+            daysOverdue: Math.floor((new Date() - new Date(quota.due_date)) / (1000 * 60 * 60 * 24))
+          })
+
+          totalOverdueAmount += remainingAmount
+        }
+      })
+
+      console.log(`[MORA REPORT] Venta ${sale.id_Sales} - Cuotas en mora detectadas: ${overdueQuotas.length}`)
+      
+      return {
+        count: overdueQuotas.length,
+        details: overdueQuotas,
+        totalOverdue: Math.min(totalOverdueAmount, totalDebt),
+      }
+    }
+
+    // ✅ FALLBACK: Si no hay tabla Quotas, usar lógica manual (para datos legacy)
+    console.log(`[MORA REPORT] ⚠️ Sin tabla Quotas para venta ${sale.id_Sales}, usando fallback manual`)
+
+    // Extraer variables necesarias para fallback
+    const totalQuotas = sale.plan?.number_quotas || 0
     const quotaValue = sale.quota_value || 0
     const saleDate = new Date(sale.sale_date)
     const currentDate = new Date()
 
-    console.log(`[MORA REPORT] Procesando venta ${sale.id_Sales} - Total cuotas: ${totalQuotas}`)
-    console.log(`[MORA REPORT] Payment details recibidos:`, paymentDetails?.length || 0)
+    if (!sale.plan || totalQuotas <= 0) {
+      return { count: 0, details: [], totalOverdue: 0 }
+    }
 
     // Procesar customQuotas si existen
     let customQuotas = null
@@ -464,6 +507,19 @@ function ReportesPage() {
         const expectedIncome = calculateExpectedMonthlyIncome(salesResponse.data, projects)
         setExpectedIncomeStats(expectedIncome)
 
+        // ✅ NUEVO: Cargar cuotas desde tabla Quotas (con recalculation automático)
+        const quotasPromises = filteredSales.map(sale =>
+          axiosInstance.get(`/api/Sale/${sale.id_Sales}/quotas`)
+            .then(response => ({ 
+              saleId: sale.id_Sales, 
+              quotas: response.data?.quotas || [] 
+            }))
+            .catch(() => ({ saleId: sale.id_Sales, quotas: [] }))
+        )
+
+        const allQuotas = await Promise.all(quotasPromises)
+        const quotasMap = new Map(allQuotas.map(item => [item.saleId, item.quotas]))
+
         // Obtener payment details para cada venta
         const detailsPromises = filteredSales.map(sale =>
           axiosInstance.get(`/api/Detail/GetDetailsBySaleId/${sale.id_Sales}`)
@@ -476,6 +532,9 @@ function ReportesPage() {
 
         // Procesar cada venta para calcular mora
         const salesWithMora = filteredSales.map(sale => {
+          // ✅ Adjuntar cuotas cargadas desde tabla
+          sale.quotas = quotasMap.get(sale.id_Sales) || []
+          
           // Obtener payment details para esta venta
           const salePaymentDetails = detailsMap.get(sale.id_Sales) || []
 
@@ -648,27 +707,64 @@ function ReportesPage() {
 
   // Exportar a CSV
   const exportToCSV = () => {
-    const headers = ["Cliente", "Cédula", "Valor Total Lote", "Deuda Total", "Cuotas en Mora", "Monto en Mora", "Proyecto", "Vendedor", "Manzana", "Lote"]
+    // ✅ MEJORADO: Encabezados organizados por bloques lógicos
+    const headers = [
+      "ID Venta",
+      "Fecha Venta",
+      "Cliente",
+      "Cédula",
+      "Proyecto",
+      "Manzana",
+      "Lote",
+      "Vendedor",
+      "Valor Total",
+      "Deuda Total",
+      "Cuotas Vencidas",
+      "Monto en Mora",
+    ]
+
+    const escapeCSVValue = (value) => {
+      if (value === null || value === undefined) return ""
+      
+      const stringValue = String(value).trim()
+      
+      // Si el valor contiene coma, comilla o salto de línea, envuélvelo en comillas
+      if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      
+      return stringValue
+    }
+
+    const formatCurrency = (value) => {
+      const num = typeof value === 'number' ? value : Number.parseFloat(value) || 0
+      return Math.round(num * 100) / 100
+    }
 
     const csvData = filteredSales.map(sale => [
+      sale.original?.id_Sales || "",
+      sale.saleDate ? new Date(sale.saleDate).toISOString().split('T')[0] : "",
       sale.clientName,
       sale.clientDocument,
-      sale.totalValue,
-      sale.totalDebt,
-      sale.overdueQuotasCount,
-      sale.totalOverdue,
       sale.projectName,
-      sale.sellerName,
       sale.block,
-      sale.lotNumber
-    ])
+      sale.lotNumber,
+      sale.sellerName,
+      formatCurrency(sale.totalValue),
+      formatCurrency(sale.totalDebt),
+      sale.overdueQuotasCount,
+      formatCurrency(sale.totalOverdue), // Monto en Mora Real (desde tabla Quotas)
+    ].map(escapeCSVValue))
 
+    // Crear CSV sin comillas innecesarias
     const csvContent = [
       headers.join(","),
       ...csvData.map(row => row.join(","))
     ].join("\n")
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    // ✅ Agregar BOM UTF-8 para que Excel reconozca acentos correctamente (Cédula, etc)
+    const csvWithBOM = "\uFEFF" + csvContent
+    const blob = new Blob([csvWithBOM], { type: "text/csv;charset=utf-8" })
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)

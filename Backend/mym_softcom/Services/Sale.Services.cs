@@ -1656,6 +1656,110 @@ namespace mym_softcom.Services
                 };
             }
         }
+
+        /// <summary>
+        /// ✅ DIAGNÓSTICO: Compara totales pagados entre Payments y PaymentDetails
+        /// para identificar discrepancias en total_raised
+        /// </summary>
+        public async Task<object> DiagnoseSaleTotalsAsync(int saleId)
+        {
+            try
+            {
+                Console.WriteLine($"\n[DiagnoseTotals] 🔍 Iniciando diagnóstico para venta {saleId}");
+
+                // 1. Obtener la venta
+                var sale = await _context.Sales
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.id_Sales == saleId);
+
+                if (sale == null)
+                    return new { error = $"Venta {saleId} no encontrada" };
+
+                // 2. Sumar todos los Payment.amount para esta venta
+                var paymentsTotal = await _context.Payments
+                    .AsNoTracking()
+                    .Where(p => p.id_Sales == saleId)
+                    .SumAsync(p => p.amount ?? 0);
+
+                Console.WriteLine($"[DiagnoseTotals] 💰 Suma de Payments.amount: {paymentsTotal:C}");
+
+                // 3. Sumar todos los PaymentDetails.covered_amount para esta venta
+                var detailsTotal = await _context.Details
+                    .AsNoTracking()
+                    .Where(d => d.id_Sales == saleId)
+                    .SumAsync(d => d.covered_amount ?? 0);
+
+                Console.WriteLine($"[DiagnoseTotals] 📋 Suma de PaymentDetails.covered_amount: {detailsTotal:C}");
+
+                // 4. Calcular la diferencia
+                var discrepancy = paymentsTotal - detailsTotal;
+
+                Console.WriteLine($"[DiagnoseTotals] ⚠️  Discrepancia Payments vs Details: {discrepancy:C}");
+
+                // 6. Obtener detalles de pagos individuales
+                var payments = await _context.Payments
+                    .AsNoTracking()
+                    .Where(p => p.id_Sales == saleId)
+                    .OrderBy(p => p.id_Payments)
+                    .ToListAsync();
+
+                var paymentDetails = new List<dynamic>();
+                foreach (var payment in payments)
+                {
+                    var details = await _context.Details
+                        .AsNoTracking()
+                        .Where(d => d.id_Payments == payment.id_Payments)
+                        .ToListAsync();
+
+                    paymentDetails.Add(new
+                    {
+                        paymentId = payment.id_Payments,
+                        amount = payment.amount,
+                        totalDetailsCovered = details.Sum(d => d.covered_amount ?? 0),
+                        detailCount = details.Count,
+                        details = details.Select(d => new
+                        {
+                            quotaNumber = d.number_quota,
+                            covered = d.covered_amount
+                        }).ToList()
+                    });
+                }
+
+                // 7. Retornar diagnóstico completo
+                var diagnosis = new
+                {
+                    saleId = saleId,
+                    saleData = new
+                    {
+                        total_value = sale.total_value,
+                        total_raised_db = sale.total_raised,
+                        total_debt_db = sale.total_debt
+                    },
+                    totals = new
+                    {
+                        paymentsSum = paymentsTotal,
+                        paymentDetailsCoveredSum = detailsTotal
+                    },
+                    discrepancies = new
+                    {
+                        paymentsVsDetails = discrepancy,
+                        isConsistent = Math.Abs(discrepancy) < 0.01m
+                    },
+                    recommendation = Math.Abs(discrepancy) > 0.01m 
+                        ? $"⚠️  INCONSISTENCIA DETECTADA: Los Payments totalizan {paymentsTotal:C} pero PaymentDetails suma {detailsTotal:C}. Diferencia: {Math.Abs(discrepancy):C}. Revisar si hay pagos mal distribuidos."
+                        : "✅ Totales consistentes entre Payments y PaymentDetails",
+                    paymentBreakdown = paymentDetails
+                };
+
+                return diagnosis;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DiagnoseTotals] ❌ Error: {ex.Message}");
+                Console.WriteLine($"[DiagnoseTotals] Stack: {ex.StackTrace}");
+                return new { error = ex.Message, details = ex.StackTrace };
+            }
+        }
     }
 
     /// <summary>

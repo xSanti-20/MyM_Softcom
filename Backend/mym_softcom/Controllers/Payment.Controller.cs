@@ -176,5 +176,38 @@ namespace mym_softcom.Controllers
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// ✅ REPARACIÓN: Redistribuye un pago huérfano (sin PaymentDetails) a las cuotas correspondientes
+        /// Útil para recuperar pagos que se registraron sin distribución
+        /// </summary>
+        /// <param name="paymentId">El ID del pago a reparar</param>
+        /// <param name="saleId">El ID de la venta (para identificar las cuotas)</param>
+        /// <returns>Resultado de la redistribución</returns>
+        [HttpPost("repair-orphaned-payment/{paymentId}/{saleId}")]
+        public async Task<IActionResult> RepairOrphanedPayment(int paymentId, int saleId)
+        {
+            try
+            {
+                Console.WriteLine($"[RepairOrphanedPayment] 🔧 Intentando reparar pago {paymentId} para venta {saleId}");
+                var result = await _paymentServices.RepairOrphanedPaymentAsync(paymentId, saleId);
+                
+                if (result.Success)
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ✅ Pago reparado exitosamente");
+                    return Ok(new { success = true, message = result.Message, data = result.Data });
+                }
+                else
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ❌ Error: {result.Message}");
+                    return BadRequest(new { success = false, message = result.Message });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RepairOrphanedPayment] 💥 Excepción: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message, details = ex.StackTrace });
+            }
+        }
     }
 }

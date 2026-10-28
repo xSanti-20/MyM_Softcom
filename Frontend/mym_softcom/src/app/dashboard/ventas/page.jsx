@@ -304,7 +304,34 @@ function SalesPage() {
           })
         }
 
+        // ✅ NUEVO: Cargar cuotas desde tabla Quotas (con recalculation automático)
+        const quotasPromises = filteredSales.map(sale =>
+          axiosInstance.get(`/api/Sale/${sale.id_Sales}/quotas`)
+            .then(response => ({ 
+              saleId: sale.id_Sales, 
+              quotas: response.data?.quotas || [] 
+            }))
+            .catch(() => ({ saleId: sale.id_Sales, quotas: [] }))
+        )
+
+        const allQuotas = await Promise.all(quotasPromises)
+        const quotasMap = new Map(allQuotas.map(item => [item.saleId, item.quotas]))
+
         const data = filteredSales.map((sale) => {
+          // ✅ Calcular mora real desde tabla Quotas
+          const saleQuotas = quotasMap.get(sale.id_Sales) || []
+          let overdueCount = 0
+          let totalOverdueAmount = 0
+          
+          saleQuotas.forEach((quota) => {
+            const statusLower = (quota.status || "").toLowerCase().trim()
+            const isVencida = statusLower === "vencida" || statusLower === "vencido" || statusLower === "vencido abonado"
+            if (isVencida && quota.current_amount > 0) {
+              overdueCount++
+              totalOverdueAmount += quota.current_amount
+            }
+          })
+          
           const effectiveStatus = getEffectiveSaleStatus(sale)
           const lotBlock = sale.lot?.block || sale.Lot?.block || ""
           const lotNumber = sale.lot?.lot_number || sale.Lot?.lot_number || ""
@@ -327,6 +354,9 @@ function SalesPage() {
           project: getProjectName(sale),
           user: sale.user?.nom_Users || "N/A",
           plan: sale.plan?.name || "N/A",
+          overdueQuotasCount: overdueCount,
+          totalOverdueAmount: totalOverdueAmount,
+          quotas: saleQuotas,
           original: sale,
           searchableIdentifier: `${sale.id_Sales} ${sale.client?.names} ${sale.client?.surnames} ${sale.client?.document || ""} MZ:${lotBlock} MZ: ${lotBlock} LOTE:${lotNumber} LOTE: ${lotNumber} ${lotLabel} ${lotBlock}${lotNumber} PROYECTO:${getProjectName(sale)} ${getProjectName(sale)} ${effectiveStatus} ${sale.plan?.name}`,
         })
@@ -371,63 +401,93 @@ function SalesPage() {
       return
     }
 
+    // ✅ MEJORADO: Encabezados organizados por bloques lógicos
     const headers = [
-      "ID",
+      "ID Venta",
       "Fecha Venta",
+      "Estado",
+      "Cliente",
+      "Cédula",
+      "Proyecto",
+      "Manzana",
+      "Lote",
+      "Vendedor",
       "Valor Total",
       "Cuota Inicial",
       "Recaudo Total",
       "Deuda Total",
       "Valor Cuota",
-      "Estado",
-      "Cliente",
-      "Documento",
-      "Manzana",
-      "Lote",
-      "Proyecto",
-      "Vendedor",
+      "Cuotas Vencidas",
+      "Monto en Mora",
       "Plan",
     ]
 
-    const escapeValue = (value) => {
-      const stringValue = value === null || value === undefined ? "" : String(value)
-      const normalizedValue = stringValue
-        .replace(/\u00A0/g, " ")
-        .replace(/\u202F/g, " ")
-      return `"${normalizedValue.replace(/"/g, '""')}"`
+    const escapeCSVValue = (value) => {
+      if (value === null || value === undefined) return ""
+      
+      const stringValue = String(value).trim()
+      
+      // Si el valor contiene coma, comilla o salto de línea, envuélvelo en comillas
+      if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+        return `"${stringValue.replace(/"/g, '""')}"`
+      }
+      
+      return stringValue
+    }
+
+    const parseNumericValue = (value) => {
+      if (typeof value === 'string') {
+        return Number.parseFloat(value.replace(/[^0-9.-]/g, '')) || 0
+      }
+      return value || 0
+    }
+
+    const formatCurrency = (value) => {
+      const num = parseNumericValue(value)
+      return Math.round(num * 100) / 100
     }
 
     const rows = salesData.map((sale) => {
       const original = sale.original || {}
+      
       return [
         sale.id,
         sale.sale_date,
-        sale.total_value,
-        sale.initial_payment,
-        sale.total_raised,
-        sale.total_debt,
-        sale.quota_value,
         sale.statusText || original.status || "N/A",
         sale.client,
         sale.clientDocument,
+        sale.project,
         sale.manzana,
         sale.lot,
-        sale.project,
         sale.user,
+        formatCurrency(sale.total_value),
+        formatCurrency(sale.initial_payment),
+        formatCurrency(sale.total_raised),
+        formatCurrency(sale.total_debt),
+        formatCurrency(sale.quota_value),
+        sale.overdueQuotasCount || 0,
+        formatCurrency(sale.totalOverdueAmount || 0), // ✅ Mora Real desde tabla Quotas
         sale.plan,
-      ].map(escapeValue)
+      ].map(escapeCSVValue)
     })
 
-    const csvContent = [headers.map(escapeValue).join(","), ...rows.map((row) => row.join(","))].join("\n")
-    const csvWithBom = `\uFEFF${csvContent}`
-    const selectedProject = projects.find((project) => project.id_Projects.toString() === selectedProjectId)
-    const projectLabel = selectedProject ? selectedProject.name : "todos_los_proyectos"
-    const safeProjectLabel = projectLabel.toLowerCase().replace(/\s+/g, "_")
+    // Crear CSV sin comillas innecesarias
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(","))
+    ].join("\n")
 
-    const blob = new Blob([csvWithBom], { type: "text/csv;charset=utf-8;" })
+    // ✅ Agregar BOM UTF-8 para que Excel reconozca acentos correctamente (Cédula, etc)
+    const csvWithBOM = "\uFEFF" + csvContent
+    const blob = new Blob([csvWithBOM], { type: "text/csv;charset=utf-8" })
     const link = document.createElement("a")
     const url = URL.createObjectURL(blob)
     link.setAttribute("href", url)
+    
+    const selectedProject = projects.find((project) => project.id_Projects.toString() === selectedProjectId)
+    const projectLabel = selectedProject ? selectedProject.name : "todos_los_proyectos"
+    const safeProjectLabel = projectLabel.toLowerCase().replace(/\s+/g, "_")
+    
     link.setAttribute("download", `ventas_${safeProjectLabel}_${new Date().toISOString().split("T")[0]}.csv`)
     link.style.visibility = "hidden"
     document.body.appendChild(link)

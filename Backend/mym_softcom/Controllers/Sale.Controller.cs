@@ -297,44 +297,6 @@ namespace mym_softcom.Controllers
         }
 
         /// <summary>
-        /// ✅ NUEVO: Obtiene las cuotas de una venta desde tabla Quotas
-        /// </summary>
-        /// <param name="id">El ID de la venta</param>
-        /// <returns>Lista de cuotas</returns>
-        [HttpGet("{id}/quotas")]
-        public async Task<IActionResult> GetQuotas(int id)
-        {
-            try
-            {
-                Console.WriteLine($"[GetQuotas] 📋 Obteniendo cuotas para venta {id}");
-                var sale = await _saleServices.GetSaleById(id);
-                
-                if (sale == null)
-                {
-                    Console.WriteLine($"[GetQuotas] ❌ Venta no encontrada");
-                    return NotFound(new { error = "Venta no encontrada" });
-                }
-
-                Console.WriteLine($"[GetQuotas] ✅ Venta encontrada, cuotas: {sale.quotas?.Count ?? 0}");
-                if (sale.quotas != null && sale.quotas.Count > 0)
-                {
-                    Console.WriteLine($"[GetQuotas] 📊 Primeras 3 cuotas: {string.Join(", ", sale.quotas.Take(3).Select(q => $"#{q.quota_number}:{q.status}"))}");
-                }
-                else
-                {
-                    Console.WriteLine($"[GetQuotas] ⚠️ Sin cuotas en la venta {id}");
-                }
-
-                return Ok(new { success = true, quotas = sale.quotas ?? new List<Quota>() });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[GetQuotas] ❌ Error: {ex.Message}");
-                Console.WriteLine($"[GetQuotas] Stack: {ex.StackTrace}");
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
-
         /// <summary>
         /// ✅ NUEVO: Migra TODAS las ventas con CustomQuotasJson a tabla Quotas
         /// Endpoint bulk para hacer la migración completa sin afectar la app
@@ -373,6 +335,82 @@ namespace mym_softcom.Controllers
             {
                 Console.WriteLine($"[MigrateAllQuotas] 💥 Excepción: {ex.Message}");
                 return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// ✅ DIAGNÓSTICO: Compara totales pagados entre Payments y PaymentDetails para una venta
+        /// Ayuda a identificar inconsistencias en total_raised
+        /// </summary>
+        /// <param name="id">El ID de la venta a diagnosticar</param>
+        /// <returns>Resumen de totales y discrepancias</returns>
+        [HttpGet("{id}/diagnose-totals")]
+        public async Task<IActionResult> DiagnoseTotals(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[DiagnoseTotals] 🔍 Iniciando diagnóstico para venta {id}");
+                var result = await _saleServices.DiagnoseSaleTotalsAsync(id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DiagnoseTotals] ❌ Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message, details = ex.StackTrace });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Recalcula el status de todas las cuotas de una venta según fecha y pagos
+        /// Se ejecuta automáticamente cuando la fecha de vencimiento pasa
+        /// </summary>
+        [HttpPost("{id}/recalculate-quota-status")]
+        public async Task<IActionResult> RecalculateQuotaStatus(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[RecalculateQuotaStatus] 🔄 Recalculando status para venta {id}");
+                await _saleServices.RecalculateQuotaStatusAsync(id);
+                return Ok(new { success = true, message = "Status de cuotas actualizado correctamente" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RecalculateQuotaStatus] ❌ Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message, details = ex.StackTrace });
+            }
+        }
+
+        /// <summary>
+        /// ✅ NUEVO: Obtiene las cuotas de una venta con status RECALCULADO automáticamente
+        /// Ideal para el frontend: cada vez que pide las cuotas, se recalculan los status
+        /// </summary>
+        [HttpGet("{id}/quotas")]
+        public async Task<IActionResult> GetQuotasBySale(int id)
+        {
+            try
+            {
+                Console.WriteLine($"[GetQuotasBySale] 📋 Obteniendo cuotas para venta {id} con recalculation automático");
+                
+                // ✅ PRIMERO: Recalcular el status de todas las cuotas
+                // Esto actualiza automáticamente si la fecha de vencimiento pasó
+                await _saleServices.RecalculateQuotaStatusAsync(id);
+                
+                // ✅ SEGUNDO: Obtener las cuotas ya con status actualizado
+                var result = await _saleServices.GetSaleById(id);
+                
+                if (result == null)
+                    return NotFound(new { error = "Venta no encontrada" });
+
+                return Ok(new 
+                { 
+                    success = true,
+                    quotas = result.quotas ?? new List<Quota>()
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetQuotasBySale] ❌ Error: {ex.Message}");
+                return StatusCode(500, new { error = ex.Message, details = ex.StackTrace });
             }
         }
     }

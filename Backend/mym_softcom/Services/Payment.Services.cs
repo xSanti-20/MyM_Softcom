@@ -1215,5 +1215,130 @@ namespace mym_softcom.Services
                 throw;
             }
         }
+
+        /// <summary>
+        /// ✅ REPARACIÓN: Redistribuye un pago huérfano (sin PaymentDetails) a las cuotas
+        /// Útil para recuperar pagos que se registraron sin distribución correcta
+        /// </summary>
+        public async Task<ServiceResult<string>> RepairOrphanedPaymentAsync(int paymentId, int saleId)
+        {
+            try
+            {
+                Console.WriteLine($"\n[RepairOrphanedPayment] 🔧 Iniciando reparación de pago {paymentId} para venta {saleId}");
+
+                // 1. Obtener el pago
+                var payment = await _context.Payments.FirstOrDefaultAsync(p => p.id_Payments == paymentId && p.id_Sales == saleId);
+                if (payment == null)
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ❌ Pago no encontrado");
+                    return new ServiceResult<string> { Success = false, Message = "Pago no encontrado" };
+                }
+
+                Console.WriteLine($"[RepairOrphanedPayment] 💰 Pago encontrado: ${payment.amount:F2}");
+
+                // 2. Verificar si ya tiene PaymentDetails
+                var existingDetails = await _context.Details
+                    .Where(d => d.id_Payments == paymentId)
+                    .CountAsync();
+
+                if (existingDetails > 0)
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ℹ️  Pago ya tiene {existingDetails} detalles, no necesita reparación");
+                    return new ServiceResult<string> { Success = true, Message = "Pago ya tiene detalles, sin cambios" };
+                }
+
+                Console.WriteLine($"[RepairOrphanedPayment] ⚠️  Pago es huérfano (sin detalles), redistribuyendo...");
+
+                // 3. Obtener la venta
+                var sale = await _context.Sales
+                    .Include(s => s.quotas)
+                    .FirstOrDefaultAsync(s => s.id_Sales == saleId);
+
+                if (sale == null)
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ❌ Venta no encontrada");
+                    return new ServiceResult<string> { Success = false, Message = "Venta no encontrada" };
+                }
+
+                // 4. Distribuir el pago a las cuotas (igual que CreatePaymentFromDTO)
+                decimal remainingAmount = payment.amount.Value;
+                var quotas = sale.quotas?.ToList() ?? await _context.Quotas
+                    .Where(q => q.id_sale == saleId)
+                    .OrderBy(q => q.quota_number)
+                    .ToListAsync();
+
+                // Obtener pagos ya realizados por cuota
+                var existingPaymentDetails = await _context.Details
+                    .AsNoTracking()
+                    .Where(d => d.id_Sales == saleId)
+                    .ToListAsync();
+
+                var paymentsByQuota = existingPaymentDetails
+                    .GroupBy(d => d.number_quota)
+                    .ToDictionary(g => g.Key, g => g.Sum(d => d.covered_amount ?? 0));
+
+                // Filtrar cuotas no pagadas
+                var quotasToDistribute = quotas
+                    .Where(q => q.status != "Pagada" && q.status != "Distribuida")
+                    .OrderBy(q => q.quota_number)
+                    .ToList();
+
+                Console.WriteLine($"[RepairOrphanedPayment] 📊 Cuotas a distribuir: {quotasToDistribute.Count}");
+
+                int detailsCreated = 0;
+                foreach (var quota in quotasToDistribute)
+                {
+                    if (remainingAmount <= 0) break;
+
+                    var alreadyPaid = paymentsByQuota.ContainsKey(quota.quota_number) 
+                        ? paymentsByQuota[quota.quota_number] 
+                        : 0;
+
+                    var quotaRemaining = quota.current_amount - alreadyPaid;
+                    if (quotaRemaining <= 0) continue;
+
+                    var amountToApply = Math.Min(remainingAmount, quotaRemaining);
+
+                    var detail = new Detail
+                    {
+                        id_Payments = paymentId,
+                        id_Sales = saleId,
+                        number_quota = quota.quota_number,
+                        covered_amount = amountToApply
+                    };
+
+                    _context.Details.Add(detail);
+                    remainingAmount -= amountToApply;
+                    detailsCreated++;
+
+                    Console.WriteLine($"  ✓ Cuota #{quota.quota_number}: ${amountToApply:F2} aplicado (remaining en quota: ${quotaRemaining - amountToApply:F2})");
+                }
+
+                await _context.SaveChangesAsync();
+
+                // 5. Recalcular status de cuotas
+                await _saleServices.RecalculateQuotaStatusAsync(saleId);
+
+                Console.WriteLine($"[RepairOrphanedPayment] ✅ Reparación completada: {detailsCreated} detalles creados");
+                
+                if (remainingAmount > 0)
+                {
+                    Console.WriteLine($"[RepairOrphanedPayment] ⚠️  Monto restante sin distribuir: ${remainingAmount:F2}");
+                }
+
+                return new ServiceResult<string>
+                {
+                    Success = true,
+                    Message = $"Pago reparado: {detailsCreated} detalles creados",
+                    Data = $"Distribuido: ${payment.amount - remainingAmount:F2}, Restante: ${remainingAmount:F2}"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[RepairOrphanedPayment] ❌ Error: {ex.Message}");
+                Console.WriteLine($"[RepairOrphanedPayment] Stack: {ex.StackTrace}");
+                return new ServiceResult<string> { Success = false, Message = $"Error: {ex.Message}" };
+            }
+        }
     }
 }

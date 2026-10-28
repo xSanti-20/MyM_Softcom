@@ -221,6 +221,12 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails, onRedistribu
   }
 
   // ✅ PREFERENCIA 2: Si no hay quotas tabla, usar lógica antigua (customQuotasJson o plan regular)
+  
+  // 🔧 VALIDACIÓN: Si falta sale_date, no se puede calcular las cuotas
+  if (!sale.sale_date) {
+    return <p className="text-center text-gray-500">No hay fecha de venta registrada para calcular las cuotas.</p>
+  }
+
   const quotaValue = sale.quota_value || 0
   const originalQuotaValue = sale.originalQuotaValue || quotaValue
   const newQuotaValue = sale.newQuotaValue || sale.NewQuotaValue || null
@@ -240,6 +246,8 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails, onRedistribu
     }
   }
 
+  const saleDate = new Date(sale.sale_date)
+  
   const redistributionAmount = sale.redistributionAmount || 0
   const redistributionType = sale.redistributionType || null
   
@@ -268,7 +276,6 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails, onRedistribu
     }
   }
 
-  const saleDate = new Date(sale.sale_date)
   const currentDate = new Date()
 
   // 🔧 CORRECCIÓN: Agrupar pagos por cuota evitando duplicados
@@ -362,6 +369,9 @@ export default function MonthlyQuotaTracker({ sale, paymentDetails, onRedistribu
   const quotas = []
   let totalOverdueAmount = 0
   let overdueQuotasCount = 0
+
+  // ✅ DEFINIR totalQuotas basado en el tipo de plan
+  const totalQuotas = customQuotas ? customQuotas.length : sale.plan.number_quotas
 
   for (let i = 1; i <= totalQuotas; i++) {
     const coveredInfo = aggregatedQuotas.get(i)

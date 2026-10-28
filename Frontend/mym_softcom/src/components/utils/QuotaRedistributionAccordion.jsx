@@ -115,17 +115,19 @@ export default function QuotaRedistributionAccordion({
       quotasToUse.forEach((quota) => {
         const dueDate = new Date(quota.due_date)
         const isOverdue = dueDate < currentDate
-        const isPaid = quota.status === "Pagada"
-        const isDistribuida = quota.status === "Distribuida"
-        const isVencida = quota.status === "Vencida" || quota.status === "Vencido Abonado"
+        const statusLower = (quota.status || "").toLowerCase().trim()
+        const isPaid = statusLower === "pagada"
+        const isDistribuida = statusLower === "distribuida"
+        // ✅ CORREGIDO: Detectar "vencida", "vencido", "vencido abonado" (case-insensitive)
+        const isVencida = statusLower === "vencida" || statusLower === "vencido" || statusLower === "vencido abonado"
         const paidAmount = paymentsByQuota[quota.quota_number] || 0
-        const remainingAmount = quota.current_amount - paidAmount
+        const remainingAmount = (quota.current_amount || 0) - paidAmount
 
-        console.log(`  Cuota ${quota.quota_number}: due=${dueDate.toLocaleDateString()}, status=${quota.status}, overdue=${isOverdue}, paid=${isPaid}, dist=${isDistribuida}, remaining=${remainingAmount}`)
+        console.log(`  Cuota ${quota.quota_number}: due=${dueDate.toLocaleDateString()}, status=${quota.status} (${statusLower}), overdue=${isOverdue}, paid=${isPaid}, dist=${isDistribuida}, remaining=${remainingAmount}, isVencida=${isVencida}`)
 
         // ✅ CORRECCIÓN: Solo contar cuotas REALMENTE VENCIDAS
         // - "Vencida" (sin pagar)
-        // - "Vencido Abonado" (parcialmente pagada pero vencida)
+        // - "Vencido" / "Vencido Abonado" (parcialmente pagada pero vencida)
         // NO incluir "Distribuida" porque ya cedió dinero
         if (!isPaid && !isDistribuida && isVencida && remainingAmount > 0) {
           overdueResult.push({
@@ -150,16 +152,124 @@ export default function QuotaRedistributionAccordion({
 
     // ✅ PREFERENCIA 2: Si la tabla no tiene cuotas, usar fallback customQuotasJson
     console.log(`[QuotaRedistributionAccordion] 📊 Fallback a customQuotasJson (tabla vacía o sin cuotas)`)
-    if (!sale?.plan?.number_quotas || !sale?.sale_date) {
-      console.log(`[QuotaRedistributionAccordion] ⚠️ Sin plan o sale_date`)
+    console.log(`[QuotaRedistributionAccordion] 🔍 Datos disponibles: plan=${!!sale?.plan}, sale_date=${sale?.sale_date}, customQuotas=${!!customQuotas}, paymentDetails=${paymentDetails?.length || 0}`)
+    
+    // 🔧 FALLBACK AGRESIVO: Si falta plan o sale_date pero hay paymentDetails, intentar construir desde ahí
+    const hasRequiredData = sale?.plan?.number_quotas && sale?.sale_date
+    if (!hasRequiredData && (!paymentDetails || paymentDetails.length === 0)) {
+      console.log(`[QuotaRedistributionAccordion] ❌ Sin plan/sale_date Y sin paymentDetails`)
       return { overdueQuotas: [], remainingQuotas: [] }
     }
 
-    const currentDate = new Date()
-    const saleDate = new Date(sale.sale_date)
-    const totalQuotas = sale.plan.number_quotas
-    const quotaValue = sale.quota_value || 0
+    // 🔧 Si falta plan o sale_date pero HAY paymentDetails, construir desde detalles de pago
+    if (!hasRequiredData && paymentDetails && paymentDetails.length > 0) {
+      console.log(`[QuotaRedistributionAccordion] ✅ Fallback agresivo: sin plan pero hay ${paymentDetails.length} paymentDetails`)
+      
+      const overdueResult = []
+      const remainingResult = []
+      const currentDate = new Date()
+      
+      // Agrupar por cuota y sumar montos
+      const quotasMap = new Map()
+      paymentDetails.forEach((detail) => {
+        const quotaNum = detail.number_quota
+        if (quotaNum > 0) {
+          if (!quotasMap.has(quotaNum)) {
+            quotasMap.set(quotaNum, {
+              quotaNumber: quotaNum,
+              coveredAmount: 0,
+              dueDate: detail.due_date ? new Date(detail.due_date) : null
+            })
+          }
+          const quota = quotasMap.get(quotaNum)
+          quota.coveredAmount += detail.covered_amount || 0
+        }
+      })
 
+      // Si al menos tenemos algún detail con fecha, podemos detectar vencidas
+      console.log(`[QuotaRedistributionAccordion] 📋 Cuotas encontradas en details: ${quotasMap.size}`)
+      
+      quotasMap.forEach((quota) => {
+        // Si tiene fecha de vencimiento, usar eso para detectar vencidas
+        if (quota.dueDate && quota.dueDate < currentDate && quota.coveredAmount === 0) {
+          overdueResult.push({
+            quotaNumber: quota.quotaNumber,
+            remainingAmount: 1000000, // Valor estimado, sin info exacta
+            expectedAmount: 1000000,
+            dueDate: quota.dueDate,
+          })
+          console.log(`  ✓ Cuota ${quota.quotaNumber}: detectada como vencida (fecha: ${quota.dueDate.toLocaleDateString()})`)
+        }
+      })
+
+      if (overdueResult.length > 0) {
+        console.log(`[QuotaRedistributionAccordion] ✅ Fallback agresivo encontró ${overdueResult.length} vencidas`)
+        return { overdueQuotas: overdueResult, remainingQuotas: remainingResult }
+      }
+      
+      console.log(`[QuotaRedistributionAccordion] ⚠️ Sin datos suficientes para construir cuotas`)
+      return { overdueQuotas: [], remainingQuotas: [] }
+    }
+    
+    // 🔧 Fallback: Si quotasFromDB tiene datos aunque falte plan, usarlos
+    if (quotasFromDB && quotasFromDB.length > 0) {
+        console.log(`[QuotaRedistributionAccordion] ✅ Usando quotasFromDB como fallback (${quotasFromDB.length} cuotas)`)
+        // Reasignar a quotasToUse para procesarlas en la rama de tabla
+        const quotasToUse = quotasFromDB
+        
+        const currentDate = new Date()
+        const overdueResult = []
+        const remainingResult = []
+
+        const paymentsByQuota = {}
+        paymentDetails.forEach((detail) => {
+          const quotaNum = detail.number_quota
+          if (quotaNum > 0) {
+            if (!paymentsByQuota[quotaNum]) {
+              paymentsByQuota[quotaNum] = 0
+            }
+            paymentsByQuota[quotaNum] += detail.covered_amount || 0
+          }
+        })
+
+        quotasToUse.forEach((quota) => {
+          const dueDate = new Date(quota.due_date)
+          const isOverdue = dueDate < currentDate
+          const statusLower = (quota.status || "").toLowerCase().trim()
+          const isPaid = statusLower === "pagada"
+          const isDistribuida = statusLower === "distribuida"
+          // ✅ CORREGIDO: Detectar "vencida", "vencido", "vencido abonado" (case-insensitive)
+          const isVencida = statusLower === "vencida" || statusLower === "vencido" || statusLower === "vencido abonado"
+          const paidAmount = paymentsByQuota[quota.quota_number] || 0
+          const remainingAmount = (quota.current_amount || 0) - paidAmount
+
+          if (!isPaid && !isDistribuida && isVencida && remainingAmount > 0) {
+            overdueResult.push({
+              quotaNumber: quota.quota_number,
+              remainingAmount: Math.max(remainingAmount, 0),
+              expectedAmount: quota.amount,
+              dueDate: dueDate,
+            })
+          } else if (!isOverdue && !isPaid && !isDistribuida && remainingAmount > 0) {
+            remainingResult.push({
+              quotaNumber: quota.quota_number,
+              expectedAmount: quota.current_amount,
+              dueDate: dueDate,
+            })
+          }
+        })
+
+        console.log(`[QuotaRedistributionAccordion] ✅ Fallback: ${overdueResult.length} vencidas, ${remainingResult.length} pendientes`)
+        return { overdueQuotas: overdueResult, remainingQuotas: remainingResult }
+    }
+      
+    // Si ni siquiera quotasFromDB, intentar ruta alternativa si hay plan
+    if (sale?.plan?.number_quotas && sale?.sale_date) {
+      const currentDate = new Date()
+      const saleDate = new Date(sale.sale_date)
+      const totalQuotas = sale.plan.number_quotas
+      const quotaValue = sale.quota_value || 0
+    
     // 🔧 Obtener cuotas personalizadas si existen
     let customQuotas = null
     const paymentPlanType = sale.paymentPlanType || sale.PaymentPlanType
@@ -290,7 +400,12 @@ export default function QuotaRedistributionAccordion({
       }
     }
 
-    return { overdueQuotas: overdueQuotasResult, remainingQuotas: remainingQuotasResult }
+      return { overdueQuotas: overdueQuotasResult, remainingQuotas: remainingQuotasResult }
+    }
+    
+    // Si no hay plan ni sale_date, retornar vacío
+    console.log(`[QuotaRedistributionAccordion] ❌ Sin datos: no hay tabla, paymentDetails, quotasFromDB ni plan/sale_date`)
+    return { overdueQuotas: [], remainingQuotas: [] }
   }, [sale, paymentDetails, quotasFromDB])
 
   const [isExpanded, setIsExpanded] = useState(false)
